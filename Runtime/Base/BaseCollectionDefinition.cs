@@ -14,26 +14,51 @@ namespace UnityEngine.GameFoundation
     /// <typeparam name="T2">The type of Collections this CollectionDefinition uses.</typeparam>
     /// <typeparam name="T3">The type of ItemDefinitions this CollectionDefinition uses.</typeparam>
     /// <typeparam name="T4">The type of Items this CollectionDefinition uses.</typeparam>
+    /// <inheritdoc/>
     public abstract class BaseCollectionDefinition<T1, T2, T3, T4> : GameItemDefinition
         where T1 : BaseCollectionDefinition<T1, T2, T3, T4>
         where T2 : BaseCollection<T1, T2, T3, T4>
-        where T3 : BaseItemDefinition<T3, T4>
-        where T4 : BaseItem<T3, T4>
+        where T3 : BaseItemDefinition<T1, T2, T3, T4>
+        where T4 : BaseItem<T1, T2, T3, T4>
     {
         protected BaseCollectionDefinition()
         {
         }
 
         [SerializeField]
-        protected List<DefaultItem> m_DefaultItems = new List<DefaultItem>();
+        private List<DefaultItem> m_DefaultItems = new List<DefaultItem>();
 
         /// <summary>
-        /// Iterator for iterating through the DefaultItems.
+        /// Items that are added when the collection is created
         /// </summary>
-        /// <returns>An iterator for iterating through the DefaultItems.</returns>
-        public IEnumerable<DefaultItem> defaultItems
+        protected List<DefaultItem> defaultItems
         {
-            get { return m_DefaultItems; }
+            get => m_DefaultItems;
+            set => m_DefaultItems = value;
+        }
+
+        /// <summary>
+        /// Returns an array of the default items in this collection definition.
+        /// </summary>
+        /// <returns>An array of the default items in this collection definition.</returns>
+        public DefaultItem[] GetDefaultItems()
+        {
+            if (m_DefaultItems == null)
+                return null;
+            
+            return m_DefaultItems.ToArray();
+        }
+
+        /// <summary>
+        /// Fills the given list with all default items in this collection definition.
+        /// </summary>
+        /// <param name="defaultItems">The list to fill up.</param>
+        public void GetDefaultItems(List<DefaultItem> defaultItems)
+        {
+            if (m_DefaultItems == null || defaultItems == null)
+                return;
+            
+            defaultItems.AddRange(m_DefaultItems);
         }
 
         /// <summary>
@@ -70,32 +95,6 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the DefaultItem at the given index.
-        /// </summary>
-        /// <param name="index">The index we are checking for.</param>
-        /// <returns>The DefaultItem at the requested index.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public DefaultItem GetDefaultItem(int index)
-        {
-            if (index < 0 || index >= m_DefaultItems.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            return m_DefaultItems[index];
-        }
-
-        /// <summary>
-        /// Returns the index of the requested DefaultItem, or -1 if it's not within this CollectionDefinition.
-        /// </summary>
-        /// <param name="defaultItem">The DefaultItem we are checking.</param>
-        /// <returns>The index of the requested DefaultItem.</returns>
-        public int GetIndexOfDefaultItem(DefaultItem defaultItem)
-        {
-            return m_DefaultItems.IndexOf(defaultItem);
-        }
-
-        /// <summary>
         /// Sets the default quantity of the Item specified.
         /// </summary>
         /// <param name="defaultItem">The DefaultItem we are changing quantity of.</param>
@@ -105,7 +104,7 @@ namespace UnityEngine.GameFoundation
         {
             Tools.ThrowIfPlayMode("Cannot set DefaultItem quantity while in play mode.");
 
-            int index = GetIndexOfDefaultItem(defaultItem);
+            int index = m_DefaultItems.IndexOf(defaultItem);
             if (index < 0 || index >= m_DefaultItems.Count)
             {
                 return false;
@@ -130,64 +129,39 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Swaps the locations of the DefaultItems in the DefaultItems list.
+        /// Swaps the locations of the DefaultItems in the defaultItems list.
         /// </summary>
         /// <param name="defaultItem1">The first DefaultItem to swap.</param>
         /// <param name="defaultItem2">The second DefaultItem to swap.</param>
-        public void SwapDefaultItemsListOrder(DefaultItem defaultItem1, DefaultItem defaultItem2)
+        /// <returns> Returns a bool value specifying whether the swap was successful. 
+        /// Swap will fail if either item is null, not in the defaultItems list or if both items are the same.</returns>
+        public bool SwapDefaultItemsListOrder(DefaultItem defaultItem1, DefaultItem defaultItem2)
         {
             Tools.ThrowIfPlayMode("Cannot swap DefaultItems order while in play mode.");
 
-            int index1 = GetIndexOfDefaultItem(defaultItem1);
-            int index2 = GetIndexOfDefaultItem(defaultItem2);
+            if (defaultItem1 == null || defaultItem2 == null)
+            {
+                return false;
+            }
+
+            int index1 = m_DefaultItems.IndexOf(defaultItem1);
+            int index2 = m_DefaultItems.IndexOf(defaultItem2);
+
+            if (index1 < 0 || index2 < 0 || index1 == index2)
+            {
+                return false;
+            }
 
             m_DefaultItems[index1] = defaultItem2;
             m_DefaultItems[index2] = defaultItem1;
-        }
 
-        /// <summary>
-        /// Checks whether a given ItemDefinition is present in the list of DefaultItems.
-        /// </summary>
-        /// <param name="itemDefinition">The ItemDefinition that is being checked for presence in DefaultItems list.</param>
-        /// <returns>Whether or not the ItemDefinition exists in the list.</returns>
-        public bool ContainsDefaultItem(InventoryItemDefinition itemDefinition)
-        {
-            return ContainsDefaultItem(itemDefinition.hash);
-        }
-
-        /// <summary>
-        /// Checks whether a given ItemDefinition id is present in the list of DefaultItems.
-        /// </summary>
-        /// <param name="itemDefinitionId">The ItemDefinition's id hash that is being checked for presence in DefaultItems list.</param>
-        /// <returns>Whether or not the Item exists in the list.</returns>
-        public bool ContainsDefaultItem(string itemDefinitionId)
-        {
-            return ContainsDefaultItem(Tools.StringToHash(itemDefinitionId));
-        }
-
-        /// <summary>
-        /// Checks whether a given ItemDefinition's id hash is present in the list of DefaultItems.
-        /// </summary>
-        /// <param name="itemDefinition">The ItemDefinition hash that is being checked for presence in DefaultItems list.</param>
-        /// <returns>Whether or not the Item exists in the DefaultItems list.</returns>
-        public bool ContainsDefaultItem(int itemDefinitionHash)
-        {
-            return m_DefaultItems.FindIndex(item => item.definitionHash == itemDefinitionHash) >= 0;
-        }
-
-        /// <summary>
-        /// Returns the number of DefaultItems within this CollectionDefinition.
-        /// </summary>
-        /// <returns>The number of DefaultItems within this CollectionDefinition.</returns>
-        public int defaultItemCount
-        {
-            get { return m_DefaultItems.Count; }
+            return true;
         }
 
         /// <summary>
         /// Spawns an instance of a Collection that is based off of this CollectionDefinition.
         /// </summary>
         /// <returns>The reference to the newly created Collection.</returns>
-        internal abstract T2 CreateCollection(string collectionId, string displayName);
+        internal abstract T2 CreateCollection(string collectionId, string displayName, int gameItemId = 0);
     }
 }

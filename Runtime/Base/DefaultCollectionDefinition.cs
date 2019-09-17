@@ -10,18 +10,13 @@ namespace UnityEngine.GameFoundation
     /// system may, for example, bypass the presets, or calculate new values 
     /// on the fly with modifiers).
     /// </summary>
-    /// <typeparam name="T1">The type of CollectionDefinitions this DefaultCollectionDefinition uses.</typeparam>
-    /// <typeparam name="T2">The type of Collections this DefaultCollectionDefinition uses.</typeparam>
-    /// <typeparam name="T3">The type of ItemDefinitions this DefaultCollectionDefinition uses.</typeparam>
-    /// <typeparam name="T4">The type of Items this DefaultCollectionDefinition uses.</typeparam>
-    public abstract class DefaultCollectionDefinition<T1, T2, T3, T4>
-        where T1 : BaseCollectionDefinition<T1, T2, T3, T4>
-        where T2 : BaseCollection<T1, T2, T3, T4>
-        where T3 : BaseItemDefinition<T3, T4>
-        where T4 : BaseItem<T3, T4>
+    [System.Serializable]
+    public class DefaultCollectionDefinition
     {
-        protected DefaultCollectionDefinition(string id, string displayName, T1 baseCollectionDefinition)
+        public DefaultCollectionDefinition(string id, string displayName, int baseCollectionDefinitionHash)
         {
+            Tools.ThrowIfPlayMode("Cannot create a DefaultCollectionDefinition while in play mode.");
+
             if (!Tools.IsValidId(id))
             {
                 throw new System.ArgumentException("DefaultCollectionDefinition can only be alphanumeric with optional dashes or underscores.");
@@ -30,35 +25,35 @@ namespace UnityEngine.GameFoundation
             m_DisplayName = displayName;
             m_Id = id;
             m_Hash = Tools.StringToHash(m_Id);
-            m_CollectionDefinition = baseCollectionDefinition;
+            m_CollectionDefinitionHash = baseCollectionDefinitionHash;
         }
 
-        [SerializeField]
-        protected string m_Id;
+        [SerializeField] 
+        private string m_Id;
 
-        /// <summary>x
+        /// <summary>
         /// The string id of this DefaultCollectionDefinition.
         /// </summary>
-        /// <returns>The string id of this DefaultCollectionDefinition.</returns>
+        /// <returns>The string Id of this DefaultCollectionDefinition.</returns>
         public string id
         {
             get { return m_Id; }
         }
 
-        [SerializeField]
-        protected int m_Hash;
+        [SerializeField] 
+        private int m_Hash;
 
         /// <summary>
-        /// The hash of this DefaultCollectionDefinition's id.
+        /// The Hash of this DefaultCollectionDefinition's Id.
         /// </summary>
-        /// <returns>The hash of this DefaultCollectionDefinition's id.</returns>
+        /// <returns>The Hash of this DefaultCollectionDefinition's Id.</returns>
         public int hash
         {
             get { return m_Hash; }
         }
 
-        [SerializeField]
-        protected string m_DisplayName;
+        [SerializeField] 
+        private string m_DisplayName;
 
         /// <summary>
         /// The name of this DefaultCollectionDefinition for the user to display.
@@ -67,18 +62,26 @@ namespace UnityEngine.GameFoundation
         public string displayName
         {
             get { return m_DisplayName; }
-            set { m_DisplayName = value; }
+            set { SetDisplayName(value); }
         }
 
-        protected T1 m_CollectionDefinition;
+        [SerializeField]
+        private int m_CollectionDefinitionHash;
 
         /// <summary>
         /// CollectionDefinition used for this DefaultCollectionDefinition.
         /// </summary>
         /// <returns>CollectionDefinition used for this DefaultCollectionDefinition.</returns>
-        public T1 collectionDefinition
+        public int collectionDefinitionHash
         {
-            get { return m_CollectionDefinition; }
+            get { return m_CollectionDefinitionHash; }
+        }
+
+        private void SetDisplayName(string name)
+        {
+            Tools.ThrowIfPlayMode("Cannot set the display name of a DefaultCollectionDefinition while in play mode.");
+
+            m_DisplayName = name;
         }
     }
 }

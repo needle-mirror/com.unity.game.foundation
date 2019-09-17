@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace UnityEngine.GameFoundation
 {
@@ -9,29 +10,29 @@ namespace UnityEngine.GameFoundation
     public static class Wallet
     {
         /// <summary>
-        /// Adds a new entry of the specified InventoryItemDefinition by id. Returns the new or existing InventoryItem.
+        /// Adds a new entry of the specified InventoryItemDefinition by Id. Returns the new or existing InventoryItem.
         /// Returns the new InventoryItem when the InventoryItem didn't already exist in the Wallet and
         /// returns an existing InventoryItem when the InventoryItem was already in the Wallet.
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryItemDefinition we are adding.</param>
+        /// <param name="itemdefinitionId">The Id of the InventoryItemDefinition we are adding.</param>
         /// <param name="quantity">How many of this InventoryItem we are adding.</param>
-        /// <returns>The new InventoryItem that was added, or null if id is invalid.</returns>
-        public static InventoryItem AddItem(string definitionId, int quantity = 1)
+        /// <returns>The new InventoryItem that was added, or null if Id is invalid.</returns>
+        public static InventoryItem AddItem(string itemdefinitionId, int quantity = 1)
         {
-            return InventoryManager.wallet.AddItem(definitionId, quantity);
+            return InventoryManager.wallet.AddItem(itemdefinitionId, quantity);
         }
 
         /// <summary>
-        /// Adds more of the specified InventoryItemDefinition by hash. Returns the new (or existing) InventoryItem.
+        /// Adds more of the specified InventoryItemDefinition by Hash. Returns the new (or existing) InventoryItem.
         /// Returns the new InventoryItem when the InventoryItem didn't already exist in the Wallet and
         /// returns an existing reference when to the InventoryItem when the InventoryItem was already in the Wallet.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the InventoryItemDefinition we are adding.</param>
+        /// <param name="itemDefinitionHash">The Hash of the InventoryItemDefinition we are adding.</param>
         /// <param name="quantity">How many of this InventoryItem we are adding.</param>
         /// <returns>The InventoryItem that was added.</returns>
-        public static InventoryItem AddItem(int definitionHash, int quantity = 1)
+        public static InventoryItem AddItem(int itemDefinitionHash, int quantity = 1)
         {
-            return InventoryManager.wallet.AddItem(definitionHash, quantity);
+            return InventoryManager.wallet.AddItem(itemDefinitionHash, quantity);
         }
 
         /// <summary>
@@ -39,12 +40,12 @@ namespace UnityEngine.GameFoundation
         /// Returns the new InventoryItem when the InventoryItem didn't already exist in the Wallet and
         /// returns an existing reference when to the InventoryItem when the InventoryItem was already in the Wallet.
         /// </summary>
-        /// <param name="definition">The InventoryItemDefinition we are adding.</param>
+        /// <param name="itemDefinition">The InventoryItemDefinition we are adding.</param>
         /// <param name="quantity">How many of this InventoryItem we are adding.</param>
         /// <returns>The InventoryItem that was added.</returns>
-        public static InventoryItem AddItem(InventoryItemDefinition definition, int quantity = 1)
+        public static InventoryItem AddItem(InventoryItemDefinition itemDefinition, int quantity = 1)
         {
-            return InventoryManager.wallet.AddItem(definition, quantity);
+            return InventoryManager.wallet.AddItem(itemDefinition, quantity);
         }
 
         /// <summary>
@@ -53,147 +54,147 @@ namespace UnityEngine.GameFoundation
         /// <returns>The InventoryDefinition of this Wallet.</returns>
         public static InventoryDefinition definition
         {
-            get { return InventoryManager.wallet.definition; }
+            get { return InventoryManager.wallet.collectionDefinition; }
         }
 
         /// <summary>
-        /// Helper property for easily accessing the id of the Wallet's InventoryDefinition.
+        /// Helper property for easily accessing the Id of the Wallet's InventoryDefinition.
         /// </summary>
-        /// <returns>The id of the Wallet's InventoryDefinition</returns>
+        /// <returns>The Id of the Wallet's InventoryDefinition</returns>
         public static string definitionId
         {
-            get { return InventoryManager.wallet.definitionId; }
+            get { return InventoryManager.wallet.collectionDefinitionId; }
         }
 
         /// <summary>
-        /// Helper property for easily accessing the Wallet's InventoryDefinition id hash.
+        /// Helper property for easily accessing the Wallet's InventoryDefinition Hash.
         /// </summary>
-        /// <returns>The Wallet's InventoryDefinition id hash.</returns>
+        /// <returns>The Wallet's InventoryDefinition Hash.</returns>
         public static int definitionHash
         {
-            get { return InventoryManager.wallet.definitionHash; }
+            get { return InventoryManager.wallet.collectionDefinitionHash; }
         }
 
         /// <summary>
-        /// This returns an enumerator for easily iterating through InventoryItems in the Wallet.
+        /// Returns an array of all items within the wallet.
         /// </summary>
-        /// <returns>An enumerator for easily iterating through InventoryItems in the Wallet.</returns>
-        public static IEnumerable<InventoryItem> items
+        /// <returns>An array of all items within the wallet.</returns>
+        public static InventoryItem[] GetItems()
         {
-            get { return InventoryManager.wallet.items; }
+            return InventoryManager.wallet.GetItems();
         }
 
         /// <summary>
-        /// Gets an InventoryItem by id if it is contained within, otherwise returns null.
+        /// Fills the given list with all items found in the wallet.
         /// </summary>
-        /// <param name="id">The id of the InventoryItem to find.</param>
+        /// <param name="inventoryItems">The list to fill up.</param>
+        public static void GetItems(List<InventoryItem> inventoryItems)
+        {
+            InventoryManager.wallet.GetItems(inventoryItems);
+        }
+
+        /// <summary>
+        /// Gets an InventoryItem by InventoryItemDefinition reference if it is contained within, otherwise returns null.
+        /// </summary>
+        /// <param name="itemDefinitionId">The Id of the InventoryItem to find.</param>
         /// <returns>The InventoryItem or null if not found.</returns>
-        public static InventoryItem GetItem(string id)
+        public static InventoryItem GetItem(string itemDefinitionId)
         {
-            return InventoryManager.wallet.GetItem(id);
+            return InventoryManager.wallet.GetItem(itemDefinitionId);
         }
 
         /// <summary>
-        /// Gets an InventoryItem by id hash if it is contained within, otherwise returns null.
+        /// Gets an InventoryItem by InventoryItemDefinition Hash if it is contained within, otherwise returns null.
         /// </summary>
-        /// <param name="idHash">The id hash of the InventoryItem to find.</param>
+        /// <param name="itemDefinitionHash">The InventoryItemDefinition Hash of the InventoryItem to find.</param>
         /// <returns>The InventoryItem or null if not found.</returns>
-        public static InventoryItem GetItem(int idHash)
+        public static InventoryItem GetItem(int itemDefinitionHash)
         {
-            return InventoryManager.wallet.GetItem(idHash);
+            return InventoryManager.wallet.GetItem(itemDefinitionHash);
         }
 
         /// <summary>
-        /// Gets an InventoryItem by id if it is contained within, otherwise returns null.
+        /// Returns all an array of items in the wallet with the given category id.
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryItemDefinition to find.</param>
-        /// <returns>The InventoryItem or null if not found.</returns>
-        public static InventoryItem GetItemByDefinition(string definitionId)
-        {
-            return InventoryManager.wallet.GetItem(definitionId);
-        }
-
-        /// <summary>
-        /// This will look for an InventoryItem of the given InventoryItemDefinition, and return it if found.
-        /// </summary>
-        /// <param name="definition">The InventoryItemDefinition to find.</param>
-        /// <returns>The InventoryItem or null if not found.</returns>
-        public static InventoryItem GetItemByDefinition(InventoryItemDefinition definition)
-        {
-            return InventoryManager.wallet.GetItemByDefinition(definition);
-        }
-
-        /// <summary>
-        /// Gets an InventoryItem by InventoryItemDefinition id hash if it is contained within, otherwise throws an exception.
-        /// </summary>
-        /// <param name="definitionHash">The hash of the InventoryItemDefinition to find.</param>
-        /// <returns>The InventoryItem, if found.</returns>
-        public static InventoryItem GetItemByDefinition(int definitionHash)
-        {
-            return InventoryManager.wallet.GetItemByDefinition(definitionHash);
-        }
-
-        /// <summary>
-        /// This will return all InventoryItems that have the given Category through an enumerator.
-        /// </summary>
-        /// <param name="categoryId">The id of the Category we are checking for.</param>
-        /// <returns>An enumerator for the InventoryItems that have the given Category.</returns>
-        public static IEnumerable<InventoryItem> GetItemsByCategory(string categoryId)
+        /// <param name="categoryId">The category id to check.</param>
+        /// <returns>An array of items in the wallet with the given category id.</returns>
+        public static InventoryItem[] GetItemsByCategory(string categoryId)
         {
             return InventoryManager.wallet.GetItemsByCategory(categoryId);
         }
 
         /// <summary>
-        /// This will return all InventoryItems that have the given Category through an enumerator.
+        /// Fills the given list with items with the given category id.
+        /// </summary>
+        /// <param name="categoryId">The category id to check.</param>
+        /// <param name="inventoryItems">The list to fill up.</param>
+        public static void GetItemsByCategory(string categoryId, List<InventoryItem> inventoryItems)
+        {
+            InventoryManager.wallet.GetItemsByCategory(categoryId, inventoryItems);
+        }
+
+        /// <summary>
+        /// This will return all InventoryItems that have the given Category through an array.
         /// </summary>
         /// <param name="categoryDefinition">The CategoryDefinition we are checking for.</param>
-        /// <returns>An enumerator for the InventoryItems that have the given Category.</returns>
-        public static IEnumerable<InventoryItem> GetItemsByCategory(CategoryDefinition categoryDefinition)
+        /// <returns>An array of the InventoryItems that have the given Category.</returns>
+        public static InventoryItem[] GetItemsByCategory(CategoryDefinition categoryDefinition)
         {
             return InventoryManager.wallet.GetItemsByCategory(categoryDefinition);
         }
 
         /// <summary>
-        /// This will return all InventoryItems that have the given Category by CategoryDefinition id hash through an enumerator.
+        /// Fills the given list with items with the given category.
         /// </summary>
-        /// <param name="categoryHash">The id hash of the CategoryDefinition to iterate.</param>
-        /// <returns>An enumerator for the InventoryItems that have the given Category.</returns>
-        public static IEnumerable<InventoryItem> GetAllByCategory(int categoryHash)
+        /// <param name="categoryDefinition">The category to check.</param>
+        /// <param name="inventoryItems">The list to fill up.</param>
+        public static void GetItemsByCategory(CategoryDefinition categoryDefinition, List<InventoryItem> inventoryItems)
+        {
+            InventoryManager.wallet.GetItemsByCategory(categoryDefinition, inventoryItems);
+        }
+
+        /// <summary>
+        /// This will return an array of all InventoryItems that have the given Category by CategoryDefinition id hash.
+        /// </summary>
+        /// <param name="categoryHash">The id hash of the CategoryDefinition to check.</param>
+        /// <returns>An array of the InventoryItems that have the given Category.</returns>
+        public static InventoryItem[] GetItemsByCategory(int categoryHash)
         {
             return InventoryManager.wallet.GetItemsByCategory(categoryHash);
         }
 
         /// <summary>
+        /// Fills the given list with items with the given category hash.
+        /// </summary>
+        /// <param name="categoryHash">The id hash of the CategoryDefinition to check.</param>
+        /// <param name="inventoryItems">The list to fill up.</param>
+        public static void GetItemsByCategory(int categoryHash, List<InventoryItem> inventoryItems)
+        {
+            InventoryManager.wallet.GetItemsByCategory(categoryHash, inventoryItems);
+        }
+
+        /// <summary>
         /// Removes an entry of the specified InventoryItem by InventoryItemDefintion id.
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryItemDefinition we are removing.</param>
-        public static void RemoveItem(string definitionId)
+        /// <param name="itemDefinitionId">The Id of the InventoryItemDefinition we are removing.</param>
+        public static void RemoveItem(string itemDefinitionId)
         {
-            InventoryManager.wallet.RemoveItem(definitionId);
+            InventoryManager.wallet.RemoveItem(itemDefinitionId);
         }
 
         /// <summary>
-        /// Removes an InventoryItem specified by its InventoryItemDefinition.
+        /// Removes an entry of the specified InventoryItemefinition by Hash.
         /// </summary>
-        /// <param name="definition">The InventoryItemDefinition to remove.</param>
-        public static void RemoveItem(InventoryItemDefinition definition)
+        /// <param name="itemDefinitionHash">The Hash of the InventoryItemDefinition to remove.</param>
+        public static void RemoveItem(int itemDefinitionHash)
         {
-            InventoryManager.wallet.RemoveItem(definition);
+            InventoryManager.wallet.RemoveItem(itemDefinitionHash);
         }
 
         /// <summary>
-        /// Removes an entry of the specified InventoryItemefinition by hash.
+        /// This will remove all InventoryItems that have the given Category by CategoryDefinition Id.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the InventoryItemDefinition to remove.</param>
-        public static void RemoveItem(int definitionHash)
-        {
-            InventoryManager.wallet.RemoveItem(definitionHash);
-        }
-
-        /// <summary>
-        /// This will remove all InventoryItems that have the given Category by CategoryDefinition id.
-        /// </summary>
-        /// <param name="categoryId">The id of the CategoryDefinition we are checking for.</param>
+        /// <param name="categoryId">The Id of the CategoryDefinition we are checking for.</param>
         public static void RemoveItemsByCategory(string categoryId)
         {
             InventoryManager.wallet.RemoveItemsByCategory(categoryId);
@@ -202,16 +203,16 @@ namespace UnityEngine.GameFoundation
         /// <summary>
         /// This will remove all InventoryItems that have the given Category.
         /// </summary>
-        /// <param name="categoryDefinition">The CategoryDefinition to remove.</param>
-        public static void RemoveItemsByCategory(CategoryDefinition categoryDefinition)
+        /// <param name="category">The CategoryDefinition to remove.</param>
+        public static void RemoveItemsByCategory(CategoryDefinition category)
         {
-            InventoryManager.wallet.RemoveItemsByCategory(categoryDefinition);
+            InventoryManager.wallet.RemoveItemsByCategory(category);
         }
 
         /// <summary>
-        /// This will remove all InventoryItems that have the given Category by CategoryDefinition id hash.
+        /// This will remove all InventoryItems that have the given Category by CategoryDefinition Hash.
         /// </summary>
-        /// <param name="categoryHash">The id hash of the CategoryDefinition to remove.</param>
+        /// <param name="categoryHash">The Hash of the CategoryDefinition to remove.</param>
         public static void RemoveItemsByCategory(int categoryHash)
         {
             InventoryManager.wallet.RemoveItemsByCategory(categoryHash);
@@ -228,31 +229,31 @@ namespace UnityEngine.GameFoundation
         /// <summary>
         /// Returns whether or not an InventoryItem exists within the Wallet.
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryItemDefinition to find.</param>
+        /// <param name="itemDefinitionId">The Id of the InventoryItemDefinition to find.</param>
         /// <returns>True/False whether or not the InventoryItem is within the Wallet.</returns>
-        public static bool ContainsItem(string definitionId)
+        public static bool ContainsItem(string itemDefinitionId)
         {
-            return InventoryManager.wallet.ContainsItem(definitionId);
+            return InventoryManager.wallet.ContainsItem(itemDefinitionId);
         }
 
         /// <summary>
         /// Returns whether or not an InventoryItem exists within the Wallet for specified InventoryItemDefinition.
         /// </summary>
-        /// <param name="definition">The InventoryItemDefinition to find.</param>
+        /// <param name="itemDefinition">The InventoryItemDefinition to find.</param>
         /// <returns>True/False whether or not the InventoryItem is within the Wallet.</returns>
-        public static bool ContainsItem(InventoryItemDefinition definition)
+        public static bool ContainsItem(InventoryItemDefinition itemDefinition)
         {
-            return InventoryManager.wallet.ContainsItem(definition);
+            return InventoryManager.wallet.ContainsItem(itemDefinition);
         }
 
         /// <summary>
         /// Returns whether or not an InventoryItem exists within the Wallet.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the InventoryItemDefinition we are checking for.</param>
+        /// <param name="itemDefinitionHash">The Hash of the InventoryItemDefinition we are checking for.</param>
         /// <returns>True/False whether or not the InventoryItem is within the Wallet.</returns>
-        public static bool ContainsItem(int definitionHash)
+        public static bool ContainsItem(int itemDefinitionHash)
         {
-            return InventoryManager.wallet.ContainsItem(definitionHash);
+            return InventoryManager.wallet.ContainsItem(itemDefinitionHash);
         }
 
         /// <summary>
@@ -262,37 +263,70 @@ namespace UnityEngine.GameFoundation
         {
             InventoryManager.wallet.Reset();
         }
+        
+        /// <summary>
+        /// Gets the Quantity of an InventoryItem by its InventoryItemDefinition id
+        /// </summary>
+        /// <param name="inventoryItemDefinitionId">InventoryItemDefinition id of the item's quantity to get</param>
+        /// <returns>Quantity of the requested Inventory Item.</returns>
+        /// <exception cref="ArgumentNullException">The parameter id is null or empty</exception>
+        public static int GetQuantity(string inventoryItemDefinitionId)
+        {
+            return InventoryManager.wallet.GetQuantity(inventoryItemDefinitionId);
+        }
 
         /// <summary>
-        /// Sets the quantity of an InventoryItem by InventoryItemDefinition id.
+        /// Gets the Quantity of an InventoryItem by its InventoryItemDefinition hash
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryItemDefinition we are checking for.</param>
+        /// <param name="inventoryItemDefinitionHash">InventoryItemDefinition hash of the item's quantity to get</param>
+        /// <returns>Quantity of the requested Inventory Item.</returns>
+        /// <exception cref="KeyNotFoundException">The hash provided doesn't correspond to a valid item</exception>
+        public static int GetQuantity(int inventoryItemDefinitionHash)
+        {
+            return InventoryManager.wallet.GetQuantity(inventoryItemDefinitionHash);
+        }
+
+        /// <summary>
+        /// Gets the Quantity of an InventoryItem by its reference
+        /// </summary>
+        /// <param name="inventoryItem">InventoryItem reference of the item's quantity to get</param>
+        /// <returns>Quantity of the requested Inventory Item.</returns>
+        /// <exception cref="ArgumentNullException">The parameter id is null</exception>
+        public static int GetQuantity(InventoryItem inventoryItem)
+        {
+            return InventoryManager.wallet.GetQuantity(inventoryItem);
+        }
+
+        /// <summary>
+        /// Sets the quantity of an InventoryItem by InventoryItemDefinition Id.
+        /// </summary>
+        /// <param name="itemDefinitionId">The Id of the InventoryItemDefinition we are checking for.</param>
         /// <param name="quantity">The new value we are setting.</param>
-        public static void SetQuantity(string definitionId, int quantity)
+        public static void SetQuantity(string itemDefinitionId, int quantity)
         {
-            InventoryManager.wallet.SetQuantity(definitionId, quantity);
+            InventoryManager.wallet.SetQuantity(itemDefinitionId, quantity);
         }
 
         /// <summary>
-        /// Sets the quantity of an InventoryItem by InventoryItemDefinition.
+        /// Sets the quantity of the InventoryItem within this Wallet of the specified InventoryItemDefinition by Hash
         /// </summary>
-        /// <param name="definition">The InventoryItemDefinition to set quantity for.</param>
+        /// <param name="itemDefinitionHash">The Hash of the InventoryItemDefinition to set quantity for.</param>
         /// <param name="quantity">The new quantity value to set.</param>
-        public static void SetQuantity(InventoryItemDefinition definition, int quantity)
+        public static void SetQuantity(int itemDefinitionHash, int quantity)
         {
-            InventoryManager.wallet.SetQuantity(definition, quantity);
+            InventoryManager.wallet.SetQuantity(itemDefinitionHash, quantity);
         }
 
-        /// <summary>
-        /// Sets the quantity of the InventoryItem within this Wallet of the specified InventoryItemDefinition by id hash
-        /// </summary>
-        /// <param name="hash">The id hash of the InventoryItemDefinition to set quantity for.</param>
-        /// <param name="quantity">The new quantity value to set.</param>
-        public static void SetQuantity(int hash, int quantity)
+        /// <summary>	
+        /// Sets the quantity of an InventoryItem.
+        /// </summary>	
+        /// <param name="item">The InventoryItem to set quantity for.</param>	
+        /// <param name="quantity">The new quantity value to set.</param>	
+        public static void SetQuantity(InventoryItem item, int quantity)
         {
-            InventoryManager.wallet.SetQuantity(hash, quantity);
+            InventoryManager.wallet.SetQuantity(item.id, quantity);
         }
-
+        
         /// <summary>
         /// This is a callback that will be invoked whenever an InventoryItem is added to the Wallet.
         /// </summary>
@@ -300,15 +334,7 @@ namespace UnityEngine.GameFoundation
         public static Inventory.BaseCollectionItemEvent onItemAdded
         {
             get { return InventoryManager.wallet.onItemAdded; }
-        }
-
-        /// <summary>
-        /// This is a callback that will be invoked whenever an InventoryItem is about to be removed from the Wallet.
-        /// </summary>
-        /// <returns>A CollectionItemEvent fired whenever an InventoryItem is about to be removed from the Wallet.</returns>
-        public static Inventory.BaseCollectionItemEvent onItemWillRemove
-        {
-            get { return InventoryManager.wallet.onItemWillRemove; }
+            set { InventoryManager.wallet.onItemAdded = value; }
         }
 
         /// <summary>
@@ -318,6 +344,7 @@ namespace UnityEngine.GameFoundation
         public static Inventory.BaseCollectionItemEvent onItemRemoved
         {
             get { return InventoryManager.wallet.onItemRemoved; }
+            set { InventoryManager.wallet.onItemRemoved = value; }
         }
 
         /// <summary>
@@ -327,6 +354,7 @@ namespace UnityEngine.GameFoundation
         public static Inventory.BaseCollectionItemEvent onItemQuantityChanged
         {
             get { return InventoryManager.wallet.onItemQuantityChanged; }
+            set { InventoryManager.wallet.onItemQuantityChanged = value; }
         }
 
         /// <summary>
@@ -336,6 +364,7 @@ namespace UnityEngine.GameFoundation
         public static Inventory.BaseCollectionItemEvent onItemQuantityOverflow
         {
             get { return InventoryManager.wallet.onItemQuantityOverflow; }
+            set { InventoryManager.wallet.onItemQuantityOverflow = value; }
         }
     }
 }

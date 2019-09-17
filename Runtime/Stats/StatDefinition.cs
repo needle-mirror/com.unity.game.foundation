@@ -16,10 +16,10 @@
         }
 
         /// <summary>
-        /// This is one entry in the list of possible stats an item could have.
+        /// This is one entry in the list of possible Stats an item could have.
         /// This method throws if not in editor mode.
         /// </summary>
-        /// <param name="id">The id this StatDefinition will use.</param>
+        /// <param name="id">The Id this StatDefinition will use.</param>
         /// <param name="displayName">The name this StatDefinition will use.</param>
         /// <param name="statValueType">The value type this StatDefinition will hold.</param>
         public StatDefinition(string id, string displayName, StatValueType statValueType)
@@ -43,9 +43,9 @@
         }
 
         /// <summary>
-        /// id for this stat definition.
+        /// Id for this Stat definition.
         /// </summary>
-        /// <returns>id for this stat definition.</returns>
+        /// <returns>id for this Stat definition.</returns>
         public string id
         {
             get { return m_Id; }
@@ -54,9 +54,9 @@
         private string m_Id;
 
         /// <summary>
-        /// Hash for id string for this stat definition.
+        /// Hash for Id string for this Stat definition.
         /// </summary>
-        /// <returns>Hash for id string for this stat definition.</returns>
+        /// <returns>Hash for Id string for this Stat definition.</returns>
         public int idHash
         {
             get { return m_IdHash; }
@@ -65,9 +65,9 @@
         private int m_IdHash;
 
         /// <summary>
-        /// Custom string attached to this stat definition.
+        /// Custom string attached to this Stat definition.
         /// </summary>
-        /// <returns>Custom string attached to this stat definition.</returns>
+        /// <returns>Custom string attached to this Stat definition.</returns>
         public string displayName
         {
             get { return m_DisplayName; }
@@ -77,9 +77,9 @@
         private string m_DisplayName;
 
         /// <summary>
-        /// Stat value type for this stat definition.
+        /// Stat value type for this Stat definition.
         /// </summary>
-        /// <returns>Stat value type for this stat definition.</returns>
+        /// <returns>Stat value type for this Stat definition.</returns>
         public StatValueType statValueType
         {
             get { return m_StatValueType; }

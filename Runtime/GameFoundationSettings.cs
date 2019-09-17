@@ -14,16 +14,13 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         public static readonly string kAssetsFolder = "GameFoundation";
 
-        /// <summary>
-        /// The directory name where runtime data files are stored (in PersistentDataPath).
-        /// </summary>
-        public static readonly string kDataFolder = "GameFoundation";
-
         private static GameFoundationSettings s_Instance;
-        private static GameFoundationSettings singleton
+        internal static GameFoundationSettings singleton
         {
             get
             {
+                bool assetUpdate = false;
+
                 if (s_Instance == null)
                 {
                     s_Instance = Resources.Load<GameFoundationSettings>("GameFoundationSettings");
@@ -31,7 +28,7 @@ namespace UnityEngine.GameFoundation
 #if UNITY_EDITOR
                     if (s_Instance == null && !Application.isPlaying)
                     {
-                        s_Instance = CreateInstance<GameFoundationSettings>();
+                        s_Instance = ScriptableObject.CreateInstance<GameFoundationSettings>();
 
                         if (!AssetDatabase.IsValidFolder(string.Format("Assets/{0}", kAssetsFolder)))
                         {
@@ -44,8 +41,7 @@ namespace UnityEngine.GameFoundation
                         }
 
                         AssetDatabase.CreateAsset(s_Instance, string.Format("Assets/{0}/Resources/GameFoundationSettings.asset", kAssetsFolder));
-                        
-                        AssetDatabase.Refresh();
+                        assetUpdate = true;
 
                         s_Instance = Resources.Load<GameFoundationSettings>("GameFoundationSettings");
                     }
@@ -56,61 +52,58 @@ namespace UnityEngine.GameFoundation
                         throw new System.InvalidOperationException("Unable to find or create a GameFoundationSettings resource!");
                     }
                 }
+
+#if UNITY_EDITOR
+                if (s_Instance.m_Database == null)
+                {
+                    Tools.ThrowIfPlayMode("Game Foundation database reference cannot be null while in play mode. "
+                        + "Open one of the Game Foundation windows in the Unity Editor while not in Play Mode to have a database asset created for you automatically.");
+
+                    string databaseAssetPath = $"Assets/{kAssetsFolder}/GameFoundationDatabase.asset";
+
+                    // try to load a database asset by hardcoded path
+                    s_Instance.m_Database = AssetDatabase.LoadAssetAtPath<GameFoundationDatabase>(databaseAssetPath);
+
+                    // if that doesn't work, then create one
+                    if (s_Instance.m_Database == null)
+                    {
+                        s_Instance.m_Database = ScriptableObject.CreateInstance<GameFoundationDatabase>();
+
+                        if (!AssetDatabase.IsValidFolder(string.Format("Assets/{0}", kAssetsFolder)))
+                        {
+                            AssetDatabase.CreateFolder("Assets", kAssetsFolder);
+                        }
+
+                        AssetDatabase.CreateAsset(s_Instance.m_Database, databaseAssetPath);
+                        EditorUtility.SetDirty(s_Instance);
+                        assetUpdate = true;
+                    }
+                }
+
+                if (assetUpdate)
+                {
+                    AssetDatabase.SaveAssets();
+                    AssetDatabase.Refresh();
+                }
+#else
+                if (s_Instance.m_Database == null)
+                {
+                    throw new System.Exception("Game Foundation database reference cannot be null."
+                        + "Open one of the Game Foundation windows in the Unity Editor while not in Play Mode to have a database asset created for you automatically.");
+                }
+#endif
+
                 return s_Instance;
             }
         }
-        
-        [SerializeField]
-        private InventoryCatalog m_InventoryCatalog;
-
-        /// <summary>
-        /// A reference to an InventoryCatalog database asset file.
-        /// </summary>
-        /// <returns>A reference to an InventoryCatalog database asset file.</returns>
-        public static InventoryCatalog inventoryCatalog
-        {
-            get { return singleton.m_InventoryCatalog; }
-            set {
-                singleton.m_InventoryCatalog = value;
-#if UNITY_EDITOR
-                SetInstanceDirty();
-#endif
-            }
-        }
 
         [SerializeField]
-        private StatCatalog m_StatCatalog = null;
+        private GameFoundationDatabase m_Database;
 
-        /// <summary>
-        /// A reference to a stat catalog
-        /// </summary>
-        public static StatCatalog statCatalog
+        public static GameFoundationDatabase database
         {
-            get { return singleton.m_StatCatalog; }
-            set {
-                singleton.m_StatCatalog = value;
-#if UNITY_EDITOR
-                SetInstanceDirty();
-#endif
-            }
-        }
-
-        [SerializeField]
-        private GameItemCatalog m_GameItemCatalog;
-
-        /// <summary>
-        /// A reference to a GameItemCatalog database asset file.
-        /// </summary>
-        /// <returns>A reference to a GameItemCatalog database asset file.</returns>
-        public static GameItemCatalog gameItemCatalog
-        {
-            get { return singleton.m_GameItemCatalog; }
-            set {
-                singleton.m_GameItemCatalog = value;
-#if UNITY_EDITOR
-                SetInstanceDirty();
-#endif
-            }
+            get { return singleton.m_Database; }
+            set { singleton.m_Database = value; }
         }
 
         [SerializeField]
@@ -126,13 +119,13 @@ namespace UnityEngine.GameFoundation
             set {
                 singleton.m_EnablePlayModeAnalytics = value;
 #if UNITY_EDITOR
-                SetInstanceDirty();
+                EditorUtility.SetDirty(s_Instance);
 #endif
             }
         }
 
         [SerializeField]
-        private bool m_EnableEditorModeAnalytics = true;
+        private bool m_EnableEditorModeAnalytics = false;
 
         /// <summary>
         /// Indicates whether analytic events should be fired while in Editor Mode.
@@ -144,7 +137,7 @@ namespace UnityEngine.GameFoundation
             set {
                 singleton.m_EnableEditorModeAnalytics = value;
 #if UNITY_EDITOR
-                SetInstanceDirty();
+                EditorUtility.SetDirty(s_Instance);
 #endif
             }
         }
@@ -157,16 +150,6 @@ namespace UnityEngine.GameFoundation
         public static void SelectGameFoundationSettingsAssetFile()
         {
             Selection.SetActiveObjectWithContext(singleton, null);
-        }
-#endif
-        
-#if UNITY_EDITOR
-        /// <summary>
-        /// Sets the GameFoundationSettings dirty so they will be serialized.
-        /// </summary>
-        static void SetInstanceDirty()
-        {
-            EditorUtility.SetDirty(s_Instance);
         }
 #endif
     }

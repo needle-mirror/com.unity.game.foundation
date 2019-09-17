@@ -7,10 +7,14 @@ namespace UnityEditor.GameFoundation
 {
     internal class InventoryDefinitionEditor : CollectionEditorBase<InventoryDefinition>
     {
-        private int m_ItemIndexToMoveDown = 0;
-        private int m_ItemIndexToMoveUp = 0;
         private string m_InventoryId = null;
-        private int m_DefaultItemIndexToRemove;
+        private DefaultItem[] m_DefaultItems = null;
+        private DefaultItem m_DefaultItemToMoveDown = null;
+        private DefaultItem m_DefaultItemToMoveUp = null;
+        private DefaultItem m_DefaultItemToRemove;
+        private DefaultCollectionDefinition m_DefaultInventoryDefinition;
+        private bool m_CreateDefaultInventory;
+        private GUIContent m_AutoCreateInventoryLabel;
 
         protected override List<InventoryDefinition> m_Items
         {
@@ -27,13 +31,14 @@ namespace UnityEditor.GameFoundation
 
         public InventoryDefinitionEditor(string name, InventoryEditorWindow window) : base(name, window)
         {
+            m_AutoCreateInventoryLabel = new GUIContent("Auto Create Instance", "When checked, this InventoryDefinition is added to a list of DefaultCollectionDefinitions so that an instance of it will automatically be created at runtime initialization.");
         }
 
         public override void OnWillEnter()
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.inventoryCatalog == null)
+            if (GameFoundationSettings.database.inventoryCatalog == null)
             {
                 return;
             }
@@ -53,7 +58,7 @@ namespace UnityEditor.GameFoundation
             if (inventory != null)
             {
                 AddItem(inventory);
-                CollectionEditorTools.AssetDatabaseAddObject(inventory, GameFoundationSettings.inventoryCatalog);
+                CollectionEditorTools.AssetDatabaseAddObject(inventory, GameFoundationSettings.database.inventoryCatalog);
                 SelectItem(inventory);
                 m_InventoryId = m_NewItemId;
                 DrawGeneralDetail(inventory, m_Items.FindIndex(x => x.Equals(m_SelectedItem)));
@@ -67,7 +72,7 @@ namespace UnityEditor.GameFoundation
         protected override void AddItem(InventoryDefinition inventoryDefinition)
         {
             EditorAPIHelper.AddInventoryDefinitionToInventoryCatalog(inventoryDefinition);
-            EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             window.Repaint();
         }
 
@@ -94,11 +99,40 @@ namespace UnityEditor.GameFoundation
                     inventoryDefinition.displayName = displayName;
                     EditorUtility.SetDirty(inventoryDefinition);
                 }
+
+                if (IsIdReserved(inventoryDefinition.id))
+                {
+                    GUI.enabled = false;
+                }
+
+                bool newAutoCreateInventorySelection = EditorGUILayout.Toggle(m_AutoCreateInventoryLabel, m_CreateDefaultInventory);
+                if (newAutoCreateInventorySelection != m_CreateDefaultInventory)
+                {
+                    if (newAutoCreateInventorySelection)
+                    {
+                        m_DefaultInventoryDefinition = new DefaultCollectionDefinition(inventoryDefinition.id, inventoryDefinition.displayName, inventoryDefinition.hash);
+                        GameFoundationSettings.database.inventoryCatalog.AddDefaultCollectionDefinition(m_DefaultInventoryDefinition);
+                    }
+                    else
+                    {
+                        GameFoundationSettings.database.inventoryCatalog.RemoveDefaultCollectionDefinition(m_DefaultInventoryDefinition);
+                        m_DefaultInventoryDefinition = null;
+                    }
+                    EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+                    m_CreateDefaultInventory = newAutoCreateInventorySelection;
+                }
+
+                if (IsIdReserved(inventoryDefinition.id))
+                {
+                    CollectionEditorTools.SetGUIEnabledAtEditorTime(true);
+                }
             }
         }
 
         private void DrawInventoryDetail(InventoryDefinition inventoryDefinition, int index, int count)
         {
+            m_DefaultItems = inventoryDefinition.GetDefaultItems();
+
             DrawItemsInInventory(inventoryDefinition);
 
             EditorGUILayout.Space();
@@ -108,14 +142,12 @@ namespace UnityEditor.GameFoundation
 
         private void DrawItemsInInventory(InventoryDefinition inventoryDefinition)
         {
-            m_ItemIndexToMoveUp = -1;
-            m_ItemIndexToMoveDown = -1;
-            m_DefaultItemIndexToRemove = -1;
+            m_DefaultItemToMoveUp = null;
+            m_DefaultItemToMoveDown = null;
+            m_DefaultItemToRemove = null;
 
-            ClearRemovedItemsFromInventory(inventoryDefinition);
-                
-            var inventoryCatalogAllItemDefinitions = GameFoundationSettings.inventoryCatalog.allItemDefinitions;
-                
+            var inventoryCatalogAllItemDefinitions = GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions();
+
             EditorGUILayout.LabelField("Default Items", GameFoundationEditorStyles.titleStyle);
 
             EditorGUILayout.BeginVertical(GameFoundationEditorStyles.boxStyle);
@@ -130,12 +162,11 @@ namespace UnityEditor.GameFoundation
             GUILayout.Space(64);
             GUILayout.EndHorizontal();
 
-            int count = inventoryDefinition.defaultItemCount;
-            if (count > 0)
+            if (m_DefaultItems != null && m_DefaultItems.Count() > 0)
             {
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < m_DefaultItems.Count(); i++)
                 {
-                    DefaultItem defaultInventoryItem = inventoryDefinition.GetDefaultItem(i);
+                    DefaultItem defaultInventoryItem = m_DefaultItems[i];
                     var inventoryItemDefinition = inventoryCatalogAllItemDefinitions.FirstOrDefault(item => item.hash == defaultInventoryItem.definitionHash);
                     if (inventoryItemDefinition != null)
                     {
@@ -159,19 +190,25 @@ namespace UnityEditor.GameFoundation
 
                             GUILayout.Space(5);
 
-                            CollectionEditorTools.SetGUIEnabledAtEditorTime(i < count - 1);
+                            CollectionEditorTools.SetGUIEnabledAtEditorTime(i < m_DefaultItems.Count() - 1);
                             if (GUILayout.Button("\u25BC", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(18)))
-                                m_ItemIndexToMoveDown = i;
+                            {
+                                m_DefaultItemToMoveDown = defaultInventoryItem;
+                                m_DefaultItemToMoveUp = m_DefaultItems[i + 1];
+                            }
                             CollectionEditorTools.SetGUIEnabledAtEditorTime(i > 0);
                             if (GUILayout.Button("\u25B2", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(18)))
-                                m_ItemIndexToMoveUp = i;
+                            {
+                                m_DefaultItemToMoveUp = defaultInventoryItem;
+                                m_DefaultItemToMoveDown = m_DefaultItems[i - 1];
+                            }
                             CollectionEditorTools.SetGUIEnabledAtEditorTime(true);
 
                             GUILayout.Space(5);
 
                             if (GUILayout.Button("X", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(18)))
                             {
-                                m_DefaultItemIndexToRemove = i;
+                                m_DefaultItemToRemove = defaultInventoryItem;
                             }
                         }
                     }
@@ -192,53 +229,33 @@ namespace UnityEditor.GameFoundation
             }
 
             EditorGUILayout.EndVertical();
-            
-            if (m_ItemIndexToMoveUp >= 0)
+
+            if (m_DefaultItemToMoveUp != null && m_DefaultItemToMoveDown != null)
             {
-                SwapInventoryItems(inventoryDefinition, inventoryDefinition.GetDefaultItem(m_ItemIndexToMoveUp), inventoryDefinition.GetDefaultItem(m_ItemIndexToMoveUp - 1));
-            }
-            if (m_ItemIndexToMoveDown >= 0)
-            {
-                SwapInventoryItems(inventoryDefinition, inventoryDefinition.GetDefaultItem(m_ItemIndexToMoveDown), inventoryDefinition.GetDefaultItem(m_ItemIndexToMoveDown + 1));
+                SwapInventoryItems(inventoryDefinition, m_DefaultItemToMoveUp, m_DefaultItemToMoveDown);
             }
 
-            if (m_DefaultItemIndexToRemove >= 0)
+            if (m_DefaultItemToRemove != null)
             {
                 if (EditorUtility.DisplayDialog ("Confirm Delete", "Are you sure you want to delete the selected item?", "Yes", "Cancel"))
                 {
-                    inventoryDefinition.RemoveDefaultItem(inventoryDefinition.GetDefaultItem(m_DefaultItemIndexToRemove));
-                    EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+                    inventoryDefinition.RemoveDefaultItem(m_DefaultItemToRemove);
+                    EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
                 }
             }
 
-            if (m_ItemIndexToMoveUp >= 0 || m_ItemIndexToMoveDown >= 0 || m_DefaultItemIndexToRemove >= 0)
+            if (m_DefaultItemToMoveUp != null || m_DefaultItemToMoveDown != null || m_DefaultItemToRemove != null)
             {
                 ClearFocus();
             }
         }
 
-        private void ClearRemovedItemsFromInventory(InventoryDefinition inventoryDefinition)
-        {
-            var inventoryCatalogAllItemDefinitions = GameFoundationSettings.inventoryCatalog.allItemDefinitions;
-            var defaultInventoryItems = EditorAPIHelper.GetInventoryDefinitionDefaultItems(inventoryDefinition);
-
-            foreach (DefaultItem defaultInventoryItem in defaultInventoryItems)
-            {
-                if (inventoryCatalogAllItemDefinitions.FirstOrDefault(item => item.hash == defaultInventoryItem.definitionHash) == null)
-                {
-                    inventoryDefinition.RemoveDefaultItem(defaultInventoryItem);
-                    EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
-                }
-            }
-        }
-
         private void DrawItemsNotInInventory(InventoryDefinition inventoryDefinition)
         {
-            var inventoryCatalogAllItemDefinitions = GameFoundationSettings.inventoryCatalog.allItemDefinitions;
-            var defaultInventoryItems = EditorAPIHelper.GetInventoryDefinitionDefaultItems(inventoryDefinition);
-            
+            var inventoryCatalogAllItemDefinitions = GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions();
+
             EditorGUILayout.LabelField("Other Available Items", GameFoundationEditorStyles.titleStyle);
-            
+
             EditorGUILayout.BeginVertical(GameFoundationEditorStyles.boxStyle);
             GUILayout.BeginHorizontal(GameFoundationEditorStyles.tableViewToolbarStyle);
             EditorGUILayout.LabelField("Inventory Item", GameFoundationEditorStyles.tableViewToolbarTextStyle, GUILayout.Width(150));
@@ -251,12 +268,12 @@ namespace UnityEditor.GameFoundation
             {
                 // wallets can only have currencies as auto-add items
                 if (inventoryDefinition.id == EditorAPIHelper.k_WalletInventoryDefinitionId &&
-                    inventoryItemDefinition.GetDetailsDefinition<CurrencyDetailsDefinition>() == null)
+                    inventoryItemDefinition.GetDetailDefinition<CurrencyDetailDefinition>() == null)
                 {
                     continue;
                 }
 
-                if (defaultInventoryItems.Count() > 0 && inventoryDefinition.ContainsDefaultItem(inventoryItemDefinition))
+                if (m_DefaultItems.Count() > 0 && m_DefaultItems.Any(defaultItem => defaultItem.definitionHash == inventoryItemDefinition.hash))
                 {
                     continue;
                 }
@@ -274,7 +291,7 @@ namespace UnityEditor.GameFoundation
                 if (GUILayout.Button("Add To Default Items", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(150)))
                 {
                     inventoryDefinition.AddDefaultItem(inventoryItemDefinition);
-                    EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+                    EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
                 }
 
                 GUILayout.EndHorizontal();
@@ -300,7 +317,7 @@ namespace UnityEditor.GameFoundation
         private void SwapInventoryItems(InventoryDefinition inventoryDefinition, DefaultItem defaultItem1, DefaultItem defaultItem2)
         {
             inventoryDefinition.SwapDefaultItemsListOrder(defaultItem1, defaultItem2);
-            EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
         }
 
         protected override void DrawSidebarListItem(InventoryDefinition item, int index)
@@ -323,6 +340,8 @@ namespace UnityEditor.GameFoundation
             {
                 m_ReadableNameIdEditor = new ReadableNameIdEditor(false, new HashSet<string>(m_Items.Select(i => i.id)));
                 m_InventoryId = inventoryDefinition.id;
+                m_DefaultInventoryDefinition = GameFoundationSettings.database.inventoryCatalog.GetDefaultCollectionDefinition(inventoryDefinition.id);
+                m_CreateDefaultInventory = IsIdReserved(m_InventoryId) || m_DefaultInventoryDefinition != null;
             }
 
             base.SelectItem(inventoryDefinition);
@@ -335,7 +354,7 @@ namespace UnityEditor.GameFoundation
             {
                 CollectionEditorTools.AssetDatabaseRemoveObject(item);
                 EditorAPIHelper.RemoveInventoryDefinitionFromInventoryCatalog(item);
-                EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+                EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             }
         }
 

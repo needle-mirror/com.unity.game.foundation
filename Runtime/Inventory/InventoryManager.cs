@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine.Events;
+using UnityEngine.GameFoundation.DataPersistence;
 
 namespace UnityEngine.GameFoundation
 {
@@ -14,10 +14,12 @@ namespace UnityEngine.GameFoundation
     {
         private static readonly int k_MainInventoryHash = Tools.StringToHash(InventoryCatalog.k_MainInventoryDefinitionId);
 
+        private static readonly int k_WalletInventoryHash = Tools.StringToHash(InventoryCatalog.k_WalletInventoryDefinitionId);
+
         /// <summary>
-        /// This is the 'main' Inventory id as a hash for quick lookup and compares.
+        /// This is the 'main' Inventory Id as a Hash for quick lookup and compares.
         /// </summary>
-        /// <returns>The 'main' Inventory id as a hash for quick lookup and compares.</returns>
+        /// <returns>The 'main' Inventory Id as a Hash for quick lookup and compares.</returns>
         internal static int mainInventoryHash { get; } = k_MainInventoryHash;
 
         /// <summary>
@@ -34,10 +36,10 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This is the 'wallet' Inventory id as a hash for quick lookup and compares.
+        /// This is the 'wallet' Inventory Id as a Hash for quick lookup and compares.
         /// </summary>
         /// <returns>The 'wallet' Inventory id as a hash for quick lookup and compares.</returns>
-        internal static int k_WalletInventoryHash { get; } = Tools.StringToHash(InventoryCatalog.k_WalletInventoryDefinitionId);
+        internal static int walletInventoryHash { get; } = k_WalletInventoryHash;
 
         /// <summary>
         /// This is a reference to the "wallet" Inventory for the InventoryManager.
@@ -53,28 +55,43 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This is an enumerator for iterating through all Inventories owned by the InventoryManager.
+        /// Returns an array of all inventories in the manager.
         /// </summary>
-        /// <returns>An enumerator for iterating through all Inventories owned by the InventoryManager</returns>
-        public static IEnumerable<Inventory> inventories
+        /// <returns>An array of all inventories in the manager.</returns>
+        public static Inventory[] GetInventories()
         {
-            get
-            {
-                ThrowIfNotInitialized();
-                return m_Inventories.Values;
-            }
+            ThrowIfNotInitialized();
+
+            if (m_Inventories == null)
+                return null;
+
+            Inventory[] inventories = new Inventory[m_Inventories.Count];
+            m_Inventories.Values.CopyTo(inventories, 0);
+            return inventories;
         }
-        
-        private static Dictionary<int, Inventory> m_Inventories = null;
-
-        private const string k_ManagerPersistenceId = "gamefoundation_inventories";
-
-        private static IDataPersistence m_DefaultPersistence = null;
 
         /// <summary>
-        /// This is a Unity event that takes in a single Inventory as the parameter
+        /// Fills the given list with all inventories in the manager.
         /// </summary>
-        public class InventoryEvent : UnityEvent<Inventory> {}
+        /// <param name="inventories">The list to fill up.</param>
+        public static void GetInventories(List<Inventory> inventories)
+        {
+            ThrowIfNotInitialized();
+
+            if (m_Inventories == null || inventories == null)
+                return;
+
+            inventories.AddRange(m_Inventories.Values);
+        }
+
+        // <Inventory Definition Hash, Inventory Instance>
+        private static Dictionary<int, Inventory> m_Inventories = null;
+
+        /// <summary>
+        /// This is a delegate that takes in a single Inventory as the parameter
+        /// </summary>
+
+        public delegate void InventoryEvent(Inventory inventory);
 
         /// <summary>
         /// This is a Unity event that effects the entire InventoryManager
@@ -85,87 +102,102 @@ namespace UnityEngine.GameFoundation
         {
         }
 
-        /// <summary>
-        /// Initialize the InventoryManager. If a persistence layer object is passed as first parameter, it will be used
-        /// to populate built-in Inventories and recreated persisted one. 
-        /// If no argument is given, InventoryManager will be initialized with built-in and default inventories definitions.
-        /// If the loading fails, onInitializeFailed will be called with an exception.
-        /// </summary>
-        /// <param name="persistence">An optional persistence layer to load inventories from</param>
-        /// <param name="onInitializeFailed">An optional callback that will be called once Inventories have failed to initialize. </param>
-        /// <param name="onInitializeCompleted">An optional callback that will be called once Inventories have been initialized from persistence layer</param>
-        /// <exception cref="InvalidOperationException">Thrown if the user attempts to initialize after already having done so.</exception>
-        public static void Initialize(IDataPersistence persistence = null, Action onInitializeCompleted = null, Action<Exception> onInitializeFailed = null)
+        internal static bool Initialize(ISerializableData data = null)
         {
             if (IsInitialized)
             {
-                throw new InvalidOperationException("Error: InventoryManager.Initialize was called more than once--please use Reset() to reinitialize.");
+                Debug.LogWarning("InventoryManager is already initialized and cannot be initialized again.");
+                return false;
             }
-
+            
+            if (catalog.GetCollectionDefinition(InventoryCatalog.k_MainInventoryDefinitionId) == null ||
+                catalog.GetCollectionDefinition(InventoryCatalog.k_WalletInventoryDefinitionId) == null)
+            {
+                throw new ArgumentException("InventoryManager cannot be Initialized since built-in inventories doesn't exist on InventoryCatalog.");
+            }
+            
             m_Inventories = new Dictionary<int, Inventory>();
             
-            catalog.VerifyDefaultInventories();
+            m_IsInitialized = true;
 
-            CreateInventory(InventoryCatalog.k_MainInventoryDefinitionId,
-                InventoryCatalog.k_MainInventoryDefinitionId);
-            CreateInventory(InventoryCatalog.k_WalletInventoryDefinitionId,
-                InventoryCatalog.k_WalletInventoryDefinitionId);
-            
-            if (persistence == null)
+            if (data == null)
             {
+                CreateBuiltInInventories();
                 AddDefaultInventories();
             }
             else
             {
-                m_DefaultPersistence = persistence;
-                
-                persistence.Load<InventoryManagerSerializableData>(k_ManagerPersistenceId, (ISerializableData data) =>
-                {
-                    FillFromInventoriesData(data);
-                    onInitializeCompleted?.Invoke();
-                },
-                e =>
-                {
-                    AddDefaultInventories(); // if we failed to fetch data from persistence, we restore default inventories
-                    onInitializeFailed?.Invoke(e);
-                });
+                m_IsInitialized = FillFromInventoriesData(data);
             }
+
+            return m_IsInitialized;
+        }
+        
+        internal static void Uninitialize()
+        {
+            if (!IsInitialized)
+            {
+                return;
+            }
+
+            RemoveAllInventories(true, true);
+            
+            m_Inventories = null;
+            m_IsInitialized = false;
         }
 
-        static void FillFromInventoriesData(ISerializableData data)
+        internal static bool FillFromInventoriesData(ISerializableData data)
         {
-            var inventoryManagerData = (InventoryManagerSerializableData) data;
+            if (data == null)
+                return false;
+            
+            var inventoryManagerData = ((GameFoundationSerializableData) data).inventoryManagerData;
+            if (inventoryManagerData == null)
+                return false;
+            
+            var mainData = inventoryManagerData.GetInventory(InventoryCatalog.k_MainInventoryDefinitionId);
+            if (mainData == null || string.IsNullOrEmpty(mainData.definitionId) ||
+                string.IsNullOrEmpty(mainData.inventoryId) || mainData.gameItemLookupId == 0)
+            {
+                Debug.LogWarning("Persistence Data data doesn't contain Main Inventory.");
+                return false;
+            }
+            
+            var walletData = inventoryManagerData.GetInventory(InventoryCatalog.k_WalletInventoryDefinitionId);
+            if (walletData == null || string.IsNullOrEmpty(walletData.definitionId) ||
+                string.IsNullOrEmpty(walletData.inventoryId) || walletData.gameItemLookupId == 0)
+            {
+                Debug.LogWarning("Persistence Data data doesn't contain Wallet Inventory.");
+                return false;
+            }
+            
+            // remove non built-in inventories
+            RemoveAllInventories(true, true);
+            
             foreach (var persistedInventory in inventoryManagerData.inventories)
             {
-                Inventory currentInventory;
-                
-                if (string.IsNullOrEmpty(persistedInventory.definitionId))
+                if (string.IsNullOrEmpty(persistedInventory.definitionId) || string.IsNullOrEmpty(persistedInventory.inventoryId) || persistedInventory.gameItemLookupId == 0)
                 {
                     continue;
                 }
                 
-                if (persistedInventory.definitionId == InventoryCatalog.k_MainInventoryDefinitionId || persistedInventory.definitionId == InventoryCatalog.k_WalletInventoryDefinitionId)
-                {
-                    currentInventory = GetInventory(persistedInventory.definitionId);
-                }
-                else
-                {
-                    if (string.IsNullOrEmpty(persistedInventory.inventoryId))
-                    {
-                        continue;
-                    }
-                    
-                    currentInventory = CreateInventory(persistedInventory.definitionId, persistedInventory.inventoryId);
-                }
-
+                var inventoryDefinition = catalog.GetCollectionDefinition(persistedInventory.definitionId);
+                if (inventoryDefinition == null)
+                    continue;
+                
+                Inventory currentInventory = CreateInventory(inventoryDefinition, persistedInventory.inventoryId, persistedInventory.gameItemLookupId);
                 if (currentInventory == null)
                     continue;
-                
+
                 foreach (var item in persistedInventory.items)
                 {
+                    if (string.IsNullOrEmpty(item.definitionId) || item.gameItemLookupId == 0)
+                        continue;
+
                     if (!currentInventory.ContainsItem(item.definitionId))
                     {
-                        currentInventory.AddItem(item.definitionId, item.quantity);
+                        int itemHash = Tools.StringToHash(item.definitionId);
+                        currentInventory.AddItem(itemHash, item.quantity, item.gameItemLookupId);
                     }
                     else
 
@@ -174,103 +206,34 @@ namespace UnityEngine.GameFoundation
                     }
                 }
             }
+            
+            return true;
         }
 
-        /// <summary>
-        /// Asynchronously loads data from the default local persistence layer and populates managed inventories with it
-        /// </summary>
-        /// <param name="onLoadCompleted">Called when the loading is completed with success</param>
-        /// <param name="onLoadFailed">Called when the loading failed</param>
-        public static void Load(Action onLoadCompleted = null, Action<Exception> onLoadFailed = null)
+        internal static InventoryManagerSerializableData GetSerializableData()
         {
-            Load(m_DefaultPersistence, onLoadCompleted, onLoadFailed);
-        }
-
-        /// <summary>
-        ///  Asynchronously loads data from the persistence layer and populates managed inventories with it
-        /// </summary>
-        /// <param name="persistence">Persistence layer required to load data from</param>
-        /// <param name="onLoadCompleted">Called when the loading is completed with success</param>
-        /// <param name="onLoadFailed">Called when the loading failed</param>
-        public static void Load(IDataPersistence persistence, Action onLoadCompleted = null, Action<Exception> onLoadFailed = null)
-        {
-            if (persistence == null)
-            {
-                Debug.LogWarning("Inventory Manager could not be serialized without IDataPersistence. InventoryManager should be Initialized with IDataPersistence or ‘Load(IDataPersistence persistence)’ method should be called.");
-                onLoadFailed?.Invoke(new ArgumentException("Error: Non null persistence param mandatory"));
-                return;
-            }
-
-            if (!IsInitialized)
-            {
-                ThrowIfNotInitialized();
-            }
-
-            persistence.Load<InventoryManagerSerializableData>(k_ManagerPersistenceId, (data) =>
-            {
-                // remove non built-in inventories
-                RemoveAllInventories();
-
-                //empties built-in
-                main.RemoveAll();
-                wallet.RemoveAll();
-
-                FillFromInventoriesData(data);
-                onLoadCompleted?.Invoke();
-            },
-            (e) => onLoadFailed?.Invoke(e));
-        }
-
-        /// <summary>
-        /// Asynchronously saves data through the persistence layer with the default local persistence layer.
-        /// </summary>
-        /// <param name="onSaveCompleted">Called when the saving is completed with success</param>
-        /// <param name="onSaveFailed">Called when the loading failed</param>
-        public static void Save(Action onSaveCompleted = null, Action<Exception> onSaveFailed = null)
-        {
-            Save(m_DefaultPersistence, onSaveCompleted, onSaveFailed);
-        }
-
-        /// <summary>
-        /// Asynchronously saves data through the persistence layer.
-        /// </summary>
-        /// <param name="persistence">Persistence layer required to save data into</param>
-        /// <param name="onSaveCompleted">Called when the saving is completed with success</param>
-        /// <param name="onSaveFailed">Called when the loading failed</param>
-        public static void Save(IDataPersistence persistence, Action onSaveCompleted = null, Action<Exception> onSaveFailed = null)
-        {
-            if (persistence == null)
-            {
-                Debug.LogWarning("Inventory Manager could not be serialized without IDataPersistence. InventoryManager should be Initialized with IDataPersistence or ‘Save(IDataPersistence persistence)’ method should be called.");
-                onSaveFailed?.Invoke(new ArgumentException("Error: Non null persistence param mandatory"));
-                return;
-            }
-
-            if (!IsInitialized)
-            {
-                ThrowIfNotInitialized();
-            }
-
             var inventoriesIndex = 0;
 
             // Temp hands conversion while waiting for a better serialization
-            var inventories = new InventorySerializableData[InventoryManager.inventories.Count()];
-            foreach (var inventory in InventoryManager.inventories)
+            var inventoriesArray = GetInventories();
+            var inventories = new InventorySerializableData[inventoriesArray.Length];
+            foreach (var inventory in inventoriesArray)
             {
-                var itemsData = new InventoryItemSerializableData[inventory.items.Count()];
+                var inventoryItems = inventory.GetItems();
+                var itemsData = new InventoryItemSerializableData[inventoryItems.Length];
                 var itemsIndex = 0;
-                foreach (var item in inventory.items)
+                foreach (var item in inventoryItems)
                 {
-                    itemsData[itemsIndex] = new InventoryItemSerializableData(item.definitionId, item.quantity);
+                    itemsData[itemsIndex] = new InventoryItemSerializableData(item.definitionId, item.quantity, item.gameItemId);
                     itemsIndex++;
                 }
 
-                inventories[inventoriesIndex] = new InventorySerializableData(inventory.definitionId, inventory.id, itemsData);
+                inventories[inventoriesIndex] = new InventorySerializableData(inventory.collectionDefinitionId, inventory.id, itemsData, inventory.gameItemId);
                 inventoriesIndex++;
             }
 
-            var inventoryManagerData = new InventoryManagerSerializableData(BaseDataPersistence.k_SaveVersion, inventories);
-            persistence.Save(k_ManagerPersistenceId, inventoryManagerData , onSaveCompleted, onSaveFailed);
+            var inventoryManagerData = new InventoryManagerSerializableData(inventories);
+            return inventoryManagerData;
         }
 
         /// <summary>
@@ -279,8 +242,9 @@ namespace UnityEngine.GameFoundation
         /// <returns>The current initialization state of the InventoryManager.</returns>
         public static bool IsInitialized
         {
-            get { return !ReferenceEquals(m_Inventories, null); }
+            get { return m_IsInitialized; }
         }
+        private static bool m_IsInitialized = false;
 
         /// <summary>
         /// Throws an exception if the InventoryManager has not been initialized.
@@ -290,7 +254,7 @@ namespace UnityEngine.GameFoundation
         {
             if (!IsInitialized)
             {
-                throw new InvalidOperationException("Error: InventoryManager.Initialize() MUST be called before the InventoryManager is used.");
+                throw new InvalidOperationException("Error: GameFoundation.Initialize() MUST be called before the InventoryManager is used.");
             }
         }
 
@@ -302,8 +266,7 @@ namespace UnityEngine.GameFoundation
         {
             get
             {
-                ThrowIfNotInitialized();
-                return GameFoundationSettings.inventoryCatalog;
+                return GameFoundationSettings.database.inventoryCatalog;
             }
         }
 
@@ -314,8 +277,9 @@ namespace UnityEngine.GameFoundation
         public static InventoryEvent onInventoryAdded
         {
             get { return m_OnInventoryAdded; }
+            set { m_OnInventoryAdded = value; }
         }
-        private static InventoryEvent m_OnInventoryAdded = new InventoryEvent();
+        private static InventoryEvent m_OnInventoryAdded;
 
         /// <summary>
         /// Fired whenever the InventoryManager is reset.
@@ -334,8 +298,9 @@ namespace UnityEngine.GameFoundation
         public static InventoryEvent onInventoryOverflow
         {
             get { return m_OnInventoryOverflow; }
+            set { m_OnInventoryOverflow = value; }
         }
-        private static InventoryEvent m_OnInventoryOverflow = new InventoryEvent();
+        private static InventoryEvent m_OnInventoryOverflow;
 
         /// <summary>
         /// Fired whenever an Inventory is unable to deduct items because it's empty (i.e. attempts to go BELOW 0 qty).
@@ -344,8 +309,9 @@ namespace UnityEngine.GameFoundation
         public static InventoryEvent onInventoryUnderflow
         {
             get { return m_OnInventoryUnderflow; }
+            set { m_OnInventoryUnderflow = value; }
         }
-        private static InventoryEvent m_OnInventoryUnderflow = new InventoryEvent();
+        private static InventoryEvent m_OnInventoryUnderflow;
 
         /// <summary>
         /// Fired whenever an Inventory is about to be removed.
@@ -354,8 +320,9 @@ namespace UnityEngine.GameFoundation
         public static InventoryEvent onInventoryWillRemove
         {
             get { return m_OnInventoryWillRemove; }
+            set { m_OnInventoryWillRemove = value; }
         }
-        private static InventoryEvent m_OnInventoryWillRemove = new InventoryEvent();
+        private static InventoryEvent m_OnInventoryWillRemove;
 
         /// <summary>
         /// Fired whenever an Inventory is removed.
@@ -364,8 +331,9 @@ namespace UnityEngine.GameFoundation
         public static InventoryEvent onInventoryRemoved
         {
             get { return m_OnInventoryRemoved; }
+            set { m_OnInventoryRemoved = value; }
         }
-        private static InventoryEvent m_OnInventoryRemoved = new InventoryEvent();
+        private static InventoryEvent m_OnInventoryRemoved;
 
         /// <summary>
         /// Returns a unique Inventory Id that hasn't been registered to any existing Inventory. Use with CreateInventory().
@@ -376,7 +344,7 @@ namespace UnityEngine.GameFoundation
             ThrowIfNotInitialized();
 
             string inventoryId;
-            // find a unique Collection id to use (should only need 1 try, but there's a 1 in 4 billion chance that we're unlucky, so...
+            // find a unique Collection Id to use (should only need 1 try, but there's a 1 in 4 billion chance that we're unlucky, so...
             do
             {
                 inventoryId = Guid.NewGuid().ToString();
@@ -387,32 +355,61 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition id to use.
+        /// This will create a new Inventory by specifying what InventoryDefinition Id to use.
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The id this inventory will have.</param>
+        /// <param name="inventoryDefinitionId">The Id of the InventoryDefinition to assign this Inventory.</param>
+        /// <param name="inventoryId">The Id this inventory will have.</param>
         /// <returns>The newly created Inventory based on specified InventoryDefinition.</returns>
-        public static Inventory CreateInventory(string definitionId, string inventoryId)
+        public static Inventory CreateInventory(string inventoryDefinitionId, string inventoryId)
         {
             ThrowIfNotInitialized();
-            
-            return CreateInventory(Tools.StringToHash(definitionId), inventoryId);
+
+            return CreateInventory(Tools.StringToHash(inventoryDefinitionId), inventoryId);
         }
 
         /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition to use by id hash.
+        /// This will create a new Inventory by specifying what InventoryDefinition to use by Hash.
         /// </summary>
-        /// <param name="definitionHash">The hash of the InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The id this Inventory will have.</param>
+        /// <param name="inventoryDefinitionHash">The Hash of the InventoryDefinition to assign this Inventory.</param>
+        /// <param name="inventoryId">The Id this Inventory will have.</param>
         /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
-        /// <exception cref="InvalidOperationException">Thrown if an invalid hash is provided.</exception>
-        /// <exception cref="ArgumentException">Thrown if the given id is null, empty, or a duplicate.</exception>
-        public static Inventory CreateInventory(int definitionHash, string inventoryId)
+        /// <exception cref="InvalidOperationException">Thrown if an invalid Hash is provided.</exception>
+        /// <exception cref="ArgumentException">Thrown if the given Id is null, empty, or a duplicate.</exception>
+        public static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId)
+        {
+            ThrowIfNotInitialized();
+            return CreateInventory(inventoryDefinitionHash, inventoryId, 0);
+        }
+
+        /// <summary>
+        /// This will create a new Inventory by specifying what InventoryDefinition to use.
+        /// </summary>
+        /// <param name="inventoryDefinition">The InventoryDefinition to assign this Inventory.</param>
+        /// <param name="inventoryId">The Id this Inventory will have.</param>
+        /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
+        public static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId)
+        {
+            ThrowIfNotInitialized();
+
+            if (inventoryDefinition == null)
+            {
+                Debug.LogWarning("The provided inventory definition is null, this will not be created.");
+                return null;
+            }
+
+            return CreateInventory(inventoryDefinition, inventoryId, 0);
+        }
+        
+        internal static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId, int gameItemId)
+        {
+            return CreateInventory(catalog.GetCollectionDefinition(inventoryDefinitionHash), inventoryId, gameItemId);
+        }
+        
+        internal static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId, int gameItemId)
         {
             ThrowIfNotInitialized();
             
-            var definition = catalog.GetCollectionDefinition(definitionHash);
-            if (definition == null)
+            if (inventoryDefinition == null)
             {
                 throw new InvalidOperationException("Provided definition is not in the InventoryCatalog.");
             }
@@ -427,74 +424,56 @@ namespace UnityEngine.GameFoundation
                 throw new ArgumentException("Provided Inventory ID is one that's already registered in this InventoryManager.");
             }
 
-            var newCollection = definition.CreateCollection(inventoryId, definition.displayName);
+            var newCollection = inventoryDefinition.CreateCollection(inventoryId, inventoryDefinition.displayName, gameItemId);
             m_Inventories.Add(newCollection.hash, newCollection);
-            m_OnInventoryAdded.Invoke(newCollection);
-            
+
+            m_OnInventoryAdded?.Invoke(newCollection);
+
             return newCollection;
         }
 
         /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition to use.
+        /// This will return the Inventory using the specified Inventory Id.
         /// </summary>
-        /// <param name="definition">The InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The id this Inventory will have.</param>
-        /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
-        public static Inventory CreateInventory(InventoryDefinition definition, string inventoryId)
-        {
-            ThrowIfNotInitialized();
-
-            if (definition == null)
-            {
-                Debug.LogWarning("The provided inventory definition is null, this will not be created.");
-                return null;
-            }
-
-            return CreateInventory(definition.hash, inventoryId);
-        }
-
-        /// <summary>
-        /// This will return the Inventory using the specified Inventory id.
-        /// </summary>
-        /// <param name="inventoryId">The id of the Inventory we want.</param>
-        /// <returns>The Inventory with the requested id.</returns>
+        /// <param name="inventoryId">The Id of the Inventory we want.</param>
+        /// <returns>The Inventory with the requested Id.</returns>
         public static Inventory GetInventory(string inventoryId)
         {
             ThrowIfNotInitialized();
-            
+
             return GetInventory(Tools.StringToHash(inventoryId));
         }
 
         /// <summary>
-        /// This will return the Inventory using the specified Inventory id hash.
+        /// This will return the Inventory using the specified Inventory Hash.
         /// </summary>
-        /// <param name="hash">The hash of the id of the Inventory we want.</param>
-        /// <returns>The Inventory with the requested hash id or null if not found.</returns>
-        public static Inventory GetInventory(int hash)
+        /// <param name="inventoryHash">The Hash of the Inventory of the Inventory we want.</param>
+        /// <returns>The Inventory with the requested  Hash  or null if not found.</returns>
+        public static Inventory GetInventory(int inventoryHash)
         {
             ThrowIfNotInitialized();
 
             Inventory collection;
-            m_Inventories.TryGetValue(hash, out collection);
+            m_Inventories.TryGetValue(inventoryHash, out collection);
             return collection;
         }
 
         /// <summary>
-        /// This method checks if an Inventory exists with the given Inventory id.
+        /// This method checks if an Inventory exists with the given Inventory Id.
         /// </summary>
-        /// <param name="inventoryId">The id we are checking for.</param>
+        /// <param name="inventoryId">The Id we are checking for.</param>
         /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
         public static bool HasInventory(string inventoryId)
         {
             ThrowIfNotInitialized();
-            
+
             return HasInventory(Tools.StringToHash(inventoryId));
         }
 
         /// <summary>
-        /// This method checks if an Inventory exists with the given Inventory id hash.
+        /// This method checks if an Inventory exists with the given Inventory Hash.
         /// </summary>
-        /// <param name="inventoryHash">The id we are checking for.</param>
+        /// <param name="inventoryHash">The Hash we are checking for.</param>
         /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
         public static bool HasInventory(int inventoryHash)
         {
@@ -504,58 +483,58 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This method checks if an Inventory exists with the given InventoryDefinition id.
+        /// This method checks if an Inventory exists with the given InventoryDefinition Id.
         /// </summary>
-        /// <param name="definitionId">The id we are checking for.</param>
+        /// <param name="inventoryDefinitionId">The Id we are checking for.</param>
         /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventoryByDefinition(string definitionId)
+        public static bool HasInventoryByDefinition(string inventoryDefinitionId)
         {
             ThrowIfNotInitialized();
-            
-            return HasInventoryByDefinition(Tools.StringToHash(definitionId));
+
+            return HasInventoryByDefinition(Tools.StringToHash(inventoryDefinitionId));
         }
 
         /// <summary>
-        /// This method checks if an Inventory exists for given InventoryDefinition id hash.
+        /// This method checks if an Inventory exists for given InventoryDefinition Hash.
         /// </summary>
-        /// <param name="definitionHash">The hash we are checking for.</param>
+        /// <param name="inventoryDefinitionHash">The Hash we are checking for.</param>
         /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventoryByDefinition(int definitionHash)
+        public static bool HasInventoryByDefinition(int inventoryDefinitionHash)
         {
             ThrowIfNotInitialized();
 
             foreach (var collection in m_Inventories.Values)
             {
-                if (collection.definition.hash.Equals(definitionHash))
+                if (collection.collectionDefinition.hash.Equals(inventoryDefinitionHash))
                 {
                     return true;
                 }
             }
-            
+
             return false;
         }
 
         /// <summary>
         /// This method checks if an Inventory exists for specified InventoryDefinition.
         /// </summary>
-        /// <param name="definition">The InventoryDefinition we are checking for.</param>
+        /// <param name="inventoryDefinition">The InventoryDefinition we are checking for.</param>
         /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventoryByDefinition(InventoryDefinition definition)
+        public static bool HasInventoryByDefinition(InventoryDefinition inventoryDefinition)
         {
             ThrowIfNotInitialized();
 
-            if (definition == null)
+            if (inventoryDefinition == null)
             {
                 return false;
             }
 
-            return HasInventoryByDefinition(definition.hash);
+            return HasInventoryByDefinition(inventoryDefinition.hash);
         }
 
         /// <summary>
         /// This method will remove the Inventory with the given instance Id.
         /// </summary>
-        /// <param name="inventoryId">The id of the Inventory instance we want to remove.</param>
+        /// <param name="inventoryId">The Id of the Inventory instance we want to remove.</param>
         /// <returns>Whether or not the Inventory was successfully removed.</returns>
         public static bool RemoveInventory(string inventoryId)
         {
@@ -563,18 +542,29 @@ namespace UnityEngine.GameFoundation
 
             if (string.IsNullOrEmpty(inventoryId))
                 return false;
-            
+
             return RemoveInventory(Tools.StringToHash(inventoryId));
         }
 
         /// <summary>
-        /// This method will remove the Inventory with the given Inventory id hash.
+        /// This method will remove the Inventory with the given Inventory Hash.
         /// </summary>
-        /// <param name="inventoryHash">The hash of the Inventory instance we want to remove.</param>
+        /// <param name="inventoryHash">The Hash of the Inventory instance we want to remove.</param>
         /// <returns>Whether or not the Inventory was successfully removed.</returns>
         public static bool RemoveInventory(int inventoryHash)
         {
+            return RemoveInventory(inventoryHash, false);
+        }
+        
+        private static bool RemoveInventory(int inventoryHash, bool forceToRemove)
+        {
             ThrowIfNotInitialized();
+
+            if (!forceToRemove && (inventoryHash == k_MainInventoryHash || inventoryHash == k_WalletInventoryHash))
+            {
+                Debug.LogWarning("Main or Wallet inventories cannot be removed from InventoryManager.");
+                return false;
+            }
 
             Inventory inventory;
             if (!m_Inventories.TryGetValue(inventoryHash, out inventory))
@@ -582,14 +572,22 @@ namespace UnityEngine.GameFoundation
                 return false;
             }
 
-            m_OnInventoryWillRemove.Invoke(inventory);
+            if (m_OnInventoryWillRemove != null)
+            {
+                m_OnInventoryWillRemove.Invoke(inventory);
+            }
 
             if (!m_Inventories.Remove(inventoryHash))
             {
                 return false;
             }
 
-            m_OnInventoryRemoved.Invoke(inventory);
+            if (m_OnInventoryRemoved != null)
+            {
+                m_OnInventoryRemoved.Invoke(inventory);
+            }
+
+            NotificationSystem.FireNotification(NotificationType.Destroyed, inventory);
 
             return true;
         }
@@ -607,39 +605,39 @@ namespace UnityEngine.GameFoundation
             {
                 return false;
             }
-            
+
             return RemoveInventory(inventory.hash);
         }
 
         /// <summary>
-        /// This method will remove the Inventory that uses the InventoryDefinition with the given id.
+        /// This method will remove the Inventory that uses the InventoryDefinition with the given Id.
         /// </summary>
-        /// <param name="definitionId">The id of the InventoryDefinition we want to remove.</param>
+        /// <param name="inventoryDefinitionId">The Id of the InventoryDefinition we want to remove.</param>
         /// <returns>The amount of inventories that were removed.</returns>
-        public static int RemoveInventoriesByDefinition(string definitionId)
+        public static int RemoveInventoriesByDefinition(string inventoryDefinitionId)
         {
             ThrowIfNotInitialized();
 
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(inventoryDefinitionId))
                 return 0;
-            
-            return RemoveInventoriesByDefinition(Tools.StringToHash(definitionId));
+
+            return RemoveInventoriesByDefinition(Tools.StringToHash(inventoryDefinitionId));
         }
 
         /// <summary>
-        /// This method will remove the Inventory that uses the InventoryDefinition with the given hash.
+        /// This method will remove the Inventory that uses the InventoryDefinition with the given Hash.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the InventoryDefinition we want to remove.</param>
+        /// <param name="inventoryDefinitionHash">The Hash of the InventoryDefinition we want to remove.</param>
         /// <returns>The amount of inventories that were removed.</returns>
-        public static int RemoveInventoriesByDefinition(int definitionHash)
+        public static int RemoveInventoriesByDefinition(int inventoryDefinitionHash)
         {
             ThrowIfNotInitialized();
 
             List<Inventory> collectionsToRemove = new List<Inventory>();
-            
+
             foreach (var collection in m_Inventories.Values)
             {
-                if (collection.definition.hash == definitionHash)
+                if (collection.collectionDefinition.hash == inventoryDefinitionHash)
                 {
                     collectionsToRemove.Add(collection);
                 }
@@ -647,8 +645,12 @@ namespace UnityEngine.GameFoundation
 
             foreach (var collection in collectionsToRemove)
             {
-                m_OnInventoryWillRemove.Invoke(collection);
-                if (m_Inventories.Remove(collection.hash))
+                if (m_OnInventoryWillRemove != null)
+                {
+                    m_OnInventoryWillRemove.Invoke(collection);
+                }
+                
+                if (m_Inventories.Remove(collection.hash) && m_OnInventoryRemoved != null)
                 {
                     m_OnInventoryRemoved.Invoke(collection);
                 }
@@ -660,18 +662,18 @@ namespace UnityEngine.GameFoundation
         /// <summary>
         /// This method will remove the Inventory that uses the given InventoryDefinition.
         /// </summary>
-        /// <param name="definition">The InventoryDefinition we want to remove.</param>
+        /// <param name="inventoryDefinition">The InventoryDefinition we want to remove.</param>
         /// <returns>The amount of inventories that were removed.</returns>
-        public static int RemoveInventoriesByDefinition(InventoryDefinition definition)
+        public static int RemoveInventoriesByDefinition(InventoryDefinition inventoryDefinition)
         {
             ThrowIfNotInitialized();
 
-            if (definition == null)
+            if (inventoryDefinition == null)
             {
                 return 0;
             }
-            
-            return RemoveInventoriesByDefinition(definition.hash);
+
+            return RemoveInventoriesByDefinition(inventoryDefinition.hash);
         }
 
         /// <summary>
@@ -682,14 +684,18 @@ namespace UnityEngine.GameFoundation
         public static int RemoveAllInventories(bool removeDefaultInventories = true)
         {
             ThrowIfNotInitialized();
-
+            
+            return RemoveAllInventories(removeDefaultInventories, false);
+        }
+        
+        private static int RemoveAllInventories(bool removeDefaultInventories, bool removeBuiltInInventories)
+        {
             // gather a list of all Inventories to remove (needed since we can't iterate a dictionary and remove items as we go)
             var inventoriesToRemove = new List<Inventory>();
             foreach (var inventory in m_Inventories.Values)
             {
                 bool remove = false;
-                if (inventory.hash != mainInventoryHash &&
-                    inventory.hash != k_WalletInventoryHash)
+                if (removeBuiltInInventories || inventory.hash != k_MainInventoryHash && inventory.hash != k_WalletInventoryHash)
                 {
                     remove = true;
                     if (!removeDefaultInventories)
@@ -704,7 +710,7 @@ namespace UnityEngine.GameFoundation
                         }
                     }
                 }
-
+                
                 if (remove)
                 {
                     inventoriesToRemove.Add(inventory);
@@ -713,7 +719,7 @@ namespace UnityEngine.GameFoundation
 
             foreach (var inventory in inventoriesToRemove)
             {
-                RemoveInventory(inventory);
+                RemoveInventory(inventory.hash, removeBuiltInInventories);
             }
 
             return inventoriesToRemove.Count;
@@ -726,40 +732,70 @@ namespace UnityEngine.GameFoundation
         public static void Reset()
         {
             ThrowIfNotInitialized();
+            
+            bool notificationDisabled = NotificationSystem.temporaryDisable;
+            if (!notificationDisabled)
+            {
+                NotificationSystem.temporaryDisable = true;
+            }
 
             // Reset default Inventories and remove non default instances
             var inventoriesToRemove = new List<Inventory>();
             foreach (Inventory inventory in m_Inventories.Values)
             {
-                bool isDefault = false;
-                foreach (var defaultCollectionDefinition in catalog.m_DefaultCollectionDefinitions)
+                bool willRemoved = true;
+                if (inventory.hash == k_MainInventoryHash || inventory.hash == k_WalletInventoryHash)
                 {
-                    if (inventory.hash == defaultCollectionDefinition.hash)
-                    {
-                        isDefault = true;
-                        break;
-                    }
-                }
-                
-                if (isDefault)
-                {
-                    inventory.Reset();
+                    willRemoved = false;
                 }
                 else
                 {
+                    foreach (var defaultCollectionDefinition in catalog.m_DefaultCollectionDefinitions)
+                    {
+                        if (inventory.hash == defaultCollectionDefinition.hash)
+                        {
+                            willRemoved = false;
+                            break;
+                        }
+                    }
+                }
+                if (willRemoved)
+                {
                     inventoriesToRemove.Add(inventory);
+                }
+                else
+                {
+                    inventory.Reset();
                 }
             }
 
-            foreach (var inventory in inventoriesToRemove) 
+            foreach (var inventory in inventoriesToRemove)
             {
-                RemoveInventory(inventory);
+                RemoveInventory(inventory.hash);
             }
 
             AddDefaultInventories();
 
             // invoke event for entire InventoryManager reset
-            onInventoryManagerReset.Invoke();
+            onInventoryManagerReset?.Invoke();
+            
+            if (!notificationDisabled)
+            {
+                NotificationSystem.temporaryDisable = false;
+            }
+        }
+
+        private static void CreateBuiltInInventories()
+        {
+            if (!m_Inventories.ContainsKey(k_MainInventoryHash))
+            {
+                CreateInventory(k_MainInventoryHash, InventoryCatalog.k_MainInventoryDefinitionId);
+            }
+            
+            if (!m_Inventories.ContainsKey(k_WalletInventoryHash))
+            {
+                CreateInventory(k_WalletInventoryHash, InventoryCatalog.k_WalletInventoryDefinitionId);
+            }
         }
 
         // add all default Inventories from the InventoryCatalog
@@ -771,24 +807,28 @@ namespace UnityEngine.GameFoundation
             {
                 if (!m_Inventories.ContainsKey(defaultInventoryDefinition.hash))
                 {
-                    var defaultInventory = defaultInventoryDefinition.collectionDefinition.CreateCollection(defaultInventoryDefinition.id, defaultInventoryDefinition.displayName);
-                    m_Inventories[defaultInventory.hash] = defaultInventory;
+                    var collectionDefinition = catalog.GetCollectionDefinition(defaultInventoryDefinition.collectionDefinitionHash);
+                    if (collectionDefinition != null)
+                    {
+                        var defaultInventory = collectionDefinition.CreateCollection(defaultInventoryDefinition.id, defaultInventoryDefinition.displayName);
+                        m_Inventories[defaultInventory.hash] = defaultInventory;
+                    }
                 }
             }
         }
 
         /// <summary>
-        /// Checks if the given string hashes to unique value and returns hash as out variable, if it is.
+        /// Checks if the given string Hash es to unique value and returns Hash as out variable, if it is.
         /// </summary>
-        /// <param name="inventoryId">The id to checking for.</param>
-        /// <returns>True/False whether or not the hash is unique.</returns>
+        /// <param name="inventoryId">The Id to checking for.</param>
+        /// <returns>True/False whether or not the Hash is unique.</returns>
         public static bool IsInventoryHashUnique(string inventoryId)
         {
             ThrowIfNotInitialized();
 
             if (string.IsNullOrEmpty(inventoryId))
                 return false;
-            
+
             return !m_Inventories.ContainsKey(Tools.StringToHash(inventoryId));
         }
     }

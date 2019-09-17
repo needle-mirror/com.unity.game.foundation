@@ -48,18 +48,12 @@ namespace UnityEditor.GameFoundation
 
                 if (GUILayout.Button("Choose", EditorStyles.miniButton, GUILayout.Width(50f)))
                 {
-                    if (GameFoundationSettings.gameItemCatalog == null)
+                    if (GameFoundationSettings.database.gameItemCatalog == null)
                     {
                         throw new System.NullReferenceException("There is no GameItemDefinition catalog!");
                     }
 
-                    List<GameItemDefinition> gameItemDefinitions =
-                        GameFoundationSettings.gameItemCatalog.allGameItemDefinitions as List<GameItemDefinition>;
-
-                    if (gameItemDefinitions == null)
-                    {
-                        throw new System.NullReferenceException("The GameItemDefinition catalog's GameItemDefinition list is null!");
-                    }
+                    var gameItemDefinitions = GameFoundationSettings.database.gameItemCatalog.GetGameItemDefinitions();
 
                     List<GameItemDefinition> defsAlreadyReferenced = new List<GameItemDefinition>();
 

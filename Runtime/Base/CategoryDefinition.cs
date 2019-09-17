@@ -14,9 +14,9 @@ namespace UnityEngine.GameFoundation
         private string m_Id;
 
         /// <summary>x
-        /// The string id of this CategoryDefinition.
+        /// The string Id of this CategoryDefinition.
         /// </summary>
-        /// <returns>The string id of this CategoryDefinition.</returns>
+        /// <returns>The string Id of this CategoryDefinition.</returns>
         public string id
         {
             get { return m_Id; }
@@ -26,16 +26,16 @@ namespace UnityEngine.GameFoundation
         private int m_Hash;
 
         /// <summary>
-        /// The id hash of this CategoryDefinition.
+        /// The Hash of this CategoryDefinition.
         /// </summary>
-        /// <returns>The id hash of this CategoryDefinition.</returns>
+        /// <returns>The Hash of this CategoryDefinition.</returns>
         public int hash
         {
             get { return m_Hash; }
         }
 
         [SerializeField] 
-        protected string m_DisplayName;
+        private string m_DisplayName;
 
         /// <summary>
         /// The name of this CategoryDefinition for the user to display.
@@ -50,9 +50,9 @@ namespace UnityEngine.GameFoundation
         /// <summary>
         /// Constructor for a CategoryDefinition.
         /// </summary>
-        /// <param name="id">The id this CategoryDefinition will use.</param>
+        /// <param name="id">The Id this CategoryDefinition will use.</param>
         /// <param name="displayName">The name this CategoryDefinition will use.</param>
-        /// <exception cref="ArgumentException">Thrown if an empty id is given.</exception>
+        /// <exception cref="ArgumentException">Thrown if an empty Id is given.</exception>
         public CategoryDefinition(string id, string displayName)
         {
             Tools.ThrowIfPlayMode("Cannot create a CategoryDefinition while in play mode.");
@@ -116,9 +116,9 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the hash code associated with this CategoryDefinition's id.
+        /// Returns the Hash code associated with this CategoryDefinition's Id.
         /// </summary>
-        /// <returns>The hash code associated with this CategoryDefinition's id.</returns>
+        /// <returns>The Hash code associated with this CategoryDefinition's Id.</returns>
         public override int GetHashCode()
         {
             return m_Hash;

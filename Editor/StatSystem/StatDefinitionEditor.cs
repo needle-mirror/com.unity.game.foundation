@@ -7,7 +7,7 @@ using UnityEngine.GameFoundation;
 namespace UnityEditor.GameFoundation
 {
     /// <summary>
-    /// Editor tab for the Stat window that allows creation of stat definitions.
+    /// Editor tab for the Stat window that allows creation of Stat definitions.
     /// </summary>
     internal class StatDefinitionEditor : CollectionEditorBase<StatDefinition>
     {
@@ -40,7 +40,7 @@ namespace UnityEditor.GameFoundation
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.statCatalog == null) return;
+            if (GameFoundationSettings.database.statCatalog == null) return;
 
              SelectFilteredItem(0); // Select the first Item
         }
@@ -89,7 +89,7 @@ namespace UnityEditor.GameFoundation
         protected override void AddItem(StatDefinition item)
         {
             EditorAPIHelper.AddStatDefinitionToStatCatalog(item);
-            EditorUtility.SetDirty(GameFoundationSettings.statCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.statCatalog);
             window.Repaint();
         }
 
@@ -104,7 +104,7 @@ namespace UnityEditor.GameFoundation
                 if (item.displayName != displayName)
                 {
                     item.displayName = displayName;
-                    EditorUtility.SetDirty(GameFoundationSettings.statCatalog);
+                    EditorUtility.SetDirty(GameFoundationSettings.database.statCatalog);
                 }
                 using (new EditorGUILayout.HorizontalScope())
                 {
@@ -139,11 +139,11 @@ namespace UnityEditor.GameFoundation
 
         protected override void OnRemoveItem(StatDefinition item)
         {
-            // If a stat item is deleted, remove it from list
+            // If a Stat item is deleted, remove it from list
             if (item != null)
             {
                 EditorAPIHelper.RemoveStatDefinitionFromStatCatalog(item);
-                EditorUtility.SetDirty(GameFoundationSettings.statCatalog);
+                EditorUtility.SetDirty(GameFoundationSettings.database.statCatalog);
             }
         }
     }

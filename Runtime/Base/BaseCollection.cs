@@ -13,37 +13,45 @@ namespace UnityEngine.GameFoundation
     /// <typeparam name="T2">The type of Collections this Collection uses.</typeparam>
     /// <typeparam name="T3">The type of ItemDefinitions this Collection uses.</typeparam>
     /// <typeparam name="T4">The type of Items this Collection uses.</typeparam>
+    /// <inheritdoc/>
     public abstract class BaseCollection<T1, T2, T3, T4> : GameItem
         where T1 : BaseCollectionDefinition<T1, T2, T3, T4>
         where T2 : BaseCollection<T1, T2, T3, T4>
-        where T3 : BaseItemDefinition<T3, T4>
-        where T4 : BaseItem<T3, T4>
+        where T3 : BaseItemDefinition<T1, T2, T3, T4>
+        where T4 : BaseItem<T1, T2, T3, T4>
     {
-        protected BaseCollection(T1 definition, string id = "") : base(definition, id)
+        protected BaseCollection(T1 definition, string id = "") : this(definition, id, 0)
+        {
+        }
+
+        internal BaseCollection(T1 definition, string id, int gameItemId) : base(definition, id, gameItemId)
         {
             // save off definition used for this Collection
             m_Definition = definition;
-
-            // iterate all default Items in the Collection's CollectionDefinition (if any) and add them to the Collection
-            AddAllDefaultItems();
+            
+            // if the Collection is new, it wil create its Default Items
+            if (gameItemId == 0)
+            {
+                // iterate all default Items in the Collection's CollectionDefinition (if any) and add them to the Collection
+                AddAllDefaultItems();   
+            }
         }
 
         /// <summary>
-        /// This is a UnityEvent that takes in a single Collection as the parameter.
+        /// This is a delegate that takes in a single Collection as the parameter.
         /// </summary>
-        public class BaseCollectionEvent : UnityEvent<T2> {}
+        public delegate void BaseCollectionEvent(T2 collection);
 
         /// <summary>
-        /// This is a UnityEvent that takes in a single Item as the parameter.
+        /// This is a delegate that takes in a single Item as the parameter.
         /// </summary>
-        public class BaseCollectionItemEvent : UnityEvent<T4> {}
+        public delegate void BaseCollectionItemEvent(T4 item);
 
-        protected BaseCollectionEvent m_OnCollectionReset = new BaseCollectionEvent();
-        protected BaseCollectionItemEvent m_OnItemAdded = new BaseCollectionItemEvent();
-        protected BaseCollectionItemEvent m_OnItemWillRemove = new BaseCollectionItemEvent();
-        protected BaseCollectionItemEvent m_OnItemRemoved = new BaseCollectionItemEvent();
-        protected BaseCollectionItemEvent m_OnItemQuantityChanged = new BaseCollectionItemEvent();
-        protected BaseCollectionItemEvent m_OnItemQuantityOverflow = new BaseCollectionItemEvent();
+        private BaseCollectionEvent m_OnCollectionReset;
+        private BaseCollectionItemEvent m_OnItemAdded;
+        private BaseCollectionItemEvent m_OnItemRemoved;
+        private BaseCollectionItemEvent m_OnItemQuantityChanged;
+        private BaseCollectionItemEvent m_OnItemQuantityOverflow;
 
         /// <summary>
         /// Fired whenever a Collection is reset.
@@ -52,6 +60,7 @@ namespace UnityEngine.GameFoundation
         public BaseCollectionEvent onCollectionReset
         {
             get { return m_OnCollectionReset; }
+            set { m_OnCollectionReset = value; }
         }
 
         /// <summary>
@@ -61,15 +70,7 @@ namespace UnityEngine.GameFoundation
         public BaseCollectionItemEvent onItemAdded
         {
             get { return m_OnItemAdded; }
-        }
-
-        /// <summary>
-        /// This is a callback that will be invoked whenever an Item is about to be removed from this Collection.
-        /// </summary>
-        /// <returns>BaseCollectionItemEvent for Item about to be removed.</returns>
-        public BaseCollectionItemEvent onItemWillRemove
-        {
-            get { return m_OnItemWillRemove; }
+            set { m_OnItemAdded = value; }
         }
 
         /// <summary>
@@ -79,6 +80,7 @@ namespace UnityEngine.GameFoundation
         public BaseCollectionItemEvent onItemRemoved
         {
             get { return m_OnItemRemoved; }
+            set { m_OnItemRemoved = value; }
         }
 
         /// <summary>
@@ -88,6 +90,7 @@ namespace UnityEngine.GameFoundation
         public BaseCollectionItemEvent onItemQuantityChanged
         {
             get { return m_OnItemQuantityChanged; }
+            set { m_OnItemQuantityChanged = value; }
         }
 
         /// <summary>
@@ -97,77 +100,104 @@ namespace UnityEngine.GameFoundation
         public BaseCollectionItemEvent onItemQuantityOverflow
         {
             get { return m_OnItemQuantityOverflow; }
+            set { m_OnItemQuantityOverflow = value; }
         }
 
         [SerializeField]
-        protected new T1 m_Definition;
+        private T1 m_Definition;
 
         /// <summary>
         /// The CollectionDefinition of this Collection which determines the default Items and quantities.
         /// </summary>
         /// <returns>CollectionDefinition for this Collection.</returns>
-        public new T1 definition
+        public T1 collectionDefinition
         {
             get { return m_Definition; }
         }
 
         /// <summary>
-        /// Helper property for easily accessing the id of this Collection's CollectionDefinition's id.
+        /// Helper property for easily accessing the Id of this Collection's CollectionDefinition's Id.
         /// </summary>
-        /// <returns>CollectionDefinition id string for this Collection.</returns>
-        public string definitionId
+        /// <returns>CollectionDefinition Id string for this Collection.</returns>
+        public string collectionDefinitionId
         {
             get { return m_Definition?.id; }
         }
 
         /// <summary>
-        /// Helper property for easily accessing the id hash of this Collection's CollectionDefinition's id hash.
+        /// Helper property for easily accessing the Hash of this Collection's CollectionDefinition's Hash.
         /// </summary>
-        /// <returns>CollectionDefinition id hash for this Collection.</returns>
-        public int definitionHash
+        /// <returns>CollectionDefinition Hash for this Collection.</returns>
+        public int collectionDefinitionHash
         {
             get { return m_Definition != null ? m_Definition.hash : 0; }
         }
 
-        protected Dictionary<int, T4> m_ItemsInCollection = new Dictionary<int, T4>();
+        private Dictionary<int, T4> m_ItemsInCollection = new Dictionary<int, T4>();
 
         /// <summary>
-        /// Enumerator for easily iterating through Items in this Collectino.
+        /// Dictionary of all Items in this collection. Maps ItemDefinition Hash to BaseItem
         /// </summary>
-        /// <returns>An enumerator for easily iterating through Items in this Collection.</returns>
-        public IEnumerable<T4> items
+        protected Dictionary<int, T4> itemsInCollection
         {
-            get { return m_ItemsInCollection.Values; }
+            get => m_ItemsInCollection;
+            set => m_ItemsInCollection = value;
         }
 
         /// <summary>
-        /// Overload for the square brack operator to access Items by ItemDefinition id string.
+        /// Returns an array of all game items in this collection.
         /// </summary>
-        /// <param name="definitionId">The id of the ItemDefinition we are searching for.</param>
-        /// <returns>Specified Item by ItemDefinition id string.</returns>
-        public T4 this[string definitionId]
+        /// <returns>The array of all game items in this collection.</returns>
+        public T4[] GetItems()
         {
-            get { return GetItemByDefinition(definitionId); }
+            if (m_ItemsInCollection == null)
+                return null;
+
+            T4[] allitems = new T4[m_ItemsInCollection.Count];
+            m_ItemsInCollection.Values.CopyTo(allitems, 0);
+            return allitems;
         }
 
         /// <summary>
-        /// Overload for the square brack operator to access Items by ItemDefinition id hash.
+        /// Fills in the given array of items with the items in this collection.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the ItemDefinition we are searching for.</param>
-        /// <returns>Specified Item by ItemDefinition id hash.</returns>
-        public T4 this[int definitionHash]
+        /// <param name="items">The given list that will be filled with this collection's items.</param>
+        public void GetItems(List<T4> items)
         {
-            get { return GetItemByDefinition(definitionHash); }
+            if (m_ItemsInCollection == null || items == null)
+                return;
+            
+            items.AddRange(m_ItemsInCollection.Values);
+        }
+
+        /// <summary>
+        /// Overload for the square brack operator to access Items by ItemDefinition Id string.
+        /// </summary>
+        /// <param name="itemDefinitionId">The Id of the ItemDefinition we are searching for.</param>
+        /// <returns>Specified Item by ItemDefinition Id string.</returns>
+        public T4 this[string itemDefinitionId]
+        {
+            get { return GetItem(itemDefinitionId); }
+        }
+
+        /// <summary>
+        /// Overload for the square brack operator to access Items by ItemDefinition Hash.
+        /// </summary>
+        /// <param name="itemDefinitionHash">The Hash of the ItemDefinition we are searching for.</param>
+        /// <returns>Specified Item by ItemDefinition Hash.</returns>
+        public T4 this[int itemDefinitionHash]
+        {
+            get { return GetItem(itemDefinitionHash); }
         }
 
         /// <summary>
         /// Overload for the square brack operator to access Items by ItemDefinition
         /// </summary>
-        /// <param name="definition">The Item we are searching for</param>
+        /// <param name="itemDefinition">The Item we are searching for</param>
         /// <returns>Specified Item by ItemDefinition.</returns>
-        public T4 this[T3 definition]
+        public T4 this[T3 itemDefinition]
         {
-            get { return GetItemByDefinition(definition); }
+            get { return GetItem(itemDefinition); }
         }
 
         /// <summary>
@@ -175,158 +205,141 @@ namespace UnityEngine.GameFoundation
         /// Returns the new reference to the instance when the Item didn't already exist in the Collection and
         /// returns an existing reference when to the instance when the Item was already in the Collection.
         /// </summary>
-        /// <param name="definition">The ItemDefinition we are adding.</param>
+        /// <param name="itemDefinition">The ItemDefinition we are adding.</param>
         /// <param name="quantity">How many of this instance we are adding.</param>
         /// <returns>The reference to the instance that was added, or null if ItemDefinition is invalid.</returns>
-        public T4 AddItem(T3 definition, int quantity = 1)
+        public T4 AddItem(T3 itemDefinition, int quantity = 1)
         {
-            if (definition == null)
+            if (itemDefinition == null)
             {
                 Debug.LogWarning("Null definition given, this will not be added to the collection.");
                 return null;
             }
             
-            return AddItem(definition.hash, quantity);
+            return AddItem(itemDefinition.hash, quantity);
         }
 
         /// <summary>
-        /// Adds a new entry of the specified ItemDefinition by id as an Inventory Item to this collection. Returns the new (or existing) reference to the instance.
+        /// Adds a new entry of the specified ItemDefinition by Id as an Inventory Item to this collection. Returns the new (or existing) reference to the instance.
         /// Returns the new reference to the instance when the Item didn't already exist in the Collection and
         /// returns an existing reference when to the instance when the Item was already in the Collection.
         /// </summary>
-        /// <param name="definitionId">The id of the ItemDefinition we are adding.</param>
+        /// <param name="itemDefinitionId">The Id of the ItemDefinition we are adding.</param>
         /// <param name="quantity">How many of this instance we are adding.</param>
         /// <returns>The reference to the instance that was added, or null if definitionId is invalid.</returns>
-        public T4 AddItem(string definitionId, int quantity = 1)
+        public T4 AddItem(string itemDefinitionId, int quantity = 1)
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(itemDefinitionId))
             {
                 Debug.LogWarning("Null or empty id given, this will not be added to the collection.");
                 return null;
             }
             
-            return AddItem(Tools.StringToHash(definitionId), quantity);
+            return AddItem(Tools.StringToHash(itemDefinitionId), quantity);
         }
 
         /// <summary>
-        /// Adds a new entry of the specified ItemDefinition by hash an Inventory Item to this collection. Returns the new (or existing) reference to the instance.
+        /// Adds a new entry of the specified ItemDefinition by Hash an Inventory Item to this collection. Returns the new (or existing) reference to the instance.
         /// Returns the new reference to the instance when the Item didn't already exist in the Collection and
         /// returns an existing reference when to the instance when the Item was already in the Collection.
         /// </summary>
-        /// <param name="definitionHash">The hash of the ItemDefinition we are adding.</param>
+        /// <param name="itemDefinitionHash">The Hash of the ItemDefinition we are adding.</param>
         /// <param name="quantity">How many of this instance we are adding.</param>
         /// <returns>The reference to the instance that was added.</returns>
-        public virtual T4 AddItem(int definitionHash, int quantity = 1)
+        public virtual T4 AddItem(int itemDefinitionHash, int quantity = 1)
+        {
+            return AddItem(itemDefinitionHash, quantity, 0);
+        }
+
+        internal virtual T4 AddItem(int itemDefinitionHash, int quantity, int gameItemId)
         {
             T4 itemToReturn;
             
-            if (ContainsItem(definitionHash))
+            if (ContainsItem(itemDefinitionHash))
             {
-                m_ItemsInCollection[definitionHash].intValue += quantity;
-                
-                itemToReturn = m_ItemsInCollection[definitionHash];
+                itemToReturn = m_ItemsInCollection[itemDefinitionHash];
+                SetIntValue(itemDefinitionHash, itemToReturn.intValue + quantity);
             }
             else
             {
-                BaseItemDefinition<T3, T4> itemDefinition = GetItemDefinition(definitionHash);
+                BaseItemDefinition<T1, T2, T3, T4> itemDefinition = GetItemDefinition(itemDefinitionHash);
                 if (itemDefinition == null)
                 {
                     return null;
                 }
-                itemToReturn = itemDefinition.CreateItem();
+                
+                itemToReturn = itemDefinition.CreateItem(this, gameItemId);
                 itemToReturn.intValue = quantity;
-                m_ItemsInCollection.Add(definitionHash, itemToReturn);
+                m_ItemsInCollection.Add(itemDefinitionHash, itemToReturn);
             }
 
-            onItemQuantityChanged.Invoke(itemToReturn);
-            onItemAdded.Invoke(itemToReturn);
+            if (onItemQuantityChanged != null)
+            {
+                onItemQuantityChanged.Invoke(itemToReturn);
+            }
+
+            if (onItemAdded != null)
+            {
+                onItemAdded.Invoke(itemToReturn);
+            }
             // TODO: Check if intValue is overflowing and call OnItemQuantityOverflow Event, also contrain quantity
             
             return itemToReturn;
         }
 
-        protected abstract BaseItemDefinition<T3, T4> GetItemDefinition(int definitionHash);
+        /// <summary>
+        /// Gets an ItemDefinition by its Hash from this Collection.
+        /// </summary>
+        /// <param name="itemDefinitionHash">Hash of Item Definition to get</param>
+        /// <returns>Reference to Item Definition requested</returns>
+        protected abstract BaseItemDefinition<T1, T2, T3, T4> GetItemDefinition(int itemDefinitionHash);
 
         /// <summary>
-        /// Gets the instance of the requested Item by ItemDefinition id string if it is contained within, otherwise throws an exception.
+        /// Gets the instance of the requested Item by ItemDefinition reference if it is contained within, otherwise returns null.
         /// </summary>
-        /// <param name="definitionId">The id of the ItemDefinition we are getting.</param>
-        /// <returns>The reference to the Item instance.</returns>
-        public T4 GetItemByDefinition(string definitionId)
-        {
-            if (string.IsNullOrEmpty(definitionId))
-                return null;
-            
-            return GetItemByDefinition(Tools.StringToHash(definitionId));
-        }
-
-        /// <summary>
-        /// Gets the instance of the requested Item by ItemDefinition id hash if it is contained within, otherwise throws an exception.
-        /// </summary>
-        /// <param name="definitionHash">The id hash of the ItemDefinition we are getting.</param>
-        /// <returns>The reference to the Item instance.</returns>
-        public T4 GetItemByDefinition(int definitionHash)
-        {
-            if (!m_ItemsInCollection.ContainsKey(definitionHash))
-            {
-                return null;
-            }
-            
-            return m_ItemsInCollection[definitionHash];
-        }
-
-        /// <summary>
-        /// This will look for an Item of the given ItemDefinition, and return the instance reference if it is found, otherwise throws an exception.
-        /// </summary>
-        /// <param name="definition">The ItemDefinition we are getting.</param>
-        /// <returns>The reference to the Item instance.</returns>
-        public T4 GetItemByDefinition(T3 definition)
-        {
-            if (definition == null)
-            {
-                return null;
-            }
-            
-            return GetItemByDefinition(definition.hash);
-        }
-
-        /// <summary>
-        /// Gets the instance of the requested Item by id if it is contained within, otherwise returns null.
-        /// </summary>
-        /// <param name="id">The id of the ItemDefinition we are getting.</param>
+        /// <param name="itemDefinition">A reference to the ItemDefinition of the Item we are getting.</param>
         /// <returns>The reference to the Item instance or null if not found.</returns>
-        public T4 GetItem(string id)
+        public T4 GetItem(T3 itemDefinition)
         {
-            if (string.IsNullOrEmpty(id))
+            if (itemDefinition == null)
+            {
+                return null;
+            }
+
+            return GetItem(itemDefinition.hash);
+        }
+        
+        /// <summary>
+        /// Gets the instance of the requested Item by ItemDefinition if it is contained within, otherwise returns null.
+        /// </summary>
+        /// <param name="itemDefinitionId">The Id of the ItemDefinition we are getting.</param>
+        /// <returns>The reference to the Item instance or null if not found.</returns>
+        public T4 GetItem(string itemDefinitionId)
+        {
+            if (string.IsNullOrEmpty(itemDefinitionId))
                 return null;
             
-            return GetItem(Tools.StringToHash(id));
+            return GetItem(Tools.StringToHash(itemDefinitionId));
         }
 
         /// <summary>
-        /// Gets the instance of the requested Item by ItemDefinition id hash if it is contained within, otherwise returns null.
+        /// Gets the instance of the requested Item by ItemDefinition Hash if it is contained within, otherwise returns null.
         /// </summary>
-        /// <param name="hash">The id hash of the ItemDefinition to return.</param>
+        /// <param name="itemDefinitionHash">The Hash of the ItemDefinition to return.</param>
         /// <returns>The reference to the Item instance or null if not found.</returns>
-        public T4 GetItem(int hash)
+        public T4 GetItem(int itemDefinitionHash)
         {
-            foreach(var item in m_ItemsInCollection)
-            {
-                if (item.Value.hash == hash)
-                {
-                    return item.Value;
-                }
-            }
-            
-            return null;
+            T4 item;
+            m_ItemsInCollection.TryGetValue(itemDefinitionHash, out item);
+            return item;
         }
 
         /// <summary>
-        /// This will return all Items that have the given Category (by CategoryDefinition id string) through an enumerator.
+        /// This will return all Items that have the given Category (by CategoryDefinition id string)
         /// </summary>
         /// <param name="categoryId">The id of the Category we are checking for.</param>
-        /// <returns>An enumerator for the Items that have the given Category.</returns>
-        public IEnumerable<T4> GetItemsByCategory(string categoryId)
+        /// <returns>An array of the Items that have the given Category.</returns>
+        public T4[] GetItemsByCategory(string categoryId)
         {
             if (string.IsNullOrEmpty(categoryId))
                 return null;
@@ -335,35 +348,73 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will return all Items that have the given Category by CategoryDefinition id hash through an enumerator.
+        /// This will put all items that have the given category into the given list of items.
+        /// </summary>
+        /// <param name="categoryId">The hash of the Category we are checking for.</param>
+        /// <param name="items">The list of items to put the results into.</param>
+        public void GetItemsByCategory(string categoryId, List<T4> items)
+        {
+            if (string.IsNullOrEmpty(categoryId))
+                return;
+            
+            GetItemsByCategory(Tools.StringToHash(categoryId), items);
+        }
+
+        /// <summary>
+        /// This will return all Items that have the given Category by CategoryDefinition id hash.
         /// </summary>
         /// <param name="categoryHash">The id hash of the Category we are checking for.</param>
-        /// <returns>An enumerator for the Items that have the given Category.</returns>
-        public IEnumerable<T4> GetItemsByCategory(int categoryHash)
+        /// <returns>An array of the Items that have the given Category.</returns>
+        public T4[] GetItemsByCategory(int categoryHash)
         {
+            List<T4> toReturn = new List<T4>();
             foreach (var keyItemPair in m_ItemsInCollection)
             {
-                var definition = GetItemDefinition(keyItemPair.Key);
+                var definition = keyItemPair.Value.definition;
 
                 if (definition == null)
                     continue;
 
-                foreach (var category in definition.categories)
+                foreach (var category in definition.GetCategories())
                 {
                     if (category.hash == categoryHash)
                     {
-                        yield return keyItemPair.Value;
+                        toReturn.Add(keyItemPair.Value);
                     }
                 }
             }
+
+            return toReturn.ToArray();
         }
 
         /// <summary>
-        /// This will return all Items that have the given Category through an enumerator.
+        /// This will put all items that have the given category into the given list of items.
+        /// </summary>
+        /// <param name="categoryHash">The hash of the Category we are checking for.</param>
+        /// <param name="items">The list of items to put the results into.</param>
+        public void GetItemsByCategory(int categoryHash, List<T4> items)
+        {
+            if (items == null)
+            {
+                return;
+            }
+            
+            var retrievedItems = GetItemsByCategory(categoryHash);
+
+            if (retrievedItems == null)
+            {
+                return;
+            }
+
+            items.AddRange(retrievedItems);
+        }
+
+        /// <summary>
+        /// This will return all Items that have the given Category through.
         /// </summary>
         /// <param name="category">The CategoryDefinition we are checking for.</param>
-        /// <returns>An enumerator for the Items that have the given Category.</returns>
-        public IEnumerable<T4> GetItemsByCategory(CategoryDefinition category)
+        /// <returns>An array of the Items that have the given Category.</returns>
+        public T4[] GetItemsByCategory(CategoryDefinition category)
         {
             if (category == null)
                 return null;
@@ -372,98 +423,90 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Remove quantity amount of items from item with ItemDefinition definition.
-        /// If the amount would leave the affected item with a non positive intValue it is removed from the collection
+        /// This will put all items that have the given category into the given list of items.
         /// </summary>
-        /// <param name="definition">Item Definition reference of the item we are decrementing quantity or removing from the collection.</param>
-        /// <param name="quantity">Proposed amount to decrement intValue</param>
-        /// <returns>Whether the item has been removed from the collection</returns>
-        public bool RemoveItem(T4 definition, int quantity = 1)
+        /// <param name="category">The category we are checking for.</param>
+        /// <param name="items">The list of items to put the results into.</param>
+        public void GetItemsByCategory(CategoryDefinition category, List<T4> items)
         {
-            if (definition == null)
+            if (category == null)
+                return;
+
+            GetItemsByCategory(category.hash, items);
+        }
+
+        /// Remove quantity amount of items from item with ItemDefinition Id definitionId.
+        /// If the amount would leave the affected item with less than 0 value, it is removed from the collection.
+        /// </summary>
+        /// <param name="itemDefinitionId">Item Definition Id of the item we are decrementing quantity or removing from the collection.</param>
+        /// <param name="quantity">Proposed amount to decrement.</param>
+        /// <returns>Whether the item has been removed from the collection</returns>
+        public bool RemoveItem(string itemDefinitionId, int quantity)
+        {
+            if (string.IsNullOrEmpty(itemDefinitionId))
                 return false;
             
-            return RemoveItem(definition.hash, quantity);
+            return RemoveItem(Tools.StringToHash(itemDefinitionId), quantity);
         }
 
         /// <summary>
-        /// Remove quantity amount of items from item with ItemDefinition id definitionId.
-        /// If the amount would leave the affected item with a non positive intValue it is removed from the collection
+        /// Remove quantity amount of items from InventoryItem with ItemDefinition Hash definitionHash.
+        /// If the amount would leave the affected item with less than 0 value, it is removed from the collection.
         /// </summary>
-        /// <param name="definitionId">Item Definition id of the item we are decrementing quantity or removing from the collection.</param>
-        /// <param name="quantity">Proposed amount to decrement intValue</param>
+        /// <param name="itemDefinitionHash">Item Definition Hash of the item we are decrementing quantity or removing from the collection.</param>
+        /// <param name="quantity">Proposed amount to decrement.</param>
         /// <returns>Whether the item has been removed from the collection</returns>
-        public bool RemoveItem(string definitionId, int quantity = 1)
+        public bool RemoveItem(int itemDefinitionHash, int quantity)
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (quantity == 0)
+            {
                 return false;
+            }
             
-            return RemoveItem(GetItem(definitionId), quantity);
-        }
-
-        /// <summary>
-        /// Remove quantity amount of items from InventoryItem with ItemDefinition hash definitionHash.
-        /// If the amount would leave the affected item with a non positive intValue it is removed from the collection
-        /// </summary>
-        /// <param name="definitionHash">Item Definition hash of the item we are decrementing quantity or removing from the collection.</param>
-        /// <param name="quantity">Proposed amount to decrement intValue</param>
-        /// <returns>Whether the item has been removed from the collection</returns>
-        public bool RemoveItem(int definitionHash, int quantity = 1)
-        {
-            T4 item = GetItem(definitionHash);
+            T4 item = GetItem(itemDefinitionHash);
             if (item != null)
             {
-                if (item.intValue - quantity <= 0)
+                if (quantity >= item.intValue)
                 {
-                    return RemoveItem(definitionHash);
+                    return RemoveItem(itemDefinitionHash);
                 }
-                SetIntValue(definitionHash, item.intValue - quantity);
+                SetIntValue(itemDefinitionHash, item.intValue - quantity);
                 return true;
             }
             return false;
         }
         
         /// <summary>
-        /// Removes an InventoryItem entry of the specified Item by ItemDefinition id.
+        /// Removes an InventoryItem entry of the specified Item by ItemDefinition Id.
         /// </summary>
-        /// <param name="definitionId">The id of the ItemDefinition we are removing.</param>
+        /// <param name="itemDefinitionId">The Id of the ItemDefinition we are removing.</param>
         /// <returns>True if item was removed from the collection.</returns>
-        public bool RemoveItem(string definitionId)
+        public bool RemoveItem(string itemDefinitionId)
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(itemDefinitionId))
                 return false;
             
-            return RemoveItem(Tools.StringToHash(definitionId));
-        }
-        
-        /// <summary>
-        /// Removes an InventoryItem entry of the specified ItemDefinition.
-        /// </summary>
-        /// <param name="definition">The ItemDefinition we are removing.</param>
-        /// <returns>True if item was removed from the collection.</returns>
-        public bool RemoveItem(T3 definition)
-        {
-            if (definition == null)
-                return false;
-            
-            return RemoveItem(definition.hash);
+            return RemoveItem(Tools.StringToHash(itemDefinitionId));
         }
 
         /// <summary>
-        /// Removes an InventoryItem entry of the specified ItemDefinition by id hash.
+        /// Removes an InventoryItem entry of the specified ItemDefinition by Hash.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the ItemDefinition we are removing.</param>
+        /// <param name="itemDefinitionHash">The Hash of the ItemDefinition we are removing.</param>
         /// <returns>True if item was removed from the collection.</returns>
-        public bool RemoveItem(int definitionHash)
+        public bool RemoveItem(int itemDefinitionHash)
         {
-            T4 item = GetItem(definitionHash);
+            T4 item = GetItem(itemDefinitionHash);
             if (item != null)
             {
-                onItemWillRemove.Invoke(item);
-                bool removed = m_ItemsInCollection.Remove(definitionHash);
+                bool removed = m_ItemsInCollection.Remove(itemDefinitionHash);
                 if (removed)
-                { 
-                    onItemRemoved.Invoke(item);
+                {
+                    NotificationSystem.FireNotification(NotificationType.Destroyed, item);
+                    if (onItemRemoved != null)
+                    {
+                        onItemRemoved.Invoke(item);
+                    }
                 }
                 return removed;
             }
@@ -471,9 +514,9 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will remove all Items that have the given Category (by  CategoryDefinition id string).
+        /// This will remove all Items that have the given Category (by  CategoryDefinition Id string).
         /// </summary>
-        /// <param name="categoryId">The id of the CategoryDefinition to be removed.</param>
+        /// <param name="categoryId">The Id of the CategoryDefinition to be removed.</param>
         /// <returns>The amount of items that were removed.</returns>
         public int RemoveItemsByCategory(string categoryId)
         {
@@ -484,21 +527,21 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will remove all Items that have the given Category (by  CategoryDefinition id hash).
+        /// This will remove all Items that have the given Category (by  CategoryDefinition Hash ).
         /// </summary>
-        /// <param name="categoryHash">The id hash of the CategoryDefinition to be removed.</param>
+        /// <param name="categoryHash">The Hash of the CategoryDefinition to be removed.</param>
         /// <returns>The amount of items that were removed.</returns>
         public int RemoveItemsByCategory(int categoryHash)
         {
             List<int> toRemove = new List<int>();       //TODO: algorithm allocates list--refactor to avoid new list, if possible. UPDATE: After some research, I believe a list will be necessary for a reasonable solution.
             foreach (var keyItemPair in m_ItemsInCollection)
             {
-                var definition = GetItemDefinition(keyItemPair.Key);
+                var definition = keyItemPair.Value.definition;
 
                 if (definition == null)
                     continue;
                 
-                foreach (var category in definition.categories)
+                foreach (var category in definition.GetCategories())
                 {
                     if (category.hash == categoryHash)
                     {
@@ -551,114 +594,99 @@ namespace UnityEngine.GameFoundation
                 itemsToRemove[itemOn++] = item;
             }
 
-            // fire 'will remove' events for all Items Collection
-            foreach (var item in itemsToRemove)
-            {
-                onItemWillRemove.Invoke(item);
-            }
-
             // clear all Items
             m_ItemsInCollection.Clear();
 
             // fire 'removed' events for all Items just removed
-            foreach (var item in itemsToRemove)
+            if (onItemRemoved != null)
             {
-                onItemRemoved.Invoke(item);
+                foreach (var item in itemsToRemove)
+                {
+                    onItemRemoved.Invoke(item);
+                }
             }
 
             return itemsToRemove.Length;
         }
 
         /// <summary>
-        /// Returns whether or not an instance of the given ItemDefinition (by id) exists within this Collection.
+        /// Returns whether or not an instance of the given ItemDefinition (by Id) exists within this Collection.
         /// </summary>
-        /// <param name="definitionId">The id of the ItemDefinition we are checking for.</param>
+        /// <param name="itemDefinitionId">The Id of the ItemDefinition we are checking for.</param>
         /// <returns>True/False whether or not the instance is within this Collection.</returns>
-        public bool ContainsItem(string definitionId)
+        public bool ContainsItem(string itemDefinitionId)
         {
-            if (string.IsNullOrEmpty(definitionId))	
+            if (string.IsNullOrEmpty(itemDefinitionId))	
                 return false;
             
-            return ContainsItem(Tools.StringToHash(definitionId));
+            return ContainsItem(Tools.StringToHash(itemDefinitionId));
         }
 
         /// <summary>
-        /// Returns whether or not an instance of the given ItemDefinition id hash exists within this Collection.
+        /// Returns whether or not an instance of the given ItemDefinition Hash exists within this Collection.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the ItemDefinition we are checking for.</param>
+        /// <param name="itemDefinitionHash">The Hash of the ItemDefinition we are checking for.</param>
         /// <returns>True/False whether or not the instance is within this Collection.</returns>
-        public bool ContainsItem(int definitionHash)
+        public bool ContainsItem(int itemDefinitionHash)
         {
-            return m_ItemsInCollection.ContainsKey(definitionHash);
+            return m_ItemsInCollection.ContainsKey(itemDefinitionHash);
         }
 
         /// <summary>
         /// Returns whether or not an instance of the given ItemDefinition exists within this Collection.
         /// </summary>
-        /// <param name="definition">The ItemDefinition we are checking for.</param>
+        /// <param name="itemDefinition">The ItemDefinition we are checking for.</param>
         /// <returns>True/False whether or not the instance is within this Collection.</returns>
-        public bool ContainsItem(T3 definition)
+        public bool ContainsItem(T3 itemDefinition)
         {
-            if (definition == null)
+            if (itemDefinition == null)
             {
                 return false;
             }
             
-            return ContainsItem(definition.hash);
+            return ContainsItem(itemDefinition.hash);
         }
 
         /// <summary>
-        /// Sets the int value of the instance within this Collection of the specified ItemDefinition by id
-        /// This method can be used to set the quantity of an Item to a negative number.
+        /// Sets the value of the instance within this Collection of the specified ItemDefinition by Id
         /// </summary>
-        /// <param name="definitionId">The id of the ItemDefinition we are checking for.</param>
-        /// <param name="value">The new value we are setting. Can be negative or positive.</param>
+        /// <param name="itemDefinitionId">The Id of the ItemDefinition we are checking for.</param>
+        /// <param name="value">The new value we are setting.</param>
         /// <exception cref="ArgumentException">If the given ItemDefinition string is null or empty.</exception>
-        protected void SetIntValue(string definitionId, int value)
+        protected void SetIntValue(string itemDefinitionId, int value)
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(itemDefinitionId))
             {
-                throw new ArgumentException("The given definition id was null, cannot set int value.");
+                throw new ArgumentException("The given definition id was null, cannot set value.");
             }
             
-            SetIntValue(Tools.StringToHash(definitionId), value);
+            SetIntValue(Tools.StringToHash(itemDefinitionId), value);
         }
 
         /// <summary>
-        /// Sets the int value of the instance within this Collection of the specified ItemDefinition by id hash.
-        /// This method can be used to set the quantity of an Item to a negative number.
+        /// Sets the value of the instance within this Collection of the specified ItemDefinition by Hash.
         /// </summary>
-        /// <param name="definitionHash">The id hash of the ItemDefinition we are checking for.</param>
-        /// <param name="value">The new value we are setting. Can be negative or positive.</param>
-        /// <exception cref="ArgumentException">If the given id hash is not a valid entry.</exception>
-        protected void SetIntValue(int definitionHash, int value)
+        /// <param name="itemDefinitionHash">The Hash of the ItemDefinition we are checking for.</param>
+        /// <param name="value">The new value we are setting.</param>
+        /// <exception cref="ArgumentException">If the given Hash is not a valid entry.</exception>
+        protected void SetIntValue(int itemDefinitionHash, int value)
         {
-            if (!ContainsItem(definitionHash))
+            if (!ContainsItem(itemDefinitionHash))
             {
-                throw new ArgumentException("The given definition hash was not found, cannot set int value.");
+                throw new ArgumentException("The given definition hash was not found, cannot set value.");
             }
 
-            var item = GetItemByDefinition(definitionHash);
+            var item = GetItem(itemDefinitionHash);
             item.intValue = value;
-            onItemQuantityChanged.Invoke(item);
-            // TODO: Check if intValue is overflowing and call OnItemQuantityOverflow Event
-        }
 
-        /// <summary>
-        /// Sets the int value of the instance within this Collection of the specified ItemDefinition
-        /// This method can be used to set the quantity of an Item to a negative number.
-        /// </summary>
-        /// <param name="definition">The ItemDefinition we are checking for.</param>
-        /// <param name="value">The new value we are setting. Can be negative or positive.</param>
-        /// <exception cref="ArgumentException">If the given ItemDefinition is null.</exception>
-        protected void SetIntValue(T3 definition, int value)
-        {
-            if (definition == null)
+            if (onItemQuantityChanged != null)
             {
-                throw new ArgumentException("The given definition was null, cannot set int value.");
+                onItemQuantityChanged.Invoke(item);
             }
 
-            SetIntValue(definition.hash, value);
+            // TODO: When/if quantity becomes a stat, this may need to be removed if stats end up having their own notification fire calls.
+            NotificationSystem.FireNotification(NotificationType.Modified, item);
+            // TODO: Check if intValue is overflowing and call OnItemQuantityOverflow Event
         }
 
         /// <summary>
@@ -666,31 +694,54 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         public void Reset()
         {
+            bool notificationDisabled = NotificationSystem.temporaryDisable;
+            if (!notificationDisabled)
+            {
+                NotificationSystem.temporaryDisable = true;
+            }
+            
             // remove all existing Items from the Collection
             RemoveAll();
 
             // fire reset event
-            onCollectionReset.Invoke((T2)this);
+            if (onCollectionReset != null)
+            {
+                onCollectionReset.Invoke((T2)this);
+            }
 
             // iterate all default Items in the CollectionDefinition (if there are any) and add them to the Collection
             AddAllDefaultItems();
+            
+            if (!notificationDisabled)
+            {
+                NotificationSystem.temporaryDisable = false;
+            }
         }
 
         // iterate all default Items in the CollectionDefinition (if there are any) and add them to the Collection
         protected void AddAllDefaultItems()
         {
-            if (m_Definition != null && m_Definition.defaultItems != null)
+            bool notificationDisabled = NotificationSystem.temporaryDisable;
+            if (!notificationDisabled)
+            {
+                NotificationSystem.temporaryDisable = true;
+            }
+            
+            if (m_Definition != null)
             { 
-                foreach (var defaultItem in m_Definition.defaultItems)
+                var defaultItems = m_Definition.GetDefaultItems();
+                if (defaultItems != null)
                 {
-                    var definition = GetItemDefinition(defaultItem.definitionHash);
-                    if (definition == null)
-                        continue;
-
-                    var newItem = definition.CreateItem();
-                    newItem.intValue = defaultItem.quantity;
-                    m_ItemsInCollection.Add(definition.hash, newItem);
+                    foreach (var defaultItem in defaultItems)
+                    {
+                        AddItem(defaultItem.definitionHash, defaultItem.quantity);
+                    }
                 }
+            }
+            
+            if (!notificationDisabled)
+            {
+                NotificationSystem.temporaryDisable = false;
             }
         }
     }

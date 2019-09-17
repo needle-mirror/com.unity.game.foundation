@@ -5,9 +5,9 @@ using UnityEngine;
 namespace UnityEditor.GameFoundation
 {
     /// <summary>
-    /// UI Module for displayName and id fields.
-    /// Contains logic for converting displayName to a id
-    /// suggestion when id field is empty.
+    /// UI Module for displayName and Id fields.
+    /// Contains logic for converting displayName to a Id
+    /// suggestion when Id field is empty.
     /// </summary>
     internal class ReadableNameIdEditor
     {
@@ -24,14 +24,14 @@ namespace UnityEditor.GameFoundation
         }
 
         /// <summary>
-        /// Draws UI input fields for displayName and id.
-        /// Will create a suggested id based on input displayName based
-        /// on the following conditions: displayName has a value, id has
+        /// Draws UI input fields for displayName and Id.
+        /// Will create a suggested Id based on input displayName based
+        /// on the following conditions: displayName has a value, Id has
         /// not been edited manually or is blank, displayName field loses focus by
         /// tab or mouse click event, and item is being created new (vs editing existing item).
         /// ref parameters may change what has been passed in.
         /// </summary>
-        /// <param name="itemId">Text to display for id text field.</param>
+        /// <param name="itemId">Text to display for Id text field.</param>
         /// <param name="displayName">Text to display for display name text field.</param>
         public void DrawReadableNameIdFields(ref string itemId, ref string displayName)
         {

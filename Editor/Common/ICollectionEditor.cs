@@ -9,6 +9,5 @@
         void OnWillEnter();
         void OnWillExit();
         void ValidateSelection();
-        void ResetCache();
     }
 }

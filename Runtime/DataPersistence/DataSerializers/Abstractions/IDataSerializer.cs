@@ -1,25 +1,13 @@
 using System;
 using System.IO;
 
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// Data Serializer Interface
     /// </summary>
     public interface IDataSerializer
     {
-        /// <summary>
-        /// Get the name of the serializer.
-        /// </summary>
-        /// <returns>The name of the serializer</returns>
-        string Name();
-
-        /// <summary>
-        /// Return a bool that indicate if the serializer is binary type.
-        /// </summary>
-        /// <returns>Whether or not the serializer is binary type</returns>
-        bool IsBinary();
-
         /// <summary>
         /// Serialize a data object and return the data as object.
         /// </summary>

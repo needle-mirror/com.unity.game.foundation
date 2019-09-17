@@ -14,27 +14,66 @@ namespace UnityEngine.GameFoundation
     public abstract class BaseCatalog<T1, T2, T3, T4> : ScriptableObject
         where T1 : BaseCollectionDefinition<T1, T2, T3, T4>
         where T2 : BaseCollection<T1, T2, T3, T4>
-        where T3 : BaseItemDefinition<T3, T4>
-        where T4 : BaseItem<T3, T4>
+        where T3 : BaseItemDefinition<T1, T2, T3, T4>
+        where T4 : BaseItem<T1, T2, T3, T4>
     {
         [SerializeField]
-        protected List<CategoryDefinition> m_Categories = new List<CategoryDefinition>();
+        private List<CategoryDefinition> m_Categories = new List<CategoryDefinition>();
 
         /// <summary>
-        /// Returns specified CategoryDefinition by its hash.
+        /// List of CategoryDefinitions inside this Catalog
         /// </summary>
-        /// <param name="categoryId">The id of the CategoryDefinition we're looking for.</param>
-        /// <returns>The requested CategoryDefinition, or null if an invalid hash.</returns>
+        protected List<CategoryDefinition> categories
+        {
+            get => m_Categories;
+            set => m_Categories = value;
+        }
+        
+        [SerializeField]
+        private List<T1> m_CollectionDefinitions = new List<T1>();
+
+        /// <summary>
+        /// A list of all CollectionDefinition this Catalog can use.
+        /// </summary>
+        protected List<T1> collectionDefinitions
+        {
+            get => m_CollectionDefinitions;
+            set => m_CollectionDefinitions = value;
+        }
+
+        [SerializeField]
+        private List<T3> m_ItemDefinitions = new List<T3>();
+
+        /// <summary>
+        /// A list of each type of ItemDefinition this Catalog can use.
+        /// </summary>
+        protected List<T3> itemDefinitions
+        {
+            get => m_ItemDefinitions;
+            set => m_ItemDefinitions = value;
+        }
+        
+        /// <summary>
+        /// A list of DefaultCollectionDefinitions in this Catalog.
+        /// </summary>
+        [SerializeField]
+        internal List<DefaultCollectionDefinition> m_DefaultCollectionDefinitions = new List<DefaultCollectionDefinition>();
+
+        /// <summary>
+        /// Returns specified CategoryDefinition by its Hash.
+        /// </summary>
+        /// <param name="categoryId">The Id of the CategoryDefinition we're looking for.</param>
+        /// <returns>The requested CategoryDefinition, or null if an invalid Hash.</returns>
         public CategoryDefinition GetCategory(string categoryId)
         {
             return GetCategory(Tools.StringToHash(categoryId));
         }
 
         /// <summary>
-        /// Returns specified CategoryDefinition by its hash.
+        /// Returns specified CategoryDefinition by its Hash.
         /// </summary>
-        /// <param name="categoryHash">The hash of the CategoryDefinition we're looking for.</param>
-        /// <returns>The requested CategoryDefinition or null if the hash is not found.</returns>
+        /// <param name="categoryHash">The Hash of the CategoryDefinition we're looking for.</param>
+        /// <returns>The requested CategoryDefinition or null if the Hash is not found.</returns>
         public CategoryDefinition GetCategory(int categoryHash)
         {
             foreach (CategoryDefinition definition in m_Categories)
@@ -47,32 +86,33 @@ namespace UnityEngine.GameFoundation
 
             return null;
         }
-
+        
         /// <summary>
-        /// A list of all CollectionDefinition this Catalog can use.
+        /// Returns an array of all categories in this catalog.
         /// </summary>
-        [SerializeField]
-        protected List<T1> m_CollectionDefinitions = new List<T1>();
-
-        /// <summary>
-        /// A list of each type of ItemDefinition this Catalog can use.
-        /// </summary>
-        [SerializeField]
-        protected List<T3> m_ItemDefinitions = new List<T3>();
-
-        /// <summary>
-        /// A list of DefaultCollectionDefinitions in this Catalog.
-        /// </summary>
-        [SerializeField]
-        internal List<DefaultCollectionDefinition<T1,T2,T3,T4>> m_DefaultCollectionDefinitions = new List<DefaultCollectionDefinition<T1, T2, T3, T4>>();
-
-        /// <summary>
-        /// Iterator for accessing the CategoryDefinitions in this Catalog.
-        /// </summary>
-        /// <returns>An iterator for accessing the CategoryDefinitions in this Catalog.</returns>
-        public IEnumerable<CategoryDefinition> categories
+        /// <returns>An array of all categories.</returns>
+        public CategoryDefinition[] GetCategories()
         {
-            get { return m_Categories; }
+            if (m_Categories == null)
+            {
+                return null;
+            }
+            
+            return m_Categories.ToArray();
+        }
+
+        /// <summary>
+        /// Fills in the given list with all categories in this catalog.
+        /// </summary>
+        /// <param name="categories">The list to fill up with categories.</param>
+        public void GetCategories(List<CategoryDefinition> categories)
+        {
+            if (m_Categories == null || categories == null)
+            {
+                return;
+            }
+            
+            categories.AddRange(m_Categories);
         }
 
         /// <summary>
@@ -100,32 +140,6 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the CategoryDefinition at the given index.
-        /// </summary>
-        /// <param name="index">The index to return.</param>
-        /// <returns>The CategoryDefinition at the specified index</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public CategoryDefinition GetCategoryByIndex(int index)
-        {
-            if (index < 0 || index >= m_Categories.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            return m_Categories[index];
-        }
-
-        /// <summary>
-        /// Returns the index of requested CategoryDefinition, or -1 if this CategoryDefinition is not found in this Catalog.
-        /// </summary>
-        /// <param name="category">The CategoryDefinition who's index we are looking for.</param>
-        /// <returns>The index of the requested CategoryDefinition in this Catalog, or -1 if not found.</returns>
-        public int GetIndexOfCategory(CategoryDefinition category)
-        {
-            return m_Categories.IndexOf(category);
-        }
-
-        /// <summary>
         /// Removes the given CategoryDefinition from this Catalog.
         /// </summary>
         /// <param name="category">The CategoryDefinition to remove.</param>
@@ -138,21 +152,31 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the number of CategoryDefinitions in this Catalog.
+        /// Returns an array of all collection definitions in the catalog.
         /// </summary>
-        /// <returns>The number of CategoryDefinitions in this Catalog.</returns>
-        public int categoryCount
+        /// <returns>An array of all collection definitions in the catalog.</returns>
+        public T1[] GetCollectionDefinitions()
         {
-            get { return m_Categories.Count; }
+            if (m_CollectionDefinitions == null)
+            {
+                return null;
+            }
+            
+            return m_CollectionDefinitions.ToArray();
         }
 
         /// <summary>
-        /// This is an enumerator for iterating through all CollectionDefinitions.
+        /// Adds all collection definitions into the given list.
         /// </summary>
-        /// <returns>An enumerator for iterating through all CollectionDefinitions.</returns>
-        public IEnumerable<T1> allCollectionDefinitions
+        /// <param name="collectionDefinitions">The list to add collection definitions to.</param>
+        public void GetCollectionDefinitions(List<T1> collectionDefinitions)
         {
-            get { return m_CollectionDefinitions; }
+            if (m_CollectionDefinitions == null || collectionDefinitions == null)
+            {
+                return;
+            }
+            
+            collectionDefinitions.AddRange(m_CollectionDefinitions);
         }
 
         /// <summary>
@@ -180,37 +204,11 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the CollectionDefinition at the requested index.
-        /// </summary>
-        /// <param name="index">The index of the CollectionDefinition to retrieve.</param>
-        /// <returns>The CollectionDefinition at the requested index.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public T1 GetCollectionDefinitionByIndex(int index)
-        {
-            if (index < 0 || index >= m_CollectionDefinitions.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            return m_CollectionDefinitions[index];
-        }
-
-        /// <summary>
-        /// Returns the index of the requested CollectionDefinition or -1 if it's not in this Catalog.
-        /// </summary>
-        /// <param name="collectionDefinition">The CollectionDefinition we are looking for.</param>
-        /// <returns>The index of the requested CollectionDefinition or -1 if it's not in this Catalog.</returns>
-        public int GetIndexOfCollectionDefinition(T1 collectionDefinition)
-        {
-            return m_CollectionDefinitions.IndexOf(collectionDefinition);
-        }
-
-        /// <summary>
         /// Removes the given CollectionDefinition from this Catalog.
         /// </summary>
         /// <param name="collectionDefinition">The CollectionDefinition to remove.</param>
         /// <returns>Whether or not the CollectionDefinition was successfully removed.</returns>
-        public bool RemoveCollectionDefinition(T1 collectionDefinition)
+        public virtual bool RemoveCollectionDefinition(T1 collectionDefinition)
         {
             Tools.ThrowIfPlayMode("Cannot remove a CollectionDefinition from a Catalog while in play mode.");
 
@@ -225,108 +223,103 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the number of CollectionDefinitions in this Catalog.
+        /// Returns an array of all item definitions.
         /// </summary>
-        /// <returns>The number of CollectionDefinitions in this Catalog.</returns>
-        public int collectionDefinitionCount
+        /// <returns>An array of all item definitions.</returns>
+        public T3[] GetItemDefinitions()
         {
-            get { return m_CollectionDefinitions.Count; }
+            if (m_ItemDefinitions == null)
+            {
+                return null;
+            }
+            
+            return m_ItemDefinitions.ToArray();
         }
 
         /// <summary>
-        /// This is an enumerator for iterating through ItemDefinitions.
+        /// Fills in the given list with all item definitions in this catalog.
         /// </summary>
-        /// <returns>An enumerator for iterating through ItemDefinitions.</returns>
-        public IEnumerable<T3> allItemDefinitions
+        /// <param name="itemDefinitions">The list to fill up.</param>
+        public void GetItemDefinitions(List<T3> itemDefinitions)
         {
-            get { return m_ItemDefinitions; }
+            if (m_ItemDefinitions == null || itemDefinitions == null)
+            {
+                return;
+            }
+            
+            itemDefinitions.AddRange(m_ItemDefinitions);
         }
 
         /// <summary>
         /// Adds the given ItemDefinition to this Catalog.
         /// </summary>
-        /// <param name="definition">The ItemDefinition to add.</param>
+        /// <param name="itemDefinition">The ItemDefinition to add.</param>
         /// <returns>Whether or not the adding was successful.</returns>
         /// <exception cref="ArgumentException">Thrown if a duplicate definition is given.</exception>
-        public bool AddItemDefinition(T3 definition)
+        public bool AddItemDefinition(T3 itemDefinition)
         {
             Tools.ThrowIfPlayMode("Cannot add an ItemDefinition to a Catalog while in play mode.");
 
-            if (definition == null)
+            if (itemDefinition == null)
             {
                 return false;
             }
 
-            if (GetItemDefinition(definition.hash) != null)
+            if (GetItemDefinition(itemDefinition.hash) != null)
             {
-                throw new ArgumentException("The object is already registered within this Catalog. (id: " + definition.id + ", hash: " + definition.hash + ")");
+                throw new ArgumentException("The object is already registered within this Catalog. (id: " + itemDefinition.id + ", hash: " + itemDefinition.hash + ")");
             }
             
-            m_ItemDefinitions.Add(definition);
+            m_ItemDefinitions.Add(itemDefinition);
             return true;
-        }
-
-        /// <summary>
-        /// Returns the ItemDefinition at the requested index.
-        /// </summary>
-        /// <param name="index">The index we are checking.</param>
-        /// <returns>The ItemDefinition at the requested index.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public T3 GetItemDefinitionByIndex(int index)
-        {
-            if (index < 0 || index >= m_ItemDefinitions.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            return m_ItemDefinitions[index];
-        }
-
-        /// <summary>
-        /// Returns the index of the given ItemDefinition.
-        /// </summary>
-        /// <param name="itemDefinition">The ItemDefinition we are checking.</param>
-        /// <returns>The index of this ItemDefinition.</returns>
-        public int GetIndexOfItemDefinition(T3 itemDefinition)
-        {
-            return m_ItemDefinitions.IndexOf(itemDefinition);
         }
 
         /// <summary>
         /// Removes the given ItemDefinition from this Catalog.
         /// </summary>
-        /// <param name="definition">The ItemDefinition to remove.</param>
+        /// <param name="itemDefinition">The ItemDefinition to remove.</param>
         /// <returns>Whether or not the removal was successful.</returns>
-        public bool RemoveItemDefinition(T3 definition)
+        public bool RemoveItemDefinition(T3 itemDefinition)
         {
             Tools.ThrowIfPlayMode("Cannot remove an ItemDefinition from a Catalog while in play mode.");
 
-            if (definition == null || !m_ItemDefinitions.Contains(definition))
+            if (itemDefinition == null || !m_ItemDefinitions.Contains(itemDefinition))
             {
                 return false;
             }
 
-            definition.OnRemove();
+            itemDefinition.OnRemove();
             
-            return m_ItemDefinitions.Remove(definition);
+            return m_ItemDefinitions.Remove(itemDefinition);
+        }
+
+
+        /// <summary>
+        /// Returns an array of all default collection definitions.
+        /// </summary>
+        /// <returns>An array of all default collection definitions.</returns>
+        public DefaultCollectionDefinition[] GetDefaultCollectionDefinitions()
+        {
+            if (m_DefaultCollectionDefinitions == null)
+            {
+                return null;
+            }
+
+            return m_DefaultCollectionDefinitions.ToArray();
         }
 
         /// <summary>
-        /// Returns the number of ItemDefinitions within this Catalog.
+        /// Fills the given list with all default collection definitions in this catalog.
         /// </summary>
-        /// <returns>The number of ItemDefinitions within this Catalog.</returns>
-        public int itemDefinitionCount
+        /// <param name="defaultCollectionDefinitions">The list to fill up.</param>
+        public void GetDefaultCollectionDefinitions(List<DefaultCollectionDefinition> defaultCollectionDefinitions)
         {
-            get { return m_ItemDefinitions.Count; }
-        }
+            if (m_DefaultCollectionDefinitions == null || defaultCollectionDefinitions == null)
+            {
+                return;
+            }
 
-        /// <summary>
-        /// Enumerator for iterating through DefaultCollectionDefinitions.
-        /// </summary>
-        /// <returns>An enumerator for iterating through DefaultCollectionDefinitions.</returns>
-        public IEnumerable<DefaultCollectionDefinition<T1, T2, T3, T4>> defaultCollectionDefinitions
-        {
-            get { return m_DefaultCollectionDefinitions; }
+            defaultCollectionDefinitions.AddRange(m_DefaultCollectionDefinitions);
         }
 
         /// <summary>
@@ -335,7 +328,7 @@ namespace UnityEngine.GameFoundation
         /// <param name="defaultCollectionDefinition">The DefaultCollectionDefinition to add.</param>
         /// <returns>Whether or not the adding was successful.</returns>
         /// <exception cref="ArgumentException">Thrown if a duplicate default collection definition is given.</exception>
-        public bool AddDefaultCollectionDefinition(DefaultCollectionDefinition<T1, T2, T3, T4> defaultCollectionDefinition)
+        public bool AddDefaultCollectionDefinition(DefaultCollectionDefinition defaultCollectionDefinition)
         {
             Tools.ThrowIfPlayMode("Cannot add a DefaultCollectionDefinition to a Catalog while in play mode.");
 
@@ -354,37 +347,11 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the DefaultCollectionDefinition at the requested index.
-        /// </summary>
-        /// <param name="index">The index requested.</param>
-        /// <returns>The DefaultCollectionDefinition at specified index.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public DefaultCollectionDefinition<T1, T2, T3, T4> GetDefaultCollectionDefinitionByIndex(int index)
-        {
-            if (index < 0 || index >= m_DefaultCollectionDefinitions.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            return m_DefaultCollectionDefinitions[index];
-        }
-
-        /// <summary>
-        /// Returns the index of the given DefaultCollectionDefinition, or -1 if it's not found in this Catalog.
-        /// </summary>
-        /// <param name="defaultCollectionDefinition">The DefaultCollectionDefinition we are checking.</param>
-        /// <returns>The index of the given DefaultCollectionDefinition in this Catalog.</returns>
-        public int GetIndexOfDefaultCollectionDefinition(DefaultCollectionDefinition<T1, T2, T3, T4> defaultCollectionDefinition)
-        {
-            return m_DefaultCollectionDefinitions.IndexOf(defaultCollectionDefinition);
-        }
-
-        /// <summary>
         /// Removes the given DefaultCollectionDefinition from this Catalog.
         /// </summary>
         /// <param name="defaultCollectionDefinition">The DefaultCollectionDefinition to remove.</param>
         /// <returns>Whether or not the removal was successful.</returns>
-        public bool RemoveCollectionDefinition(DefaultCollectionDefinition<T1, T2, T3, T4> defaultCollectionDefinition)
+        public bool RemoveDefaultCollectionDefinition(DefaultCollectionDefinition defaultCollectionDefinition)
         {
             Tools.ThrowIfPlayMode("Cannot remove a DefaultCollectionDefinition from a Catalog while in play mode.");
                 
@@ -392,37 +359,30 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the number of DefaultCollectionDefinitions in this Catalog.
-        /// </summary>
-        /// <returns>The number of DefaultCollectionDefinitions in this Catalog.</returns>
-        public int defaultCollectionDefinitionCount
-        {
-            get { return m_DefaultCollectionDefinitions.Count; }
-        }
-
-        /// <summary>
         /// Find CollectionDefinition by Definition Id.
         /// </summary>
-        /// <param name="definitionId">The id of the Definition we want.</param>
+        /// <param name="collectionDefinitionId">The Id of the Definition we want.</param>
         /// <returns>Reference to the CollectionDefinition requested.</returns>
-        public T1 GetCollectionDefinition(string definitionId)
+        public T1 GetCollectionDefinition(string collectionDefinitionId)
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(collectionDefinitionId))
+            {
                 return null;
+            }
             
-            return GetCollectionDefinition(Tools.StringToHash(definitionId));
+            return GetCollectionDefinition(Tools.StringToHash(collectionDefinitionId));
         }
 
         /// <summary>
-        /// Find CollectionDefinition by hash.
+        /// Find CollectionDefinition by Hash.
         /// </summary>
-        /// <param name="definitionHash">The hash of the Definition we want.</param>
+        /// <param name="collectionDefinitionHash">The Hash of the Definition we want.</param>
         /// <returns>Reference to the CollectionDefinition requested.</returns>
-        public T1 GetCollectionDefinition(int definitionHash)
+        public T1 GetCollectionDefinition(int collectionDefinitionHash)
         {
             foreach (var collectionDefinition in m_CollectionDefinitions)
             {
-                if (collectionDefinition.hash.Equals(definitionHash))
+                if (collectionDefinition.hash.Equals(collectionDefinitionHash))
                 {
                     return collectionDefinition;
                 }
@@ -432,28 +392,30 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This is a getter for getting ItemDefinitions by their id.
+        /// This is a getter for getting ItemDefinitions by their Id.
         /// </summary>
-        /// <param name="definitionId">The id of the Definition we want.</param>
+        /// <param name="itemDefinitionId">The Id of the Definition we want.</param>
         /// <returns>Reference to the ItemDefinition requested.</returns>
-        public T3 GetItemDefinition(string definitionId)
+        public T3 GetItemDefinition(string itemDefinitionId)
         {
-            if (string.IsNullOrEmpty(definitionId))
+            if (string.IsNullOrEmpty(itemDefinitionId))
+            {
                 return null;
+            }
             
-            return GetItemDefinition(Tools.StringToHash(definitionId));
+            return GetItemDefinition(Tools.StringToHash(itemDefinitionId));
         }
 
         /// <summary>
-        /// This is a getter for getting ItemDefinitions by their id hash.
+        /// This is a getter for getting ItemDefinitions by their Hash.
         /// </summary>
-        /// <param name="definitionHash">The hash of the Definition we want.</param>
+        /// <param name="itemDefinitionHash">The Hash of the Definition we want.</param>
         /// <returns>Reference to the ItemDefinition requested.</returns>
-        public T3 GetItemDefinition(int definitionHash)
+        public T3 GetItemDefinition(int itemDefinitionHash)
         {
             foreach (var itemDefinition in m_ItemDefinitions)
             {
-                if (itemDefinition.hash.Equals(definitionHash))
+                if (itemDefinition.hash.Equals(itemDefinitionHash))
                 {
                     return itemDefinition;
                 }
@@ -463,72 +425,126 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will return an enumerator for iterating through ItemDefinitions with the designated Category by CategoryDefinition id.
+        /// This will return an array of ItemDefinitions with the designated Category by CategoryDefinition id.
         /// </summary>
-        /// <param name="categoryId">The id of the CategoryDefinition to iterate through.</param>
-        /// <returns>An enumerator of ItemDefinitions that contain the given Category.</returns>
-        public IEnumerable<T3> GetItemsByCategory(string categoryId)
+        /// <param name="categoryId">The id of the CategoryDefinition we want.</param>
+        /// <returns>An array of ItemDefinitions that contain the given Category.</returns>
+        public T3[] GetItemDefinitionsByCategory(string categoryId)
         {
-            if (categoryId == null)
+            if (string.IsNullOrEmpty(categoryId))
+            {
                 return null;
+            }
             
-            return GetItemsByCategory(Tools.StringToHash(categoryId));
+            return GetItemDefinitionsByCategory(Tools.StringToHash(categoryId));
         }
 
         /// <summary>
-        /// This will return an enumerator for iterating through ItemDefinitions with the designated Category by CategoryDefinition id hash
+        /// Fills in the given list with items matching the given category.
+        /// </summary>
+        /// <param name="categoryId">The id of the CategoryDefinition we want.</param>
+        /// <param name="items">The list to fill up.</param>
+        public void GetItemDefinitionsByCategory(string categoryId, List<T3> items)
+        {
+            if (string.IsNullOrEmpty(categoryId) || items == null)
+            {
+                return;
+            }
+            
+            items.AddRange(GetItemDefinitionsByCategory(categoryId));
+        }
+
+        /// <summary>
+        /// This will return an array of ItemDefinitions with the designated Category by CategoryDefinition id hash.
         /// </summary>
         /// <param name="categoryHash">The id hash of the CategoryDefinition we want to check for.</param>
-        /// <returns>An enumerator of ItemDefinitions that contain the given Category.</returns>
-        public IEnumerable<T3> GetItemsByCategory(int categoryHash)
+        /// <returns>An array of ItemDefinitions that contain the given Category.</returns>
+        public T3[] GetItemDefinitionsByCategory(int categoryHash)
         {
-            foreach (var definition in allItemDefinitions)
+            List<T3> items = new List<T3>();
+            foreach (var definition in m_ItemDefinitions)
             {
-                if (definition != null && definition.categories != null)
+                if (definition != null && definition.GetCategories() != null)
                 {
-                    foreach (var category in definition.categories)
+                    foreach (var category in definition.GetCategories())
                     {
                         if (category.hash == categoryHash)
                         {
-                            yield return definition;
+                            items.Add(definition);
                         }
                     }
                 }
             }
+
+            return items.ToArray();
         }
 
         /// <summary>
-        /// This will return an enumerator for iterating through ItemDefinitions with the designated CategoryDefinition
+        /// Fills in the given list with items matching the given category.
+        /// </summary>
+        /// <param name="categoryHash">The id hash of the CategoryDefinition we want to check for.</param>
+        /// <param name="items">The list to fill up.</param>
+        public void GetItemDefinitionsByCategory(int categoryHash, List<T3> items)
+        {
+            if (items == null)
+            {
+                return;
+            }
+            
+            items.AddRange(GetItemDefinitionsByCategory(categoryHash));
+        }
+
+        /// <summary>
+        /// This will return an array of ItemDefinitions with the designated Category by CategoryDefinition CategoryDefinition.
         /// </summary>
         /// <param name="category">The Category we want to check for.</param>
-        /// <returns>An enumrator of ItemDefinitions that contain the given CategoryDefinition.</returns>
-        public IEnumerable<T3> GetItemsByCategory(CategoryDefinition category)
+        /// <returns>An array of ItemDefinitions that contain the given Category.</returns>
+        public T3[] GetItemDefinitionsByCategory(CategoryDefinition category)
         {
             if (category == null)
+            {
                 return null;
+            }
             
-            return GetItemsByCategory(category.hash);
+            return GetItemDefinitionsByCategory(category.hash);
         }
 
         /// <summary>
-        /// This gets the DefaultCollectionDefinitions by id string.
+        /// Fills in the given list with items matching the given category.
         /// </summary>
-        /// <param name="defaultDefinitionId">The id of the DefaultCollectionDefinition we want.</param>
+        /// <param name="category">The Category we want to check for.</param>
+        /// <param name="items">The list to fill up.</param>
+        public void GetItemDefinitionsByCategory(CategoryDefinition category, List<T3> items)
+        {
+            if (category == null || items == null)
+            {
+                return;
+            }
+            
+            items.AddRange(GetItemDefinitionsByCategory(category));
+        }
+
+        /// <summary>
+        /// This gets the DefaultCollectionDefinitions by Id string.
+        /// </summary>
+        /// <param name="defaultDefinitionId">The Id of the DefaultCollectionDefinition we want.</param>
         /// <returns>Reference to the DefaultCollectionDefinition requested.</returns>
-        public DefaultCollectionDefinition<T1, T2, T3, T4> GetDefaultCollectionDefinition(string defaultDefinitionId)
+        public DefaultCollectionDefinition GetDefaultCollectionDefinition(string defaultDefinitionId)
         {
             if (string.IsNullOrEmpty(defaultDefinitionId))
+            {
                 return null;
+            }
             
             return GetDefaultCollectionDefinition(Tools.StringToHash(defaultDefinitionId));
         }
 
         /// <summary>
-        /// This gets the DefaultCollectionDefinition by id hash.
+        /// This gets the DefaultCollectionDefinition by Hash.
         /// </summary>
-        /// <param name="defaultDefinitionHash">The hash of the DefaultCollectionDefinition we want.</param>
+        /// <param name="defaultDefinitionHash">The Hash of the DefaultCollectionDefinition we want.</param>
         /// <returns>Reference to the DefaultCollectionDefinition requested.</returns>
-        public DefaultCollectionDefinition<T1, T2, T3, T4> GetDefaultCollectionDefinition(int defaultDefinitionHash)
+        public DefaultCollectionDefinition GetDefaultCollectionDefinition(int defaultDefinitionHash)
         {
             foreach (var defaultCollectionDefinition in m_DefaultCollectionDefinitions)
             {
@@ -542,23 +558,23 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Check if the given hash is available to be added to CollectionDefinitions.
+        /// Check if the given Hash is available to be added to CollectionDefinitions.
         /// </summary>
-        /// <param name="hash">The hash we are checking for.</param>
-        /// <returns>True/False whether or not hash is available for use.</returns>
-        public bool IsCollectionDefinitionHashUnique(int hash)
+        /// <param name="collectionDefinitionHash">The Hash we are checking for.</param>
+        /// <returns>True/False whether or not Hash is available for use.</returns>
+        public bool IsCollectionDefinitionHashUnique(int collectionDefinitionHash)
         {
-            return GetCollectionDefinition(hash) == null;
+            return GetCollectionDefinition(collectionDefinitionHash) == null;
         }
 
         /// <summary>
-        /// Check if the given hash is not yet within ItemDefinitions and is available for use.
+        /// Check if the given Hash is not yet within ItemDefinitions and is available for use.
         /// </summary>
-        /// <param name="hash">The hash we are checking for.</param>
-        /// <returns>True/False whether or not hash is available for use.</returns>
-        public bool IsItemDefinitionHashUnique(int hash)
+        /// <param name="itemDefinitionHash">The Hash we are checking for.</param>
+        /// <returns>True/False whether or not Hash is available for use.</returns>
+        public bool IsItemDefinitionHashUnique(int itemDefinitionHash)
         {
-            return GetItemDefinition(hash) == null;
+            return GetItemDefinition(itemDefinitionHash) == null;
         }
 
         /// <summary>
@@ -601,5 +617,12 @@ namespace UnityEngine.GameFoundation
 
             return false;
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// This will be called whenever we want to verify that any default values that should exist in a catalog, do exist.
+        /// </summary>
+        internal abstract void VerifyDefaultCollections();
+#endif
     }
 }

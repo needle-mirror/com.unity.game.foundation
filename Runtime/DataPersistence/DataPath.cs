@@ -1,4 +1,4 @@
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// Enum to determine the save data path for player account data.

@@ -1,4 +1,4 @@
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// The types of the DataSerializers

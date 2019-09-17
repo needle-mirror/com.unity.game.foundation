@@ -33,7 +33,7 @@ namespace UnityEditor.GameFoundation
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.gameItemCatalog == null) return;
+            if (GameFoundationSettings.database.gameItemCatalog == null) return;
 
             SelectFilteredItem(0); // Select the first Item
         }
@@ -47,9 +47,9 @@ namespace UnityEditor.GameFoundation
         {
             GameItemDefinition gameItemDefinition = GameItemDefinition.Create(m_NewItemId, m_NewItemDisplayName);
 
-            CollectionEditorTools.AssetDatabaseAddObject(gameItemDefinition, GameFoundationSettings.gameItemCatalog);
+            CollectionEditorTools.AssetDatabaseAddObject(gameItemDefinition, GameFoundationSettings.database.gameItemCatalog);
 
-            EditorUtility.SetDirty(GameFoundationSettings.gameItemCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.gameItemCatalog);
 
             AddItem(gameItemDefinition);
             SelectItem(gameItemDefinition);
@@ -60,7 +60,7 @@ namespace UnityEditor.GameFoundation
         protected override void AddItem(GameItemDefinition item)
         {
             EditorAPIHelper.AddGameItemDefinitionToGameItemCatalog(item);
-            EditorUtility.SetDirty(GameFoundationSettings.gameItemCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.gameItemCatalog);
             window.Repaint();
         }
 
@@ -70,7 +70,7 @@ namespace UnityEditor.GameFoundation
 
             EditorGUILayout.Space();
 
-            DetailsEditorGUI.DrawDetailsDetail(gameItemDefinition);
+            DetailEditorGUI.DrawDetailView(gameItemDefinition);
         }
 
         private void DrawGeneralDetail(GameItemDefinition gameItemDefinition)
@@ -118,7 +118,7 @@ namespace UnityEditor.GameFoundation
                 // If a GameItem item is deleted, handling removing its asset as well
                 CollectionEditorTools.AssetDatabaseRemoveObject(item);
                 EditorAPIHelper.RemoveGameItemDefinitionFromGameItemCatalog(item);
-                EditorUtility.SetDirty(GameFoundationSettings.gameItemCatalog);
+                EditorUtility.SetDirty(GameFoundationSettings.database.gameItemCatalog);
             }
         }
     }

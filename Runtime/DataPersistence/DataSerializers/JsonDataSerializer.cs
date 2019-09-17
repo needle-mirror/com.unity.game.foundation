@@ -5,7 +5,7 @@ using System.IO;
 using UnityEngine.GameFoundation.DataSecurity;
 #endif
 
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// DataSerializer to serialize to Json and deserialize from Json
@@ -21,8 +21,8 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         public JsonDataSerializer()
         {
-            m_IsBinarySerializer = false;
-            m_SerializerName = "Json";
+            isBinarySerializer = false;
+            serializerName = "Json";
             
             #if GAMEFOUNDATION_DATAVAULT
             _dataEncryption = EncryptionFactory.Produce();

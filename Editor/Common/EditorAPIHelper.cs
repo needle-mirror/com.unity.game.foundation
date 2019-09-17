@@ -13,19 +13,21 @@ namespace UnityEditor.GameFoundation
         // GameItemCatalog helper methods
         internal static List<GameItemDefinition> GetGameItemCatalogGameItemDefinitionsList()
         {
-            if (GameFoundationSettings.gameItemCatalog == null || GameFoundationSettings.gameItemCatalog.allGameItemDefinitions == null)
+            if (GameFoundationSettings.database.gameItemCatalog == null)
             {
                 return null;
             }
 
-            return GameFoundationSettings.gameItemCatalog.allGameItemDefinitions.ToList();
+            List<GameItemDefinition> gameItemDefinitions = new List<GameItemDefinition>();
+            GameFoundationSettings.database.gameItemCatalog.GetGameItemDefinitions(gameItemDefinitions);
+            return gameItemDefinitions;
         }
 
         internal static void AddGameItemDefinitionToGameItemCatalog(GameItemDefinition gameItemItem)
         {
-            if (GameFoundationSettings.gameItemCatalog != null)
+            if (GameFoundationSettings.database.gameItemCatalog != null)
             {
-                GameFoundationSettings.gameItemCatalog.AddGameItemDefinition(gameItemItem);
+                GameFoundationSettings.database.gameItemCatalog.AddGameItemDefinition(gameItemItem);
             }
             else
             {
@@ -35,9 +37,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void RemoveGameItemDefinitionFromGameItemCatalog(GameItemDefinition gameItemItem)
         {
-            if (GameFoundationSettings.gameItemCatalog != null)
+            if (GameFoundationSettings.database.gameItemCatalog != null)
             {
-                bool successfullyRemoved = GameFoundationSettings.gameItemCatalog.RemoveGameItemDefinition(gameItemItem);
+                bool successfullyRemoved = GameFoundationSettings.database.gameItemCatalog.RemoveGameItemDefinition(gameItemItem);
                 if (!successfullyRemoved)
                 {
                     Debug.LogError("GameItemDefinition " + gameItemItem.displayName + " was unable to be removed from gameItem catalog list.");
@@ -50,52 +52,60 @@ namespace UnityEditor.GameFoundation
         }
 
         // GameItemDefinition helper methods
-        internal static IEnumerable<CategoryDefinition> GetGameItemDefinitionCategories(GameItemDefinition itemInstance)
+        internal static List<CategoryDefinition> GetGameItemDefinitionCategories(GameItemDefinition itemInstance)
         {
-            if (itemInstance == null || itemInstance.categories == null)
+            if (itemInstance == null)
             {
                 return null;
             }
 
-            return itemInstance.categories;
+            List<CategoryDefinition> categories = new List<CategoryDefinition>();
+            itemInstance.GetCategories(categories);
+            return categories;
         }
 
         // InventoryCatalog helper methods
         internal static List<InventoryItemDefinition> GetInventoryCatalogItemDefinitionsList()
         {
-            if (GameFoundationSettings.inventoryCatalog == null || GameFoundationSettings.inventoryCatalog.allItemDefinitions == null)
+            if (GameFoundationSettings.database.inventoryCatalog == null)
             {
                 return null;
             }
 
-            return GameFoundationSettings.inventoryCatalog.allItemDefinitions.ToList();
+            List<InventoryItemDefinition> inventoryItemDefinitions = new List<InventoryItemDefinition>();
+            GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions(inventoryItemDefinitions);
+            return inventoryItemDefinitions;
         }
 
         internal static List<CategoryDefinition> GetInventoryCatalogCategoriesList()
         {
-            if (GameFoundationSettings.inventoryCatalog == null || GameFoundationSettings.inventoryCatalog.allItemDefinitions == null)
+            if (GameFoundationSettings.database.inventoryCatalog == null)
             {
                 return null;
             }
 
-            return GameFoundationSettings.inventoryCatalog.categories.ToList();
+            List<CategoryDefinition> categories = new List<CategoryDefinition>();
+            GameFoundationSettings.database.inventoryCatalog.GetCategories(categories);
+            return categories;
         }
 
         internal static List<InventoryDefinition> GetInventoryCatalogCollectionDefinitionsList()
         {
-            if (GameFoundationSettings.inventoryCatalog == null || GameFoundationSettings.inventoryCatalog.allCollectionDefinitions == null)
+            if (GameFoundationSettings.database.inventoryCatalog == null)
             {
                 return null;
             }
 
-            return GameFoundationSettings.inventoryCatalog.allCollectionDefinitions.ToList();
+            List<InventoryDefinition> inventoryDefinitions = new List<InventoryDefinition>();
+            GameFoundationSettings.database.inventoryCatalog.GetCollectionDefinitions(inventoryDefinitions);
+            return inventoryDefinitions;
         }
 
         internal static void AddItemDefinitionToInventoryCatalog(InventoryItemDefinition item)
         {
-            if (GameFoundationSettings.inventoryCatalog != null)
+            if (GameFoundationSettings.database.inventoryCatalog != null)
             {
-                GameFoundationSettings.inventoryCatalog.AddItemDefinition(item);
+                GameFoundationSettings.database.inventoryCatalog.AddItemDefinition(item);
             }
             else
             {
@@ -105,9 +115,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void RemoveItemDefinitionFromInventoryCatalog(InventoryItemDefinition item)
         {
-            if (GameFoundationSettings.inventoryCatalog != null)
+            if (GameFoundationSettings.database.inventoryCatalog != null)
             {
-                bool successfullyRemoved = GameFoundationSettings.inventoryCatalog.RemoveItemDefinition(item);
+                bool successfullyRemoved = GameFoundationSettings.database.inventoryCatalog.RemoveItemDefinition(item);
                 if (!successfullyRemoved)
                 {
                     Debug.LogError("Inventory Item " + item.displayName + " was unable to be removed from inventory catalog list.");
@@ -121,9 +131,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void AddCategoryDefinitionToInventoryCatalog(CategoryDefinition category)
         {
-            if (GameFoundationSettings.inventoryCatalog != null)
+            if (GameFoundationSettings.database.inventoryCatalog != null)
             {
-                GameFoundationSettings.inventoryCatalog.AddCategory(category);
+                GameFoundationSettings.database.inventoryCatalog.AddCategory(category);
             }
             else
             {
@@ -133,9 +143,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void RemoveCategoryDefinitionFromInventoryCatalog(CategoryDefinition category)
         {
-            if (GameFoundationSettings.inventoryCatalog != null)
+            if (GameFoundationSettings.database.inventoryCatalog != null)
             {
-                bool successfullyRemoved = GameFoundationSettings.inventoryCatalog.RemoveCategory(category);
+                bool successfullyRemoved = GameFoundationSettings.database.inventoryCatalog.RemoveCategory(category);
                 if (!successfullyRemoved)
                 {
                     Debug.LogError("Category " + category.displayName + " was unable to be removed from inventory catalog list.");
@@ -149,9 +159,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void AddInventoryDefinitionToInventoryCatalog(InventoryDefinition inventory)
         {
-            if (GameFoundationSettings.inventoryCatalog != null)
+            if (GameFoundationSettings.database.inventoryCatalog != null)
             {
-                GameFoundationSettings.inventoryCatalog.AddCollectionDefinition(inventory);
+                GameFoundationSettings.database.inventoryCatalog.AddCollectionDefinition(inventory);
             }
             else
             {
@@ -161,9 +171,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void RemoveInventoryDefinitionFromInventoryCatalog(InventoryDefinition inventory)
         {
-            if (GameFoundationSettings.inventoryCatalog != null)
+            if (GameFoundationSettings.database.inventoryCatalog != null)
             {
-                bool successfullyRemoved = GameFoundationSettings.inventoryCatalog.RemoveCollectionDefinition(inventory);
+                bool successfullyRemoved = GameFoundationSettings.database.inventoryCatalog.RemoveCollectionDefinition(inventory);
                 if (!successfullyRemoved)
                 {
                     Debug.LogError("Inventory " + inventory.displayName + " was unable to be removed from inventory catalog list.");
@@ -178,9 +188,9 @@ namespace UnityEditor.GameFoundation
         // Stat catalog helper methods
         internal static void AddStatDefinitionToStatCatalog(StatDefinition item)
         {
-            if (GameFoundationSettings.statCatalog != null)
+            if (GameFoundationSettings.database.statCatalog != null)
             {
-                GameFoundationSettings.statCatalog.AddStatDefinition(item);
+                GameFoundationSettings.database.statCatalog.AddStatDefinition(item);
             }
             else
             {
@@ -190,9 +200,9 @@ namespace UnityEditor.GameFoundation
 
         internal static void RemoveStatDefinitionFromStatCatalog(StatDefinition item)
         {
-            if (GameFoundationSettings.statCatalog != null)
+            if (GameFoundationSettings.database.statCatalog != null)
             {
-                bool successfullyRemoved = GameFoundationSettings.statCatalog.RemoveStatDefinition(item);
+                bool successfullyRemoved = GameFoundationSettings.database.statCatalog.RemoveStatDefinition(item);
                 if (!successfullyRemoved)
                 {
                     Debug.LogError("Stat definition " + item.displayName + " was unable to be removed from stat catalog list.");
@@ -206,12 +216,14 @@ namespace UnityEditor.GameFoundation
 
         internal static List<StatDefinition> GetStatCatalogDefinitionsList()
         {
-            if (GameFoundationSettings.statCatalog == null || GameFoundationSettings.statCatalog.allStatDefinitions == null)
+            if (GameFoundationSettings.database.statCatalog == null)
             {
                 return null;
             }
 
-            return GameFoundationSettings.statCatalog.allStatDefinitions.ToList();
+            List<StatDefinition> statDefinitions = new List<StatDefinition>();
+            GameFoundationSettings.database.statCatalog.GetStatDefinitions(statDefinitions);
+            return statDefinitions;
         }
 
         // InventoryItemDefinition helper methods
@@ -230,16 +242,6 @@ namespace UnityEditor.GameFoundation
         internal static InventoryDefinition CreateInventoryDefinition(string id, string displayName)
         {
             return InventoryDefinition.Create(id, displayName);
-        }
-
-        internal static IEnumerable<DefaultItem> GetInventoryDefinitionDefaultItems(InventoryDefinition inventoryInstance)
-        {
-            if (inventoryInstance == null || inventoryInstance.defaultItems == null)
-            {
-                return null;
-            }
-
-            return inventoryInstance.defaultItems;
         }
 
         // StatDefinition helper methods

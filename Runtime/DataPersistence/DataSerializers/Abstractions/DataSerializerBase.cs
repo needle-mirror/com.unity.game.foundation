@@ -1,16 +1,34 @@
 using System;
 using System.IO;
 
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// Base abstraction class of the IDataSerializer interface.
     /// </summary>
     public abstract class DataSerializerBase : IDataSerializer
     {
-        protected bool m_IsBinarySerializer = true;
-        protected string m_SerializerName;
+        bool m_IsBinarySerializer = true;
+        string m_SerializerName;
 
+        /// <summary>
+        /// Is the serializer binary. Default is set to true.
+        /// </summary>
+        public bool isBinarySerializer
+        {
+            get { return m_IsBinarySerializer; }
+            protected set { m_IsBinarySerializer = value; }
+        }
+
+        /// <summary>
+        /// The serializer name.
+        /// </summary>
+        public string serializerName
+        {
+            get { return m_SerializerName; }
+            protected set { m_SerializerName = value; }
+        }
+        
         /// <summary>
         /// Get the name of the serializer.
         /// </summary>
@@ -28,10 +46,6 @@ namespace UnityEngine.GameFoundation
         {
             return m_IsBinarySerializer;
         }
-        
-        protected byte[] SerializedBytes { get; set; }
-
-        protected string SerializedString { get; set; }
 
         /// <summary>
         /// Public abstraction of the serialize method that serialize a data object and return the data as object.

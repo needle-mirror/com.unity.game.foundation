@@ -1,6 +1,6 @@
-﻿using System;
+using System;
 
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// Serializable data structure that contains the state of an inventory item.
@@ -10,9 +10,10 @@ namespace UnityEngine.GameFoundation
     {
         [SerializeField] string m_DefinitionId = null;
         [SerializeField] int m_Quantity = 0;
+        [SerializeField] int m_GameItemLookupId;
 
         /// <summary>
-        /// The definition id of the inventory item
+        /// The definition Id of the inventory item
         /// </summary>
         public string definitionId
         {
@@ -26,16 +27,26 @@ namespace UnityEngine.GameFoundation
         {
             get { return m_Quantity; }
         }
+
+        /// <summary>
+        /// The GameItemId of the item use by GameItemLookup
+        /// </summary>
+        public int gameItemLookupId
+        {
+            get { return m_GameItemLookupId; }
+        }
         
         /// <summary>
-        /// Basic constructor that takes in the inventory item definition id of the item and the quantity it have in this inventory.
+        /// Basic constructor that takes in the inventory item definition Id of the item and the quantity it have in this inventory.
         /// </summary>
-        /// <param name="definitionId">The definition id of the inventory item</param>
+        /// <param name="definitionId">The definition Id of the inventory item</param>
         /// <param name="quantity">The quantity of this item contained in the inventory</param>
-        public InventoryItemSerializableData(string definitionId, int quantity)
+        /// <param name="gameItemLookupId">The GameItemId of the item use by GameItemLookup</param>
+        public InventoryItemSerializableData(string definitionId, int quantity, int gameItemLookupId)
         {
             m_DefinitionId = definitionId;
             m_Quantity = quantity;
+            m_GameItemLookupId = gameItemLookupId;
         }
 
         /// <summary>

@@ -8,12 +8,12 @@ namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Base class for both BaseItemDefinition and BaseCollectionDefinition. 
-    /// Holds id, dsplay name, etc., and allows DetailsDefinitions to be attached as needed.
+    /// Holds Id, dsplay name, etc., and allows DetailDefinitions to be attached as needed.
     /// </summary>
     public class GameItemDefinition : ScriptableObject, ISerializationCallbackReceiver
     {
         [SerializeField] 
-        protected string m_DisplayName;
+        private string m_DisplayName;
 
         /// <summary>
         /// The name of this GameItemDefinition for the user to display.
@@ -31,33 +31,33 @@ namespace UnityEngine.GameFoundation
 
             m_DisplayName = name;
         }
-        
+
         [SerializeField]
-        protected string m_Id;
+        private string m_Id;
 
         /// <summary>
-        /// The string id of this GameItemDefinition.
+        /// The string Id of this GameItemDefinition.
         /// </summary>
-        /// <returns>The string id of this GameItemDefinition.</returns>
+        /// <returns>The string Id of this GameItemDefinition.</returns>
         public string id
         {
             get { return m_Id; }
         }
 
         [SerializeField] 
-        protected int m_Hash;
+        private int m_Hash;
 
         /// <summary>
-        /// The hash of this GameItemDefinition's id.
+        /// The Hash of this GameItemDefinition's Id.
         /// </summary>
-        /// <returns>The hash of this GameItemDefinition's id.</returns>
+        /// <returns>The Hash of this GameItemDefinition's Id.</returns>
         public int hash
         {
             get { return m_Hash; }
         }
 
         [SerializeField]
-        protected GameItemDefinition m_ReferenceDefinition;
+        private GameItemDefinition m_ReferenceDefinition;
 
         /// <summary>
         /// The reference GameItemDefinition for this GameItemDefinition.
@@ -69,39 +69,90 @@ namespace UnityEngine.GameFoundation
             set { SetReferenceDefinition(value); }
         }
 
-        protected void SetReferenceDefinition(GameItemDefinition referenceDefinition)
+#if UNITY_EDITOR
+        private void HandleGameItemCatalogWillRemoveGameItemDefinition(object sender, GameItemDefinition gameItemDefinition)
+        {
+            if (ReferenceEquals(m_ReferenceDefinition, gameItemDefinition))
+            {
+                m_ReferenceDefinition = null;
+                EditorUtility.SetDirty(this);
+            }
+        }
+
+        private void OnEnable()
+        {
+            GameItemCatalog.OnWillRemoveGameItemDefinition += HandleGameItemCatalogWillRemoveGameItemDefinition;
+        }
+
+        private void OnDisable()
+        {
+            GameItemCatalog.OnWillRemoveGameItemDefinition -= HandleGameItemCatalogWillRemoveGameItemDefinition;
+        }
+#endif
+
+        private void SetReferenceDefinition(GameItemDefinition gameItemDefinition)
         {
             Tools.ThrowIfPlayMode("Cannot set the reference GameItemDefinition of a GameItemDefinition while in play mode.");
-            
-            if (m_ReferenceDefinition != referenceDefinition)
+
+            if (m_ReferenceDefinition != gameItemDefinition)
             {
-                if (referenceDefinition == this)
+                if (ReferenceEquals(this, gameItemDefinition))
                 {
                     throw new ArgumentException("GameItemDefinition cannot point to itself.");
                 }
-                m_ReferenceDefinition = referenceDefinition;
+
+                m_ReferenceDefinition = gameItemDefinition;
             }
         }
 
         [SerializeField]
-        internal List<int> m_Categories = new List<int>();
-
-        [SerializeField]
-        protected List<BaseDetailsDefinition> m_DetailsDefinitionValues = new List<BaseDetailsDefinition>();
-        
-        protected Dictionary<Type, BaseDetailsDefinition> m_DetailsDefinitions = new Dictionary<Type, BaseDetailsDefinition>();
+        private List<int> m_Categories = new List<int>();
 
         /// <summary>
-        /// Iterator for iterating through the Categories on this GameItemDefinition.
+        /// List of Category hashes assigned to this Game Item Definition 
         /// </summary>
-        /// <returns>Iterator for iterating through the Categories on this GameItemDefinition.</returns>
-        public IEnumerable<CategoryDefinition> categories
+        protected internal List<int> categories
         {
-            get { return QueryCategories(); }
+            get { return m_Categories; }
+            set { m_Categories = value; }
         }
+
+        /// <summary>
+        /// Returns an array of all categories on this game item definition.
+        /// </summary>
+        /// <returns>An array of all categories on this game item definition.</returns>
+        public CategoryDefinition[] GetCategories()
+        {
+            var categories = QueryCategories();
+
+            if (categories == null)
+                return null;
+
+            return categories.ToArray();
+        }
+
+        /// <summary>
+        /// Fills the given list with all categories on this game item definition.
+        /// </summary>
+        /// <param name="categories">The list to fill up.</param>
+        public void GetCategories(List<CategoryDefinition> categories)
+        {
+            if (categories == null)
+                return;
+
+            categories.AddRange(QueryCategories());
+        }
+
+        [SerializeField]
+        private List<BaseDetailDefinition> m_DetailDefinitionValues = new List<BaseDetailDefinition>();
+        
+        private Dictionary<Type, BaseDetailDefinition> m_DetailDefinitions = new Dictionary<Type, BaseDetailDefinition>();
 
         private List<CategoryDefinition> QueryCategories()
         {
+            if (m_Categories == null)
+                return null;
+
             List<CategoryDefinition> actualCategories = new List<CategoryDefinition>();
             foreach (int categoryHash in m_Categories)
             {
@@ -111,38 +162,42 @@ namespace UnityEngine.GameFoundation
                 {
                     continue;
                 }
-                    
+
                 actualCategories.Add(category);
             }
             return actualCategories;
         }
 
-        protected virtual CategoryDefinition GetCategoryDefinition(int hash)
+        /// <summary>
+        /// Gets a CategoryDefinition from this GameItemDefinition categories with the following Hash 
+        /// </summary>
+        /// <param name="categoryHash">CategoryDefinition Hash of CategoryDefinition to get</param>
+        /// <returns>Requested Category Definition</returns>
+        protected virtual CategoryDefinition GetCategoryDefinition(int categoryHash)
         {
-            return GameFoundationSettings.gameItemCatalog.GetCategory(hash);
+            return GameFoundationSettings.database.gameItemCatalog.GetCategory(categoryHash);
         }
 
         /// <summary>
         /// Adds the given Category to this GameItemDefinition.
         /// </summary>
-        /// <param name="definition">The CategoryDefinition to add.</param>
+        /// <param name="category">The CategoryDefinition to add.</param>
         /// <returns>Whether or not adding the Category was successful.</returns>
         /// <exception cref="ArgumentException">Thrown if the given category is already on this definition.</exception>
-        public bool AddCategory(CategoryDefinition definition)
+        public bool AddCategory(CategoryDefinition category)
         {
             Tools.ThrowIfPlayMode("Cannot add a CategoryDefinition to a GameItemDefinition while in play mode.");
 
-            if (definition == null)
+            if (category == null)
             {
                 return false;
             }
 
-            if (m_Categories.Contains(definition.hash))
+            if (m_Categories.Contains(category.hash))
             {
                 throw new ArgumentException("Cannot add a duplicate category definition.");
             }
-            
-            m_Categories.Add(definition.hash);
+            m_Categories.Add(category.hash);
             return true;
         }
 
@@ -153,12 +208,12 @@ namespace UnityEngine.GameFoundation
         public bool AddCategories(List<CategoryDefinition> categories)
         {
             Tools.ThrowIfPlayMode("Cannot add CategoryDefinitions to a GameItemDefinition while in play mode.");
-            
+
             if (categories == null)
             {
                 return false;
             }
-            
+
             foreach (CategoryDefinition category in categories)
             {
                 AddCategory(category);
@@ -168,255 +223,190 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Returns the Category at the given index.
-        /// </summary>
-        /// <param name="index">The index to look at.</param>
-        /// <returns>The CategoryDefinition id hash at specified index</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public int GetCategoryByIndex(int index)
-        {
-            if (index < 0 || index >= m_Categories.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            return m_Categories[index];
-        }
-
-        /// <summary>
-        /// Returns the index of requested Category by CategoryDefinition id hash, or -1 if the CategoryDefinition is not found.
-        /// </summary>
-        /// <param name="category">The CategoryDefinition's index to return.</param>
-        /// <returns>The index of requested Category by CategoryDefinition id hash, or -1 if not found.</returns>
-        public int GetIndexOfCategory(int category)
-        {
-            return m_Categories.IndexOf(category);
-        }
-
-        /// <summary>
         /// Removes the given Category from this GameItemDefinition.
         /// </summary>
-        /// <param name="definition">The CategoryDefinition to remove.</param>
+        /// <param name="category">The CategoryDefinition to remove.</param>
         /// <returns>Whether or not the removal was successful.</returns>
-        public bool RemoveCategory(CategoryDefinition definition)
+        public bool RemoveCategory(CategoryDefinition category)
         {
             Tools.ThrowIfPlayMode("Cannot remove a Category from a GameItemDefinition while in play mode.");
 
-            if (definition == null)
+            if (category == null)
             {
                 return false;
             }
 
-            return m_Categories.Remove(definition.hash);
+            return m_Categories.Remove(category.hash);
         }
 
         /// <summary>
-        /// Returns the number of Categories on this GameItemDefinition.
+        /// Returns an array of all detail definitions on this game item definition.
         /// </summary>
-        /// <returns>The number of Categories on this GameItemDefinition.</returns>
-        public int categoryCount
+        /// <returns>An array of all detail definitions on this game item definition.</returns>
+        public BaseDetailDefinition[] GetDetailDefinitions()
         {
-            get { return m_Categories.Count; }
+            if (m_DetailDefinitions == null)
+                return null;
+
+            BaseDetailDefinition[] baseDetailDefinitions = new BaseDetailDefinition[m_DetailDefinitions.Count];
+            m_DetailDefinitions.Values.CopyTo(baseDetailDefinitions, 0);
+            return baseDetailDefinitions;
         }
 
         /// <summary>
-        /// Iterator for iterating through the DetailsDefinitions attached to this GameItemDefinition.
+        /// Fills in the given list with all detail definitions on this game item definition.
         /// </summary>
-        /// <returns>An iterator for iterating through the DetailsDefinitions attached to this GameItemDefinition.</returns>
-        public IEnumerable<BaseDetailsDefinition> detailsDefinitions
+        /// <param name="detailDefinitions">The list to fill up.</param>
+        public void GetDetailDefinitions(List<BaseDetailDefinition> detailDefinitions)
         {
-            get
+            if (m_DetailDefinitions == null || detailDefinitions == null)
             {
-                if (m_DetailsDefinitions == null)
-                {
-                    return null;
-                }
-                
-                return m_DetailsDefinitions.Values;
+                return;
             }
+
+            detailDefinitions.AddRange(m_DetailDefinitions.Values);
         }
 
         /// <summary>
-        /// This will add the given DetailsDefinition to this GameItemDefinition.
+        /// This will add the given DetailDefinition to this GameItemDefinition.
         /// </summary>
-        /// <param name="detailsDefinition">The DetailsDefinition to add.</param>
-        /// <returns>A reference to the DetailsDefinition that was just added.</returns>
-        /// <exception cref="ArgumentException">Thrown if the given details definition is already on this game item.</exception>
-        public BaseDetailsDefinition AddDetailsDefinition(BaseDetailsDefinition detailsDefinition) 
+        /// <param name="detailDefinition">The DetailDefinition to add.</param>
+        /// <returns>A reference to the DetailDefinition that was just added.</returns>
+        /// <exception cref="ArgumentException">Thrown if the given detail definition is already on this game item.</exception>
+        public BaseDetailDefinition AddDetailDefinition(BaseDetailDefinition detailDefinition) 
         {
-            Tools.ThrowIfPlayMode("Cannot add a DetailsDefinition to a GameItemDefinition during play mode.");
+            Tools.ThrowIfPlayMode("Cannot add a DetailDefinition to a GameItemDefinition during play mode.");
 
-            if (detailsDefinition == null)
+            if (detailDefinition == null)
             {
-                Debug.LogWarning("Null details definition given, this will not be added to the definition.");
+                Debug.LogWarning("Null detail definition given, this will not be added to the definition.");
                 return null;
             }
 
-            if (m_DetailsDefinitions == null)
+            if (m_DetailDefinitions == null)
             {
-                m_DetailsDefinitions = new Dictionary<Type, BaseDetailsDefinition>();
+                m_DetailDefinitions = new Dictionary<Type, BaseDetailDefinition>();
             }
 
-            // if the Details already exists then throw
-            var detailsDefinitionType = detailsDefinition.GetType();
-            if (m_DetailsDefinitions.ContainsKey(detailsDefinitionType))
+            // if the Detail already exists then throw
+            var detailDefinitionType = detailDefinition.GetType();
+            if (m_DetailDefinitions.ContainsKey(detailDefinitionType))
             {
-                throw new ArgumentException(string.Format("The definition \"{0}\" already has a {1} details.", m_Id, detailsDefinitionType.Name));
+                throw new ArgumentException(string.Format("The definition \"{0}\" already has a {1} detail.", m_Id, detailDefinitionType.Name));
+            }
+            
+            // TODO: Make this into a more general use dependency system for details down the road.
+            // Special case, when adding a CurrencyDetail, we automatically want an AnalyticsDetail to be added.
+            if (detailDefinition.GetType() == typeof(CurrencyDetailDefinition))
+            {
+                var hasAnalyticsAlready = GetDetailDefinition<AnalyticsDetailDefinition>();
+                if (hasAnalyticsAlready == null)
+                {
+                    AddDetailDefinition<AnalyticsDetailDefinition>();
+                }
             }
 
-            detailsDefinition.owner = this;
+            detailDefinition.owner = this;
 
-            m_DetailsDefinitions.Add(detailsDefinitionType, detailsDefinition);
+            m_DetailDefinitions.Add(detailDefinitionType, detailDefinition);
 
-            // naming convention for details objects: "{ gameItem id }_{ details type name }"
-            detailsDefinition.name = string.Format("{0}_{1}", this.m_Id, detailsDefinitionType.Name);
+            // naming convention for details objects
+            string itemTypeShortName = GetType().Name.Replace("Definition", "");
+            string detailsTypeShortName = detailDefinitionType.Name.Replace("DetailDefinition", "");
+            detailDefinition.name = $"{m_Id}_{itemTypeShortName}_Detail_{detailsTypeShortName}";
 
 #if UNITY_EDITOR
             if (EditorUtility.IsPersistent(this))
             {
-                AssetDatabase.AddObjectToAsset(detailsDefinition, this);
+                AssetDatabase.AddObjectToAsset(detailDefinition, this);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
 #endif
 
-            return detailsDefinition;
+            return detailDefinition;
         }
 
         /// <summary>
-        /// This will add a DetailsDefinition of specified type to this GameItemDefinition.
+        /// This will add a DetailDefinition of specified type to this GameItemDefinition.
         /// </summary>
-        /// <typeparam name="T">The type of the new DetailsDefinition to add.</typeparam>
-        /// <returns>A reference to the DetailsDefinition that was just added.</returns>
-        public T AddDetailsDefinition<T>() where T : BaseDetailsDefinition 
+        /// <typeparam name="T">The type of the new DetailDefinition to add.</typeparam>
+        /// <returns>A reference to the DetailDefinition that was just added.</returns>
+        public T AddDetailDefinition<T>() where T : BaseDetailDefinition 
         {
-            var newDetailsDefinition = CreateInstance<T>();
+            var newDetailDefinition = CreateInstance<T>();
 
-            AddDetailsDefinition(newDetailsDefinition);
+            AddDetailDefinition(newDetailDefinition);
 
-            return newDetailsDefinition;
-        }
-
-        /// <summary>
-        /// Returns the DetailsDefinition at the requested index.
-        /// </summary>
-        /// <param name="index">The index of the DetailsDefinition to return.</param>
-        /// <returns>The DetailsDefinition at the requested index.</returns>
-        /// <exception cref="IndexOutOfRangeException">Thrown if the given index is out of range.</exception>
-        public BaseDetailsDefinition GetDetailsDefinitionByIndex(int index)
-        {
-            if (index < 0 || index >= m_DetailsDefinitions.Count)
-            {
-                throw new IndexOutOfRangeException();
-            }
-            
-            int counter = 0;
-            foreach (BaseDetailsDefinition baseDetailsDefinition in m_DetailsDefinitions.Values)
-            {
-                if (counter >= index)
-                {
-                    return baseDetailsDefinition;
-                }
-
-                counter++;
-            }
-
-            throw new IndexOutOfRangeException();
+            return newDetailDefinition;
         }
 
         /// <summary> 
-        /// This will return a reference to the requested DetailsDefinition by type.
+        /// This will return a reference to the requested DetailDefinition by type.
         /// </summary>
-        /// <typeparam name="T">The type of DetailsDefinition requested.</typeparam>
-        /// <returns>A reference to the DetailsDefinition, or null if this GameItemDefinition does not have one.</returns>
-        public T GetDetailsDefinition<T>(bool lookInReferenceDefinition = true)
-            where T : BaseDetailsDefinition
+        /// <typeparam name="T">The type of DetailDefinition requested.</typeparam>
+        /// <returns>A reference to the DetailDefinition, or null if this GameItemDefinition does not have one.</returns>
+        public T GetDetailDefinition<T>(bool lookInReferenceDefinition = true)
+            where T : BaseDetailDefinition
         {
-            if (m_DetailsDefinitions != null && m_DetailsDefinitions.ContainsKey(typeof(T)))
+            if (m_DetailDefinitions != null && m_DetailDefinitions.ContainsKey(typeof(T)))
             {
-                return m_DetailsDefinitions[typeof(T)] as T;
+                return m_DetailDefinitions[typeof(T)] as T;
             }
 
             if (lookInReferenceDefinition && referenceDefinition != null)
             {
-                return referenceDefinition.GetDetailsDefinition<T>();
+                return referenceDefinition.GetDetailDefinition<T>();
             }
 
             return null;
         }
 
-        /// <summary>
-        /// Returns the index of the given DetailsDefinition, or -1 if not found.
-        /// </summary>
-        /// <param name="detailsDefinition">The DetailsDefinition to find.</param>
-        /// <exception cref="IndexOutOfRangeException">Thrown if detailsDefinition was null</exception>
-        /// <returns>The index of the requested DetailsDefinition, or -1 if not found.</returns>
-        public int GetIndexOfDetailsDefinition(BaseDetailsDefinition detailsDefinition)
-        {
-            if (detailsDefinition == null)
-            {
-                throw new IndexOutOfRangeException("Input argument " + nameof(detailsDefinition) + " was null.");
-            }
-            
-            int counter = 0;
-            foreach (BaseDetailsDefinition baseDetailsDefinition in m_DetailsDefinitions.Values)
-            {
-                if (baseDetailsDefinition == detailsDefinition)
-                {
-                    return counter;
-                }
-
-                counter++;
-            }
-
-            return -1;
-        }
-
         /// <summary> 
-        /// Remove the requested DetailsDefinition by type from this GameItemDefinition.
+        /// Remove the requested DetailDefinition by type from this GameItemDefinition.
         /// </summary>
-        /// <typeparam name="T">The type of DetailsDefinition we want to remove.</typeparam>
-        public bool RemoveDetailsDefinition<T>()
-            where T : BaseDetailsDefinition
+        /// <typeparam name="T">The type of DetailDefinition we want to remove.</typeparam>
+        public bool RemoveDetailDefinition<T>()
+            where T : BaseDetailDefinition
         {
-            Tools.ThrowIfPlayMode("Cannot remove a DetailsDefinition from a GameItemDefinition during play mode.");
+            Tools.ThrowIfPlayMode("Cannot remove a DetailDefinition from a GameItemDefinition during play mode.");
 
-            var detailsDefinitionToRemove = GetDetailsDefinition<T>(false);
+            var detailDefinitionToRemove = GetDetailDefinition<T>(false);
 
-            if (detailsDefinitionToRemove == null)
+            if (detailDefinitionToRemove == null)
             {
                 return false;
             }
 
-            return RemoveDetailsDefinition(detailsDefinitionToRemove);
+            return RemoveDetailDefinition(detailDefinitionToRemove);
         }
 
         /// <summary>
-        /// Removes the specified DetailsDefinition from this GameItemDefinition.
+        /// Removes the specified DetailDefinition from this GameItemDefinition.
         /// </summary>
-        /// <param name="detailsDefinition">DetailsDefinition to remove from this GameItemDefinition.</param>
-        /// <returns>Whether or not the given details was successfully removed.</returns>
-        public bool RemoveDetailsDefinition(BaseDetailsDefinition detailsDefinition)
+        /// <param name="detailDefinition">DetailDefinition to remove from this GameItemDefinition.</param>
+        /// <returns>Whether or not the given detail was successfully removed.</returns>
+        public bool RemoveDetailDefinition(BaseDetailDefinition detailDefinition)
         {
-            Tools.ThrowIfPlayMode("Cannot remove a DetailsDefinition from a GameItemDefinition during play mode.");
+            Tools.ThrowIfPlayMode("Cannot remove a DetailDefinition from a GameItemDefinition during play mode.");
 
-            if (detailsDefinition == null)
+            if (detailDefinition == null)
             {
                 return false;
             }
 
-            var detailsType = detailsDefinition.GetType();
-            if (!m_DetailsDefinitions.ContainsKey(detailsType))
+            var detailType = detailDefinition.GetType();
+            if (!m_DetailDefinitions.ContainsKey(detailType))
             {
                 return false;
             }
 
-            m_DetailsDefinitions.Remove(detailsType);
+            m_DetailDefinitions.Remove(detailType);
 
 #if UNITY_EDITOR
             if (EditorUtility.IsPersistent(this))
             {
-                AssetDatabase.RemoveObjectFromAsset(detailsDefinition);
+                AssetDatabase.RemoveObjectFromAsset(detailDefinition);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
@@ -424,28 +414,35 @@ namespace UnityEngine.GameFoundation
             return true;
         }
 
-        private int RemoveAllDetailsDefinitions()
+        /// <summary>
+        /// This makes sure that any detail definitions are first
+        /// removed from the asset before being removed from the GameItemDefinition.
+        /// This ensures that there are no orphaned assets nested in the catalog asset.
+        /// </summary>
+        /// <returns>Returns an int indicating how many detail definitions were removed.</returns>
+        /// <exception cref="Exception">Throws an exception if called during play mode.</exception>
+        private int RemoveAllDetailDefinitions()
         {
             if (Application.isPlaying)
             {
-                throw new System.Exception("Cannot remove DetailsDefinitions from a GameItemDefinition during play mode.");
+                throw new System.Exception("Cannot remove DetailDefinitions from a GameItemDefinition during play mode.");
             }
 
-            int count = m_DetailsDefinitions.Count;
+            int count = m_DetailDefinitions.Count;
 
-            // if any DetailsDefinitions are actually attached
+            // if any DetailDefinitions are actually attached
             if (count > 0)
             {
 #if UNITY_EDITOR
                 // remove them from the asset database
-                foreach(var detailsDefinitionToRemove in m_DetailsDefinitions)
+                foreach(var detailDefinitionToRemove in m_DetailDefinitions)
                 {
-                    AssetDatabase.RemoveObjectFromAsset(detailsDefinitionToRemove.Value);
+                    AssetDatabase.RemoveObjectFromAsset(detailDefinitionToRemove.Value);
                 }
 #endif
 
                 // clear the list
-                m_DetailsDefinitions.Clear();
+                m_DetailDefinitions.Clear();
 
                 // save updated asset database
 #if UNITY_EDITOR
@@ -457,23 +454,21 @@ namespace UnityEngine.GameFoundation
             return count;
         }
 
-        internal void OnRemove()
+        /// <summary>
+        /// To be called before destroying a GameItemDefinition.
+        /// Use this only to clean up the GameItemDefinition being destroyed.
+        /// For example, if it has children that are nested assets,
+        /// then make sure to cleanly remove those assets from the catalog asset.
+        /// </summary>
+        /// <exception cref="Exception">Throws an exception if called during play mode.</exception>
+        internal virtual void OnRemove()
         {
             if (Application.isPlaying)
             {
                 throw new System.Exception("GameItemDefinitions cannot be removed during play mode.");
             }
 
-            RemoveAllDetailsDefinitions();
-        }
-
-        /// <summary>
-        /// Returns the number of DetailsDefinitions attached to this GameItemDefinition.
-        /// </summary>
-        /// <returns>The number of DetailsDefinitions attached to this GameItemDefinition.</returns>
-        public int detailsDefinitionCount
-        {
-            get { return m_DetailsDefinitions.Count; }
+            RemoveAllDetailDefinitions();
         }
 
         /// <summary>
@@ -501,47 +496,48 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Called before serialization, this will copy over all keys and values from 
-        /// the DetailsDefinitions dictionary into their serializable lists.
+        /// the DetailDefinitions dictionary into their serializable lists.
         /// </summary>
         public void OnBeforeSerialize()
         {
-            m_DetailsDefinitionValues.Clear();
+            m_DetailDefinitionValues.Clear();
             
-            foreach (var kv_Details in m_DetailsDefinitions)
+            foreach (var kv_Detail in m_DetailDefinitions)
             {
-                m_DetailsDefinitionValues.Add(kv_Details.Value);
+                m_DetailDefinitionValues.Add(kv_Detail.Value);
             }
         }
 
         /// <summary>
-        /// Called after serialization, this will pull out the DetailsDefinition keys and values from the lists and store them into the main dictionary.
+        /// Called after serialization, this will pull out the DetailDefinition keys and values from the lists and store them into the main dictionary.
         /// </summary>
         public void OnAfterDeserialize()
         {
-            m_DetailsDefinitions = new Dictionary<Type, BaseDetailsDefinition>();
+            m_DetailDefinitions = new Dictionary<Type, BaseDetailDefinition>();
 
-            for (int i = 0; i < m_DetailsDefinitionValues.Count; i++)
+            for (int i = 0; i < m_DetailDefinitionValues.Count; i++)
             {
-                m_DetailsDefinitions.Add(m_DetailsDefinitionValues[i].GetType(), m_DetailsDefinitionValues[i]);
+                m_DetailDefinitions.Add(m_DetailDefinitionValues[i].GetType(), m_DetailDefinitionValues[i]);
             }
         }
 
         /// <summary>
-        /// Creates a new GameItemDefinition by id and displayName.
+        /// Creates a new GameItemDefinition by Id and displayName.
         /// </summary>
-        /// <param name="id">The id this GameItemDefinition will use.</param>
+        /// <param name="id">The Id this GameItemDefinition will use.</param>
         /// <param name="displayName">The display name this GameItemDefinition will use.</param>
         /// <returns>The newly created GameItemDefinition.</returns>
         public static GameItemDefinition Create(string id, string displayName)
         {
             Tools.ThrowIfPlayMode("Cannot create a GameItemDefinition while in play mode.");
-            
+
             GameItemDefinition gameItem = CreateInstance<GameItemDefinition>();
             gameItem.Initialize(id, displayName);
+            gameItem.name = $"{id}_GameItem";
 
             return gameItem;
         }
-        
+
         protected virtual void Initialize(string id, string displayName)
         {
             if (string.IsNullOrEmpty(id))
@@ -553,16 +549,15 @@ namespace UnityEngine.GameFoundation
             {
                 throw new System.ArgumentException("GameItemDefinition can only be alphanumeric with optional dashes or underscores.");
             }
-            
+
             if (string.IsNullOrEmpty(displayName))
             {
                 throw new System.ArgumentException("GameItemDefinition cannot have null or empty displayName.");
             }
-            
+
             m_Id = id;
             m_DisplayName = displayName;
             m_Hash = Tools.StringToHash(id);
-            name = displayName;
         }
     }
 }

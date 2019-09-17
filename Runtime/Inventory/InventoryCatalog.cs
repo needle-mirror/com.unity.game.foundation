@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using UnityEditor;
+﻿using UnityEditor;
 
 namespace UnityEngine.GameFoundation
 {
@@ -7,7 +6,7 @@ namespace UnityEngine.GameFoundation
     /// Definitions for InventoryItemDefinitions and InventoryDefinitions.
     /// The Catalog serves as a way to find references to Definitions, as needed.
     /// </summary>
-    [CreateAssetMenu(fileName = "InventoryCatalog.asset", menuName = "Game Foundation/Catalog/Inventory Catalog")]
+    /// <inheritdoc/>
     public class InventoryCatalog : BaseCatalog<InventoryDefinition, Inventory, InventoryItemDefinition, InventoryItem>
     {
         internal static readonly string k_MainInventoryDefinitionId = "main";
@@ -26,7 +25,7 @@ namespace UnityEngine.GameFoundation
         public static InventoryCatalog Create()
         {
             Tools.ThrowIfPlayMode("Cannot create an InventoryCatalog while in play mode.");
-            
+
             var inventoryCatalog = ScriptableObject.CreateInstance<InventoryCatalog>();
 
             return inventoryCatalog;
@@ -36,25 +35,18 @@ namespace UnityEngine.GameFoundation
         /// <summary>
         /// This will make sure main and wallet exist and are setup, and fix things if they aren't.
         /// </summary>
-        public void VerifyDefaultInventories()
+        internal override void VerifyDefaultCollections()
         {
             if (!HasMainCollection())
             {
                 var mainInventoryDefinition = InventoryDefinition.Create(k_MainInventoryDefinitionId, k_MainInventoryDefinitionName);
-                m_CollectionDefinitions.Add(mainInventoryDefinition);
+                AddCollectionDefinition(mainInventoryDefinition);
+
+                // the Scriptable Object name that appears in the Project window
+                mainInventoryDefinition.name = $"{k_MainInventoryDefinitionId}_Inventory";
 
                 AssetDatabase.AddObjectToAsset(mainInventoryDefinition, this);
-                
-                AssetDatabase.SaveAssets();
-                AssetDatabase.Refresh();
-            }
-            
-            if (!HasMainDefaultCollection())
-            {
-                var main = GetCollectionDefinition(k_MainInventoryDefinitionId);
-                var mainInventoryDefaultCollectionDefinition = new InventoryDefaultCollectionDefinition(k_MainInventoryDefinitionId, k_MainInventoryDefinitionName, main);
-                m_DefaultCollectionDefinitions.Add(mainInventoryDefaultCollectionDefinition);
-                
+
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
@@ -62,17 +54,12 @@ namespace UnityEngine.GameFoundation
             if (!HasWalletCollection())
             {
                 var walletInventoryDefinition = InventoryDefinition.Create(k_WalletInventoryDefinitionId, k_WalletInventoryDefinitionName);
-                m_CollectionDefinitions.Add(walletInventoryDefinition);
-                
-                AssetDatabase.SaveAssets();
-                AssetDatabase.AddObjectToAsset(walletInventoryDefinition, this);
-            }
+                AddCollectionDefinition(walletInventoryDefinition);
 
-            if (!HasWalletDefaultCollection())
-            {
-                var walletInventoryDefaultCollectionDefinition = new InventoryDefaultCollectionDefinition(k_WalletInventoryDefinitionId, k_WalletInventoryDefinitionName, GetCollectionDefinition(k_WalletInventoryDefinitionId));
-                m_DefaultCollectionDefinitions.Add(walletInventoryDefaultCollectionDefinition);
-                
+                // the Scriptable Object name that appears in the Project window
+                walletInventoryDefinition.name = $"{k_WalletInventoryDefinitionId}_Inventory";
+
+                AssetDatabase.AddObjectToAsset(walletInventoryDefinition, this);
                 AssetDatabase.SaveAssets();
                 AssetDatabase.Refresh();
             }
@@ -81,20 +68,7 @@ namespace UnityEngine.GameFoundation
 
         private bool HasMainCollection()
         {
-            foreach (InventoryDefinition inventoryDefinition in m_CollectionDefinitions)
-            {
-                if (inventoryDefinition.id == k_MainInventoryDefinitionId)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private bool HasMainDefaultCollection()
-        {
-            foreach (InventoryDefaultCollectionDefinition inventoryDefinition in m_DefaultCollectionDefinitions)
+            foreach (InventoryDefinition inventoryDefinition in collectionDefinitions)
             {
                 if (inventoryDefinition.id == k_MainInventoryDefinitionId)
                 {
@@ -107,7 +81,7 @@ namespace UnityEngine.GameFoundation
 
         private bool HasWalletCollection()
         {
-            foreach (InventoryDefinition inventoryDefinition in m_CollectionDefinitions)
+            foreach (InventoryDefinition inventoryDefinition in collectionDefinitions)
             {
                 if (inventoryDefinition.id == k_WalletInventoryDefinitionId)
                 {
@@ -118,45 +92,15 @@ namespace UnityEngine.GameFoundation
             return false;
         }
 
-        private bool HasWalletDefaultCollection()
+        public override bool RemoveCollectionDefinition(InventoryDefinition collectionDefinition)
         {
-            foreach (InventoryDefaultCollectionDefinition inventoryDefinition in m_DefaultCollectionDefinitions)
+            if (collectionDefinition.id == k_WalletInventoryDefinitionId || collectionDefinition.id == k_MainInventoryDefinitionId)
             {
-                if (inventoryDefinition.id == k_WalletInventoryDefinitionId)
-                {
-                    return true;
-                }
+                Debug.LogWarning("Main or Wallet inventory definitions cannot be removed from InventoryCatalog.");
+                return false;
             }
-
-            return false;
+            
+            return base.RemoveCollectionDefinition(collectionDefinition);
         }
     }
-
-#if UNITY_EDITOR
-    /// <summary>
-    /// This class uses the AssetPostProcessor to verify a InventoryCatalog's default Inventories right after it is created as an asset.
-    /// </summary>
-    class InventoryCatalogImporter : AssetPostprocessor
-    {
-        private static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets,
-            string[] movedFromAssetPaths)
-        {
-            VerifyPaths(importedAssets);
-            VerifyPaths(movedAssets);
-            VerifyPaths(movedFromAssetPaths);
-        }
-
-        private static void VerifyPaths(string[] assetPaths)
-        {
-            foreach (string importedAsset in assetPaths)
-            {
-                var catalog = AssetDatabase.LoadAssetAtPath<InventoryCatalog>(importedAsset);
-                if (catalog != null)
-                {
-                    catalog.VerifyDefaultInventories();
-                }
-            }
-        }
-    }
-#endif
 }

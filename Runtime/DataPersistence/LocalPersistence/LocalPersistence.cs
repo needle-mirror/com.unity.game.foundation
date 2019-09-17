@@ -2,7 +2,7 @@ using System.IO;
 using System;
 using System.Text;
 
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     public class LocalPersistence : BaseDataPersistence
     {
@@ -12,14 +12,14 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <inheritdoc />
-        public override void Save(string identifier, ISerializableData content, Action onSaveCompleted = null, Action<Exception> onSaveFailed = null)
+        public override void Save(string identifier, ISerializableData content, Action onSaveCompleted = null, Action onSaveFailed = null)
         {
             SaveFile(identifier, content, onSaveCompleted, onSaveFailed);
         }
 
         //We need to extract that code from the Save() because it will be used in the child but the child need to override the Save method sometimes
         //So to not rewrite the same code I have done a function with it
-        protected void SaveFile(string identifier, ISerializableData content, Action onSaveFileCompleted, Action<Exception> onSaveFileFailed)
+        private void SaveFile(string identifier, ISerializableData content, Action onSaveFileCompleted, Action onSaveFileFailed)
         {
             string pathMain = $"{Application.persistentDataPath}/{identifier}";
             string pathBackup = $"{Application.persistentDataPath}/{identifier + "_backup"}";
@@ -29,9 +29,9 @@ namespace UnityEngine.GameFoundation
                 WriteFile(pathBackup, content);
                 File.Copy(pathBackup, pathMain, true);
             }
-            catch (Exception e)
+            catch
             {
-                onSaveFileFailed?.Invoke(e);
+                onSaveFileFailed?.Invoke();
                 return;
             }
 
@@ -39,7 +39,7 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <inheritdoc />
-        public override void Load<T>(string identifier, Action<ISerializableData> onLoadCompleted = null, Action<Exception> onLoadFailed = null)
+        public override void Load<T>(string identifier, Action<ISerializableData> onLoadCompleted = null, Action onLoadFailed = null)
         {
             string path;
             string pathMain = $"{Application.persistentDataPath}/{identifier}";
@@ -56,7 +56,7 @@ namespace UnityEngine.GameFoundation
             }
             else
             {
-                onLoadFailed?.Invoke(new Exception("File doesn't exist", null));
+                onLoadFailed?.Invoke();
                 return;
             }
 
@@ -65,9 +65,9 @@ namespace UnityEngine.GameFoundation
             {
                 strData = ReadFile(path);
             }
-            catch (Exception e)
+            catch
             {
-                onLoadFailed?.Invoke(e);
+                onLoadFailed?.Invoke();
                 return;
             }
 
@@ -75,7 +75,7 @@ namespace UnityEngine.GameFoundation
             onLoadCompleted?.Invoke(data);
         }
 
-        protected void WriteFile(string path, ISerializableData content)
+        private void WriteFile(string path, ISerializableData content)
         {
             using (var sw = new StreamWriter(path, false, Encoding.Default))
             {
@@ -84,7 +84,7 @@ namespace UnityEngine.GameFoundation
             }
         }
 
-        protected static string ReadFile(string path)
+        private static string ReadFile(string path)
         {
             FileInfo fileInfo = new FileInfo(path);
             var str = "";
@@ -97,7 +97,7 @@ namespace UnityEngine.GameFoundation
             return str;
         }
 
-        protected static bool DeleteFile(string path)
+        private static bool DeleteFile(string path)
         {
             try
             {
@@ -115,14 +115,14 @@ namespace UnityEngine.GameFoundation
             return false;
         }
 
-        protected string SerializeString(object o)
+        private string SerializeString(object o)
         {
-            return m_Serializer.Serialize(o, true);
+            return serializer.Serialize(o, true);
         }
 
-        protected T DeserializeString<T>(string value) where T : ISerializableData
+        private T DeserializeString<T>(string value) where T : ISerializableData
         {
-            return m_Serializer.Deserialize<T>(value, true);
+            return serializer.Deserialize<T>(value, true);
         }
     }
 }

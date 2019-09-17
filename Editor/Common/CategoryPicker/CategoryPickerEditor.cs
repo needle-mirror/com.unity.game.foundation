@@ -23,7 +23,7 @@ namespace UnityEditor.GameFoundation
 
         private List<CategoryRow> m_WrappableCategoryRows = new List<CategoryRow>();
         private List<CategoryDefinition> m_CategorySearchResults = new List<CategoryDefinition>();
-        private IEnumerable<CategoryDefinition> m_existingItemCategories;
+        private List<CategoryDefinition> m_existingItemCategories;
 
         private InventoryCatalog m_Catalog;
         private Rect m_CategoryItemsRect = new Rect();

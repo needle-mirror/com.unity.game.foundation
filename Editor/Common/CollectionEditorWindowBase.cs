@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.IO;
 using UnityEngine;
 using UnityEngine.GameFoundation;
 
@@ -10,8 +9,6 @@ namespace UnityEditor.GameFoundation
     /// </summary>
     internal abstract class CollectionEditorWindowBase : EditorWindow
     {
-        protected string m_CollectionTypeName;
-        
         protected int m_OldToolbarIndex { get; set; }
         protected int m_ToolbarIndex { get; set; }
 
@@ -38,23 +35,12 @@ namespace UnityEditor.GameFoundation
             m_ToolbarIndex = 0;
             m_OldToolbarIndex = -1;
 
-            SetUpNecessaryCatalogs();
             CreateEditors();
 
-            if (!VerifyGameFoundationSettings())
+            if (Resources.Load<GameFoundationSettings>("GameFoundationSettings") == null)
             {
                 Debug.LogWarning("No Game Foundation settings file has been found. Game Foundation code will automatically create one. Settings file is critical to Game Foundation, if you wish to remove it you will need to remove the entire Game Foundation package.");
             }
-        }
-
-        protected bool VerifyGameFoundationSettings()
-        {
-            return Resources.Load<GameFoundationSettings>("GameFoundationSettings") != null;
-        }
-        
-        protected bool VerifyGameItemCatalog()
-        {
-            return GameFoundationSettings.gameItemCatalog != null;
         }
 
         protected virtual void OnFocus()
@@ -86,7 +72,6 @@ namespace UnityEditor.GameFoundation
 
         protected void DrawCollectionEditor()
         {
-            SetUpNecessaryCatalogs();
             DrawDefaultState();
         }
 
@@ -133,60 +118,6 @@ namespace UnityEditor.GameFoundation
 
             // Update
             m_Editors[m_ToolbarIndex].Update();
-        }
-
-        protected void SetUpResourcesFolder()
-        {
-            string fullGameFoundationFolderPath = Path.Combine(Application.dataPath, GameFoundationSettings.kAssetsFolder);
-            string gameFoundationResourcesFolderPath = string.Format("{0}/Resources", GameFoundationSettings.kAssetsFolder);
-            string fullGameFoundationResourcesFolderPath = Path.Combine(Application.dataPath, gameFoundationResourcesFolderPath);
-
-            if (!Directory.Exists(fullGameFoundationFolderPath))
-            {
-                Directory.CreateDirectory(fullGameFoundationFolderPath);
-            }
-
-            if (!Directory.Exists(fullGameFoundationResourcesFolderPath))
-            {
-                Directory.CreateDirectory(fullGameFoundationResourcesFolderPath);
-            }
-        }
-
-        protected void CreateGameItemCatalog()
-        {
-            string createDatabaseFileName = "GameItemCatalog";
-            string gameItemCatalogAssetPath = string.Format("Assets/{0}/Resources/{1}.asset", GameFoundationSettings.kAssetsFolder, createDatabaseFileName);
-
-            SetUpResourcesFolder();
-
-            if (File.Exists(Path.Combine(Application.dataPath, gameItemCatalogAssetPath.Substring(7))))
-            {
-                gameItemCatalogAssetPath = CollectionEditorTools.CreateUniqueCatalogPath(gameItemCatalogAssetPath);
-            }
-
-            GameItemCatalog GameItemCatalog = ScriptableObject.CreateInstance<GameItemCatalog>();
-            AssetDatabase.CreateAsset(GameItemCatalog, gameItemCatalogAssetPath);
-            CollectionEditorTools.AssetDatabaseUpdate();
-
-            GameFoundationSettings.gameItemCatalog = GameItemCatalog;
-            Debug.LogWarningFormat("Creating new asset file at path {0} and connecting it to GameItemCatalog in GameFoundationSettings asset.", gameItemCatalogAssetPath);
-            ResetEditors();
-        }
-
-        protected void ResetEditors()
-        {
-            foreach (ICollectionEditor editor in m_Editors)
-            {
-                editor.ResetCache();
-            }
-        }
-
-        protected virtual void SetUpNecessaryCatalogs()
-        {
-            if (!VerifyGameItemCatalog())
-            {
-                CreateGameItemCatalog();
-            }
         }
     }
 }

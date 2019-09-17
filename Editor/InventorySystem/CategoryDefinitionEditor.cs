@@ -19,7 +19,7 @@ namespace UnityEditor.GameFoundation
 
         protected override List<CategoryDefinition> m_FilteredItems
         {
-            get 
+            get
             { return m_Items; }
         }
 
@@ -30,8 +30,8 @@ namespace UnityEditor.GameFoundation
         public override void OnWillEnter()
         {
             base.OnWillEnter();
-            
-            var itemCatalogDatabase = GameFoundationSettings.inventoryCatalog;
+
+            var itemCatalogDatabase = GameFoundationSettings.database.inventoryCatalog;
             if (itemCatalogDatabase == null)
                 return;
 
@@ -57,7 +57,7 @@ namespace UnityEditor.GameFoundation
         protected override void AddItem(CategoryDefinition category)
         {
             EditorAPIHelper.AddCategoryDefinitionToInventoryCatalog(category);
-            EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             window.Repaint();
         }
 
@@ -65,7 +65,7 @@ namespace UnityEditor.GameFoundation
         {
             CategoryDefinition categoryDefinition = EditorAPIHelper.CreateCategoryDefinition(m_NewItemId, m_NewItemDisplayName);
 
-            EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             AddItem(categoryDefinition);
             SelectItem(categoryDefinition);
             m_CurrentCategoryDefinitionId = m_NewItemId;
@@ -84,7 +84,7 @@ namespace UnityEditor.GameFoundation
                 if (categoryDefinition.displayName != displayName)
                 {
                     categoryDefinition.displayName = displayName;
-                    EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+                    EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
                 }
             }
         }
@@ -105,7 +105,7 @@ namespace UnityEditor.GameFoundation
             if (item != null)
             {
                 // loop through all inventory items and attempt to remove category in case they are referring to it.
-                foreach (InventoryItemDefinition inventoryItemDefinition in GameFoundationSettings.inventoryCatalog.allItemDefinitions)
+                foreach (InventoryItemDefinition inventoryItemDefinition in GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions())
                 {
                     inventoryItemDefinition.RemoveCategory(item);
                 }

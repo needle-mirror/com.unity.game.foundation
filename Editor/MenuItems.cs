@@ -28,5 +28,14 @@
         {
             StatEditorWindow.ShowWindow();
         }
+        
+        [MenuItem("Window/Game Foundation/Tools/Delete Local Persistence Data", false, 2000)]
+        public static void DeleteRuntimeData()
+        {
+            if (EditorUtility.DisplayDialog("Are you sure?", "Do you want to delete Game Foundation\'s runtime data?", "Yes", "No"))
+            {
+                UnityEngine.GameFoundation.Tools.DeleteRuntimeData();
+            }
+    }
     }
 }

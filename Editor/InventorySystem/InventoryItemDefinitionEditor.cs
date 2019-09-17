@@ -29,14 +29,17 @@ namespace UnityEditor.GameFoundation
 
         public InventoryItemDefinitionEditor(string name, InventoryEditorWindow window) : base(name, window)
         {
-            m_CategoryPicker = new CategoryPickerEditor(GameFoundationSettings.inventoryCatalog);
+            m_CategoryPicker = new CategoryPickerEditor(GameFoundationSettings.database.inventoryCatalog);
         }
 
         public override void OnWillEnter()
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.inventoryCatalog == null) return;
+            if (GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                return;
+            }
 
             CategoryFilterEditor.RefreshSidebarCategoryFilterList(EditorAPIHelper.GetInventoryCatalogCategoriesList());
 
@@ -52,20 +55,20 @@ namespace UnityEditor.GameFoundation
         {
             InventoryItemDefinition itemDefinition = EditorAPIHelper.CreateInventoryItemDefinition(m_NewItemId, m_NewItemDisplayName);
 
-            CollectionEditorTools.AssetDatabaseAddObject(itemDefinition, GameFoundationSettings.inventoryCatalog);
+            CollectionEditorTools.AssetDatabaseAddObject(itemDefinition, GameFoundationSettings.database.inventoryCatalog);
 
             // If filter is currently set to a category, add that category to the category list of the item currently being created
             CategoryDefinition currentFilteredCategory = CategoryFilterEditor.GetCurrentFilteredCategory(EditorAPIHelper.GetInventoryCatalogCategoriesList());
             if (currentFilteredCategory != null)
             {
-                IEnumerable<CategoryDefinition> existingItemCategories = EditorAPIHelper.GetGameItemDefinitionCategories(itemDefinition);
+                List<CategoryDefinition> existingItemCategories = EditorAPIHelper.GetGameItemDefinitionCategories(itemDefinition);
                 if (existingItemCategories != null && !existingItemCategories.Any(category => category.hash == currentFilteredCategory.hash))
                 {
                     itemDefinition.AddCategory(currentFilteredCategory);
                 }
             }
 
-            EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             AddItem(itemDefinition);
             SelectItem(itemDefinition);
             m_CurrentItemId = m_NewItemId;
@@ -75,7 +78,7 @@ namespace UnityEditor.GameFoundation
         protected override void AddItem(InventoryItemDefinition item)
         {
             EditorAPIHelper.AddItemDefinitionToInventoryCatalog(item);
-            EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             window.Repaint();
         }
 
@@ -89,7 +92,7 @@ namespace UnityEditor.GameFoundation
 
             EditorGUILayout.Space();
 
-            DetailsEditorGUI.DrawDetailsDetail(inventoryItemDefinition);
+            DetailEditorGUI.DrawDetailView(inventoryItemDefinition);
 
             // make sure this is the last to draw
             m_CategoryPicker.DrawCategoryPickerPopup(inventoryItemDefinition, EditorAPIHelper.GetInventoryCatalogCategoriesList());
@@ -111,14 +114,14 @@ namespace UnityEditor.GameFoundation
 
                 ReferenceDefinitionPickerEditor.DrawReferenceDefinitionPicker(
                     inventoryItemDefinition,
-                    new List<GameItemDefinition>(GameFoundationSettings.inventoryCatalog.allItemDefinitions));
+                    new List<GameItemDefinition>(GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions()));
             }
         }
 
         protected override void DrawSidebarList()
         {
             EditorGUILayout.Space();
-            
+
             bool categoryChanged;
             CategoryFilterEditor.DrawCategoryFilter(out categoryChanged);
 
@@ -164,7 +167,7 @@ namespace UnityEditor.GameFoundation
             {
                 CollectionEditorTools.AssetDatabaseRemoveObject(item);
                 EditorAPIHelper.RemoveItemDefinitionFromInventoryCatalog(item);
-                EditorUtility.SetDirty(GameFoundationSettings.inventoryCatalog);
+                EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             }
         }
     }

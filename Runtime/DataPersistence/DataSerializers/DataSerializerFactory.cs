@@ -1,6 +1,6 @@
 using System;
 
-namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation.DataPersistence
 {
     /// <summary>
     /// Data Serializer factory class

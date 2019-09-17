@@ -13,7 +13,7 @@ namespace UnityEditor.GameFoundation
     internal static class CollectionEditorTools
     {
         /// <summary>
-        /// Converts a given display name to a definition id which follows variable naming rules.
+        /// Converts a given display name to a definition Id which follows variable naming rules.
         /// Conversions it makes:
         /// 1. Removes special characters with the exception of underscore
         /// 2. Removes any non English-alphabet characters at the beginning of the string, until it gets to an alphabet character
@@ -65,9 +65,9 @@ namespace UnityEditor.GameFoundation
         /// one doesn't conflict with any existing ones.
         /// If it does conflict, it will add a number to the end corresponding to when there is no longer a conflict.
         /// </summary>
-        /// <param name="definitionId">The definition id that needs to be checked to see if it exists yet.</param>
-        /// <param name="existingIds">The list of existing objects to check their ids against the new definitonId.</param>
-        /// <returns>The definition id that is not a duplicate, either the original one passed in, or one with a valid number at the end.</returns>
+        /// <param name="definitionId">The definition Id that needs to be checked to see if it exists yet.</param>
+        /// <param name="existingIds">The list of existing objects to check their Ids against the new definitonId.</param>
+        /// <returns>The definition Id that is not a duplicate, either the original one passed in, or one with a valid number at the end.</returns>
         public static string DeDuplicateNewId(string definitionId, HashSet<string> existingIds)
         {
             string testId = definitionId;
@@ -92,8 +92,8 @@ namespace UnityEditor.GameFoundation
         /// </summary>
         /// <param name="displayName">The string value entered in by the user as a display name. All types
         /// of characters are possible for this value.</param>
-        /// <param name="existingIds">The list of existing objects to check their ids against the new definitonId.</param>
-        /// <returns>The definition id that is not a duplicate, either the original one passed in, or one with a valid number at the end.</returns>
+        /// <param name="existingIds">The list of existing objects to check their Ids against the new definitonId.</param>
+        /// <returns>The definition Id that is not a duplicate, either the original one passed in, or one with a valid number at the end.</returns>
         public static string CraftUniqueId(string displayName, HashSet<string> existingIds)
         {
             string newId = ConvertNameToId(displayName);
@@ -201,7 +201,7 @@ namespace UnityEditor.GameFoundation
         /// No whitespace or empty strings are permitted
         /// </summary>
         /// <param name="id">id to check</param>
-        /// <returns>whether id is valid or not</returns>
+        /// <returns>whether Id is valid or not</returns>
         public static bool IsValidId(string id)
         {
             return id != null && Regex.IsMatch(id, @"^[\w-_]+$");

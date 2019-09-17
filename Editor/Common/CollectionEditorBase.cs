@@ -375,27 +375,5 @@ namespace UnityEditor.GameFoundation
                 SelectItem(null);
             }
         }
-
-        private int GetItemListIndex(T item)
-        {
-            for (int i = 0; i < m_Items.Count; i++)
-            {
-                if (m_Items == item)
-                {
-                    return i;
-                }
-            }
-
-            return -1;
-        }
-
-        public void ResetCache()
-        {
-            m_SelectedItem = null;
-            m_PreviouslySelectedItem = null;
-            m_ItemToRemove = null;
-            m_NewItemDisplayName = string.Empty;
-            m_NewItemId = string.Empty;
-        }
     }
 }

@@ -45,17 +45,22 @@ namespace UnityEditor.GameFoundation
             }
             else if (s_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
             {
-                return fullList.FindAll(gameItemDefinition => gameItemDefinition.categories == null || gameItemDefinition.categories.Count() == 0);
+                return fullList.FindAll(gameItemDefinition =>
+                {
+                    var categories = gameItemDefinition.GetCategories();
+                    return categories == null || !categories.Any();
+                });
             }
 
             return fullList.FindAll(gameItemDefinition =>
                 {
-                    if (gameItemDefinition.categories == null || catalogCategories == null)
+                    var categories = gameItemDefinition.GetCategories();
+                    if (categories == null || catalogCategories == null)
                     {
                         return false;
                     }
 
-                    return gameItemDefinition.categories.Any(categoryDefinition => categoryDefinition.hash == catalogCategories[s_SelectedFilterCategoryIdx - k_ListOffset].hash);
+                    return categories.Any(categoryDefinition => categoryDefinition.hash == catalogCategories[s_SelectedFilterCategoryIdx - k_ListOffset].hash);
                 });
         }
 
