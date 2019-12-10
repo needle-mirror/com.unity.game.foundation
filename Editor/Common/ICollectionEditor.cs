@@ -9,5 +9,6 @@
         void OnWillEnter();
         void OnWillExit();
         void ValidateSelection();
+        void RefreshItems();
     }
 }

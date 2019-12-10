@@ -68,6 +68,12 @@ namespace UnityEngine.GameFoundation.DataPersistence
         /// <summary>
         /// Basic constructor that take in the type of the value of the stat, the GameItem hash id of the stat, the definition id of the stat, the current value and the default value of the stat.
         /// </summary>
+        /// <param name="type">The stat type to use.</param>
+        /// <param name="gameItemId">The id of the game item.</param>
+        /// <param name="definitionId">The id of the definition.</param>
+        /// <param name="value">The value we are serializing.</param>
+        /// <param name="defaultValue">The default value to use if needed.</param>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown if the given type is not valid.</exception>
         public StatItemSerializableData(StatDictionarySerializableData.StatType type, int gameItemId, string definitionId, object value, object defaultValue)
         {
             m_GameItemId = gameItemId;

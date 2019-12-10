@@ -49,6 +49,11 @@ namespace UnityEditor.GameFoundation
             {
                 collectionEditor.ValidateSelection();
             }
+
+            if (m_Editors != null && m_Editors.Count > 0 && m_ToolbarIndex < m_Editors.Count)
+            {
+                m_Editors[m_ToolbarIndex].RefreshItems();
+            }
         }
 
         /// <summary>

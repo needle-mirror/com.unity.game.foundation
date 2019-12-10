@@ -9,7 +9,6 @@
     public abstract class BaseDetailDefinition : ScriptableObject
     {
         // pointer to BaseItemDefinition OR BaseCollectionDefinition
-        [SerializeField]
         private GameItemDefinition m_Owner;
 
         /// <summary>
@@ -28,6 +27,15 @@
         /// </summary>
         /// <returns>The 'friendly' display name for this DetailDefinition.</returns>
         public abstract string DisplayName();
+
+        /// <summary>
+        /// Returns string message which explains the purpose of this DetailDefinition, for the purpose of displaying as a tooltip in editor.
+        /// </summary>
+        /// <returns>The string tooltip message of this DetailDefinition.</returns>
+        public virtual string TooltipMessage()
+        {
+            return string.Empty;
+        }
 
         // build runtime (instance) version of this DetailDefinition
         // NOTE: this is not abstract because it's perfectly fine for a DetailDefinition NOT …

@@ -1,0 +1,5 @@
+{
+	"displayName":"02 Inventory Manager",
+	"description": "This sample showcases how to work with multiple inventories using the inventory manager.",
+	"createSeparatePackage": false
+}

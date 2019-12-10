@@ -36,6 +36,11 @@
             return definition;
         }
 
+        /// <summary>
+        /// Gets the category definition that matches the given hash.
+        /// </summary>
+        /// <param name="categoryHash">The hash to look for.</param>
+        /// <returns>Reference to the category definition of the requested hash.</returns>
         protected override CategoryDefinition GetCategoryDefinition(int categoryHash)
         {
             return GameFoundationSettings.database.inventoryCatalog.GetCategory(categoryHash);

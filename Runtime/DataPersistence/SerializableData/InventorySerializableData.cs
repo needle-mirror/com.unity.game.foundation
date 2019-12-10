@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace UnityEngine.GameFoundation.DataPersistence
 {
@@ -10,6 +10,7 @@ namespace UnityEngine.GameFoundation.DataPersistence
     {
         [SerializeField] string m_DefinitionId = null;
         [SerializeField] string m_InventoryId = null;
+        [SerializeField] string m_DisplayName = null;
         [SerializeField] InventoryItemSerializableData[] m_Items = null;
         [SerializeField] int m_GameItemLookupId;
         
@@ -27,6 +28,14 @@ namespace UnityEngine.GameFoundation.DataPersistence
         public string inventoryId
         {
             get { return m_InventoryId; }
+        }
+
+        /// <summary>
+        /// The friendly name of the inventory that will be displayed
+        /// </summary>
+        public string displayName
+        {
+            get { return m_DisplayName; }
         }
 
         /// <summary>
@@ -49,12 +58,15 @@ namespace UnityEngine.GameFoundation.DataPersistence
         /// Basic constructor that takes in an inventory definition id and an array of InventoryItemData of all inventory items contained in the inventory.
         /// </summary>
         /// <param name="definitionId">The definition id of the inventory</param>
+        /// <param name="inventoryId">The id of the inventory</param>
+        /// <param name="displayName">The friendly name of the inventory that will be displayed</param>
         /// <param name="items">The inventory items contained in the inventory</param>
         /// <param name="gameItemLookupId">The GameItemId of the item use by GameItemLookup</param>
-        public InventorySerializableData(string definitionId, string inventoryId, InventoryItemSerializableData[] items, int gameItemLookupId)
+        public InventorySerializableData(string definitionId, string inventoryId, string displayName, InventoryItemSerializableData[] items, int gameItemLookupId)
         {
             m_DefinitionId = definitionId;
             m_InventoryId = inventoryId;
+            m_DisplayName = displayName;
             m_Items = items;
             m_GameItemLookupId = gameItemLookupId;
         }

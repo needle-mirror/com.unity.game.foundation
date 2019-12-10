@@ -5,6 +5,9 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// </summary>
     public enum DataSerializerType
     {
+        /// <summary>
+        /// Json formatted data.
+        /// </summary>
         Json
     }
 }

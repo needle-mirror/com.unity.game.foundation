@@ -17,9 +17,14 @@ namespace UnityEngine.GameFoundation
         where T3 : BaseItemDefinition<T1, T2, T3, T4>
         where T4 : BaseItem<T1, T2, T3, T4>
     {
+        /// <summary>
+        /// Simple constructor that will take in the definition and owner for this base item.
+        /// </summary>
+        /// <param name="definition">The definition this base item is based off of.</param>
+        /// <param name="owner">The collection this base item will be contained within.</param>
         protected BaseItem(T3 definition, T2 owner) : this(definition, owner, 0){}
         
-        internal BaseItem(T3 definition, T2 owner, int gameItemId) : base(definition, definition.id, gameItemId)
+        internal BaseItem(T3 definition, T2 owner, int gameItemId) : base(definition, definition.id, null, gameItemId)
         {
             m_Definition = definition;
             m_Owner = owner;

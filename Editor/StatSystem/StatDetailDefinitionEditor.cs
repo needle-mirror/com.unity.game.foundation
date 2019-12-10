@@ -27,7 +27,7 @@ namespace UnityEditor.GameFoundation
             // NOTE: this is a workaround to avoid a problem with Unity asset importer
             // - sometimes targets[0] is null when it shouldn't be
             // - the first two conditions are just a precaution
-            if (targets == null || targets.Length <= 0 || targets[0] == null)
+            if (targets.IsNullOrEmpty())
             {
                 return;
             }
@@ -114,7 +114,7 @@ namespace UnityEditor.GameFoundation
             // NOTE: this is a workaround to avoid a problem with Unity asset importer
             // - sometimes targets[0] is null when it shouldn't be
             // - the first two conditions are just a precaution
-            if (targets == null || targets.Length <= 0 || targets[0] == null)
+            if (targets.IsNullOrEmpty())
             {
                 return;
             }
@@ -140,6 +140,9 @@ namespace UnityEditor.GameFoundation
 
                 if (m_ListItems.Count > 0)
                 {
+                    int indexToDelete = -1;
+                    StatDefinition.StatValueType typeToDelete = StatDefinition.StatValueType.Int; // TODO: would like 'None' in this enum
+
                     for (int i = m_ListItems.Count - 1; i >= 0; i--)
                     {
                         // draw row: Stat display name | value type | default value | delete button
@@ -163,30 +166,54 @@ namespace UnityEditor.GameFoundation
 
                             if (GUILayout.Button("X", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(40f)))
                             {
-                                switch (listItem.statDefinition.statValueType)
-                                {
-                                    case StatDefinition.StatValueType.Int:
-                                        m_StatDefaultIntValues_Keys_SerializedProperty.DeleteArrayElementAtIndex(listItem.indexInOriginalList);
-                                        m_StatDefaultIntValues_Values_SerializedProperty.DeleteArrayElementAtIndex(listItem.indexInOriginalList);
-                                        break;
-
-                                    case StatDefinition.StatValueType.Float:
-                                        m_StatDefaultFloatValues_Keys_SerializedProperty.DeleteArrayElementAtIndex(listItem.indexInOriginalList);
-                                        m_StatDefaultFloatValues_Values_SerializedProperty.DeleteArrayElementAtIndex(listItem.indexInOriginalList);
-                                        break;
-
-                                    default:
-                                        Debug.LogError("invalid type detected when trying to delete a stat default value");
-                                        break;
-                                }
+                                indexToDelete = listItem.indexInOriginalList;
+                                typeToDelete = listItem.statDefinition.statValueType;
                             }
+                        }
+                    }
+
+                    // do any actual deletion outside the rendering loop to prevent sync issues
+                    if (indexToDelete >= 0)
+                    {
+                        switch (typeToDelete)
+                        {
+                            case StatDefinition.StatValueType.Int:
+                                m_StatDefaultIntValues_Keys_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
+                                m_StatDefaultIntValues_Values_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
+                                break;
+
+                            case StatDefinition.StatValueType.Float:
+                                m_StatDefaultFloatValues_Keys_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
+                                m_StatDefaultFloatValues_Values_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
+                                break;
+
+                            default:
+                                Debug.LogError("invalid type detected when trying to delete a stat default value");
+                                break;
                         }
                     }
                 }
                 else
                 {
                     EditorGUILayout.Space();
-                    GUILayout.Label("no stats configured", GameFoundationEditorStyles.centeredGrayLabel);
+
+                    // if the list has one item, that's the 'Select Stat' item and shouldn't be counted
+                    if (m_AvailableStatDefinitionDisplayNames.Length <= 1)
+                    {
+                        EditorGUILayout.HelpBox(
+                            "Before you can add stats here, you'll need to create stats in the Stat window.",
+                            MessageType.Info);
+
+                        if (GUILayout.Button("Stat Window"))
+                        {
+                            StatEditorWindow.ShowWindow();
+                        }
+                    }
+                    else
+                    {
+                        GUILayout.Label("no stats configured", GameFoundationEditorStyles.centeredGrayLabel);
+                    }
+
                     EditorGUILayout.Space();
                 }
 
@@ -194,13 +221,16 @@ namespace UnityEditor.GameFoundation
 
                 s_StatDefinitionJustAdded = null;
 
-                if (m_AvailableStatDefinitionDisplayNames.Length > 1)
+                // horizontal rule
+
+                Rect lineRect1 = EditorGUILayout.GetControlRect(false, 1);
+                EditorGUI.DrawRect(lineRect1, EditorGUIUtility.isProSkin ? Color.black : Color.gray);
+
+                // if there is only one (or fewer) options in the list, disable this whole section
+                // if the list has one item, that's the 'Select Stat' item and shouldn't be counted
+
+                using (new EditorGUI.DisabledScope(m_AvailableStatDefinitionDisplayNames.Length <= 1))
                 {
-                    // horizontal rule
-
-                    Rect lineRect1 = EditorGUILayout.GetControlRect(false, 1);
-                    EditorGUI.DrawRect(lineRect1, EditorGUIUtility.isProSkin ? Color.black : Color.gray);
-
                     using (new GUILayout.HorizontalScope())
                     {
                         // popup with Stat types that are not already in the dict
@@ -276,15 +306,11 @@ namespace UnityEditor.GameFoundation
             EditorGUILayout.Space();
         }
 
-        private class StatDefaultsListItem
+        private struct StatDefaultsListItem
         {
             public int indexInOriginalList;
             public StatDefinition statDefinition;
             public SerializedProperty valueProp;
-
-            private StatDefaultsListItem()
-            {
-            }
 
             public StatDefaultsListItem(int inIndexInOriginalList, StatDefinition inStatDefinition, SerializedProperty inValueProp)
             {

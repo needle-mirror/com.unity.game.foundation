@@ -14,6 +14,9 @@ namespace UnityEngine.GameFoundation
         internal static readonly string k_WalletInventoryDefinitionId = "wallet";
         internal static readonly string k_WalletInventoryDefinitionName = "Wallet";
 
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
         protected InventoryCatalog()
         {
         }
@@ -37,7 +40,7 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         internal override void VerifyDefaultCollections()
         {
-            if (!HasMainCollection())
+            if (GetCollectionDefinition(InventoryManager.mainInventoryHash) == null)
             {
                 var mainInventoryDefinition = InventoryDefinition.Create(k_MainInventoryDefinitionId, k_MainInventoryDefinitionName);
                 AddCollectionDefinition(mainInventoryDefinition);
@@ -51,7 +54,7 @@ namespace UnityEngine.GameFoundation
                 AssetDatabase.Refresh();
             }
 
-            if (!HasWalletCollection())
+            if (GetCollectionDefinition(InventoryManager.walletInventoryHash) == null)
             {
                 var walletInventoryDefinition = InventoryDefinition.Create(k_WalletInventoryDefinitionId, k_WalletInventoryDefinitionName);
                 AddCollectionDefinition(walletInventoryDefinition);
@@ -66,32 +69,11 @@ namespace UnityEngine.GameFoundation
         }
 #endif
 
-        private bool HasMainCollection()
-        {
-            foreach (InventoryDefinition inventoryDefinition in collectionDefinitions)
-            {
-                if (inventoryDefinition.id == k_MainInventoryDefinitionId)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private bool HasWalletCollection()
-        {
-            foreach (InventoryDefinition inventoryDefinition in collectionDefinitions)
-            {
-                if (inventoryDefinition.id == k_WalletInventoryDefinitionId)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
+        /// <summary>
+        /// Removes the given collection definition from this catalog.
+        /// </summary>
+        /// <param name="collectionDefinition">The collection definition to remove.</param>
+        /// <returns>Whether or not it was successfully removed.</returns>
         public override bool RemoveCollectionDefinition(InventoryDefinition collectionDefinition)
         {
             if (collectionDefinition.id == k_WalletInventoryDefinitionId || collectionDefinition.id == k_MainInventoryDefinitionId)

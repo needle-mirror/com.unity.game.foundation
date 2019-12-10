@@ -8,8 +8,7 @@
     /// </summary>
     public abstract class BaseDetail     //TODO API: (also see todo below) consider <T> for basebase or baseitem or basedetail   OR  use BaseItemDetail : BaseDetail  and  BaseCollectionDetail : BaseDetail so you can derive from either of THREE base classes
     {
-        // pointer to GameItem that owns this Detail
-        protected GameItem m_Owner;
+        private GameItem m_Owner;
 
         /// <summary>
         /// The GameItem that this Detail is attached to. May be castable to either a BaseItem or BaseCollection.

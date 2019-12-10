@@ -72,14 +72,26 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with all inventories in the manager.
+        /// Note: this returns the current state of all inventories.  To ensure
+        /// that there are no invalid or duplicate entries, the list will always 
+        /// be cleared and 'recycled' (i.e. updated) with current data.
         /// </summary>
-        /// <param name="inventories">The list to fill up.</param>
+        /// <param name="inventories">The list to clear and fill with updated data.</param>
         public static void GetInventories(List<Inventory> inventories)
         {
             ThrowIfNotInitialized();
 
-            if (m_Inventories == null || inventories == null)
+            if (inventories == null)
+            {
                 return;
+            }
+
+            inventories.Clear();
+
+            if (m_Inventories == null)
+            {
+                return;
+            }
 
             inventories.AddRange(m_Inventories.Values);
         }
@@ -150,7 +162,7 @@ namespace UnityEngine.GameFoundation
         {
             if (data == null)
                 return false;
-            
+
             var inventoryManagerData = ((GameFoundationSerializableData) data).inventoryManagerData;
             if (inventoryManagerData == null)
                 return false;
@@ -182,11 +194,12 @@ namespace UnityEngine.GameFoundation
                 }
                 
                 var inventoryDefinition = catalog.GetCollectionDefinition(persistedInventory.definitionId);
-                if (inventoryDefinition == null)
+                if (ReferenceEquals(inventoryDefinition, null))
                     continue;
                 
-                Inventory currentInventory = CreateInventory(inventoryDefinition, persistedInventory.inventoryId, persistedInventory.gameItemLookupId);
-                if (currentInventory == null)
+                Inventory currentInventory = CreateInventory(inventoryDefinition, persistedInventory.inventoryId, persistedInventory.gameItemLookupId, persistedInventory.displayName);
+
+                if (ReferenceEquals(currentInventory, null))
                     continue;
 
                 foreach (var item in persistedInventory.items)
@@ -228,7 +241,7 @@ namespace UnityEngine.GameFoundation
                     itemsIndex++;
                 }
 
-                inventories[inventoriesIndex] = new InventorySerializableData(inventory.collectionDefinitionId, inventory.id, itemsData, inventory.gameItemId);
+                inventories[inventoriesIndex] = new InventorySerializableData(inventory.collectionDefinitionId, inventory.id, inventory.displayName, itemsData, inventory.gameItemId);
                 inventoriesIndex++;
             }
 
@@ -292,17 +305,6 @@ namespace UnityEngine.GameFoundation
         private static InventoryManagerEvent m_OnInventoryManagerReset = new InventoryManagerEvent();
 
         /// <summary>
-        /// Fired whenever an Inventory is unable to add items because it's full (i.e. max quantity exceeded).
-        /// </summary>
-        /// <returns>The InventoryEvent fired whenever an Inventory is unable to add items because it's full.</returns>
-        public static InventoryEvent onInventoryOverflow
-        {
-            get { return m_OnInventoryOverflow; }
-            set { m_OnInventoryOverflow = value; }
-        }
-        private static InventoryEvent m_OnInventoryOverflow;
-
-        /// <summary>
         /// Fired whenever an Inventory is unable to deduct items because it's empty (i.e. attempts to go BELOW 0 qty).
         /// </summary>
         /// <returns>The InventoryEvent fired whenever an Inventory is unable to deduct items because it's empty.</returns>
@@ -359,12 +361,13 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <param name="inventoryDefinitionId">The Id of the InventoryDefinition to assign this Inventory.</param>
         /// <param name="inventoryId">The Id this inventory will have.</param>
+        /// <param name="displayName">The display name this Inventory will have.</param>
         /// <returns>The newly created Inventory based on specified InventoryDefinition.</returns>
-        public static Inventory CreateInventory(string inventoryDefinitionId, string inventoryId)
+        public static Inventory CreateInventory(string inventoryDefinitionId, string inventoryId, string displayName = null)
         {
             ThrowIfNotInitialized();
 
-            return CreateInventory(Tools.StringToHash(inventoryDefinitionId), inventoryId);
+            return CreateInventory(Tools.StringToHash(inventoryDefinitionId), inventoryId, displayName);
         }
 
         /// <summary>
@@ -372,13 +375,14 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <param name="inventoryDefinitionHash">The Hash of the InventoryDefinition to assign this Inventory.</param>
         /// <param name="inventoryId">The Id this Inventory will have.</param>
+        /// <param name="displayName">The display name this Inventory will have.</param>
         /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
         /// <exception cref="InvalidOperationException">Thrown if an invalid Hash is provided.</exception>
         /// <exception cref="ArgumentException">Thrown if the given Id is null, empty, or a duplicate.</exception>
-        public static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId)
+        public static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId, string displayName = null)
         {
             ThrowIfNotInitialized();
-            return CreateInventory(inventoryDefinitionHash, inventoryId, 0);
+            return CreateInventory(inventoryDefinitionHash, inventoryId, 0, displayName);
         }
 
         /// <summary>
@@ -386,8 +390,9 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <param name="inventoryDefinition">The InventoryDefinition to assign this Inventory.</param>
         /// <param name="inventoryId">The Id this Inventory will have.</param>
+        /// <param name="displayName">The display name this Inventory will have.</param>
         /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
-        public static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId)
+        public static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId, string displayName = null)
         {
             ThrowIfNotInitialized();
 
@@ -397,19 +402,19 @@ namespace UnityEngine.GameFoundation
                 return null;
             }
 
-            return CreateInventory(inventoryDefinition, inventoryId, 0);
+            return CreateInventory(inventoryDefinition, inventoryId, 0, displayName);
         }
         
-        internal static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId, int gameItemId)
+        internal static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId, int gameItemId, string displayName = null)
         {
-            return CreateInventory(catalog.GetCollectionDefinition(inventoryDefinitionHash), inventoryId, gameItemId);
+            return CreateInventory(catalog.GetCollectionDefinition(inventoryDefinitionHash), inventoryId, gameItemId, displayName);
         }
         
-        internal static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId, int gameItemId)
+        internal static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId, int gameItemId, string displayName = null)
         {
             ThrowIfNotInitialized();
             
-            if (inventoryDefinition == null)
+            if (ReferenceEquals(inventoryDefinition, null))
             {
                 throw new InvalidOperationException("Provided definition is not in the InventoryCatalog.");
             }
@@ -424,7 +429,7 @@ namespace UnityEngine.GameFoundation
                 throw new ArgumentException("Provided Inventory ID is one that's already registered in this InventoryManager.");
             }
 
-            var newCollection = inventoryDefinition.CreateCollection(inventoryId, inventoryDefinition.displayName, gameItemId);
+            var newCollection = inventoryDefinition.CreateCollection(inventoryId, displayName, gameItemId);
             m_Inventories.Add(newCollection.hash, newCollection);
 
             m_OnInventoryAdded?.Invoke(newCollection);
@@ -588,6 +593,9 @@ namespace UnityEngine.GameFoundation
             }
 
             NotificationSystem.FireNotification(NotificationType.Destroyed, inventory);
+
+            // immediately discard all game items to remove all their stats and the items themselves from GameItemLookup
+            inventory.Discard();
 
             return true;
         }
@@ -810,8 +818,7 @@ namespace UnityEngine.GameFoundation
                     var collectionDefinition = catalog.GetCollectionDefinition(defaultInventoryDefinition.collectionDefinitionHash);
                     if (collectionDefinition != null)
                     {
-                        var defaultInventory = collectionDefinition.CreateCollection(defaultInventoryDefinition.id, defaultInventoryDefinition.displayName);
-                        m_Inventories[defaultInventory.hash] = defaultInventory;
+                        CreateInventory(collectionDefinition, defaultInventoryDefinition.id, defaultInventoryDefinition.displayName);
                     }
                 }
             }

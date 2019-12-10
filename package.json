@@ -1,7 +1,7 @@
 {
   "name": "com.unity.game.foundation",
   "displayName": "Game Foundation",
-  "version": "0.1.0-preview.6",
+  "version": "0.2.0-preview.3",
   "unity": "2018.3",
   "description": "Game Foundation core package.\n\nThis package contains the following components: \n▪ Inventory System \n▪ Virtual Currency Wallet \n▪ Stats System\n▪ Core Systems \n\nNote: Preview release, public API subject to change.",
   "keywords": [
@@ -18,18 +18,48 @@
     "com.unity.analytics": "3.3.2"
   },
   "relatedPackages": {
-    "com.unity.game.foundation.tests": "0.1.0-preview.6"
+    "com.unity.game.foundation.tests": "0.2.0-preview.3"
   },
   "repository": {
     "type": "git",
     "url": "git@github.cds.internal.unity3d.com:unity/game-foundation.git",
-    "revision": "feecf39ceb9334b273362780ed9a2074c6802ed3"
+    "revision": "62a187cc9cffb794b81ca1706991774e7b68e08c"
   },
   "samples": [
     {
-      "displayName": "Example Sample",
-      "description": "Replace this string with your own description of the sample. Delete the Samples folder if not needed.",
-      "path": "Samples~/Example"
+      "displayName": "00 Database (required for samples)",
+      "description": "This sample contains a database which should be used in all other samples. It also contains a class with helper methods for the samples.",
+      "path": "Samples~/00_Database"
+    },
+    {
+      "displayName": "01 Inventory Basics",
+      "description": "This sample showcases the basics of how to work with a single inventory.",
+      "path": "Samples~/01_InventoryBasics"
+    },
+    {
+      "displayName": "02 Inventory Manager",
+      "description": "This sample showcases how to work with multiple inventories using the inventory manager.",
+      "path": "Samples~/02_InventoryManager"
+    },
+    {
+      "displayName": "03 Categories",
+      "description": "This sample showcases how to work with categories.",
+      "path": "Samples~/03_Categories"
+    },
+    {
+      "displayName": "04 Wallet",
+      "description": "This sample showcases how to work with the wallet and currencies.",
+      "path": "Samples~/04_Wallet"
+    },
+    {
+      "displayName": "05 Stats",
+      "description": "This sample showcases how to work with the stats system.",
+      "path": "Samples~/05_Stats"
+    },
+    {
+      "displayName": "06 Data Persistence",
+      "description": "This sample showcases how to use data persistence to save and load your data.",
+      "path": "Samples~/06_DataPersistence"
     }
   ]
 }

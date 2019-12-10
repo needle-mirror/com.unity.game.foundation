@@ -13,7 +13,14 @@ namespace UnityEngine.GameFoundation.DataPersistence
         /// </summary>
         public enum StatType
         {
+            /// <summary>
+            /// For stats of int type.
+            /// </summary>
             Int,
+            
+            /// <summary>
+            /// For stats of float type.
+            /// </summary>
             Float
         }
         

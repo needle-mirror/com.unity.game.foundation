@@ -21,9 +21,18 @@ namespace UnityEngine.GameFoundation
             //  and  's' represents the stat definition Hash
             static Dictionary<long, StatItem<T>> m_StatItems = null;
 
+            // list of all stats for each game item by gameItem.gameItemId
+            // note: needed to remove all stats when game item is removed from an inventory and can be used to find all stats for a particular game item
+            static Dictionary<int, List<int>> m_GameItemStatList = null;
+
             internal static Dictionary<long, StatItem<T>> statItems
             {
                 get => m_StatItems;
+            }
+
+            internal static Dictionary<int, List<int>> gameItemStatList
+            {
+                get => m_GameItemStatList;
             }
 
             /// <summary>
@@ -37,6 +46,7 @@ namespace UnityEngine.GameFoundation
                     return;
                 }
                 m_StatItems = new Dictionary<long, StatItem<T>>();
+                m_GameItemStatList = new Dictionary<int, List<int>>();
             }
 
             internal static void Unintialize()
@@ -45,8 +55,7 @@ namespace UnityEngine.GameFoundation
                     return;
 
                 m_StatItems = null;
-
-                m_IsInitialized = false;
+                m_GameItemStatList = null;
             }
 
             /// <summary>
@@ -69,6 +78,7 @@ namespace UnityEngine.GameFoundation
                 ThrowIfNotInitialized();
 
                 m_StatItems = new Dictionary<long, StatItem<T>>();
+                m_GameItemStatList = new Dictionary<int, List<int>>();
             }
 
             /// <summary>
@@ -88,7 +98,7 @@ namespace UnityEngine.GameFoundation
             /// <param name="gameItem">Game item to get key for.</param>
             /// <param name="statDefinitionHash">StatDefinition Hash to get key for.</param>
             /// <returns>Key to be used in dictionary to find specified GameItem's Stat.</returns>
-            static long GetKey(GameItem gameItem, int statDefinitionHash)
+            internal static long GetKey(GameItem gameItem, int statDefinitionHash)
             {
                 ThrowIfNotInitialized();
 
@@ -96,7 +106,7 @@ namespace UnityEngine.GameFoundation
                 {
                     return 0;
                 }
-                return (((long)gameItem.gameItemId) << 32) | (((long)statDefinitionHash) & 0xffff);
+                return (((long)gameItem.gameItemId) << 32) | (((long)statDefinitionHash) & 0xffffffff);
             }
 
             /// <summary>
@@ -192,8 +202,6 @@ namespace UnityEngine.GameFoundation
                     throw new ArgumentNullException("The GameItem passed in was null.");
                 }
 
-                var gameItemId = gameItem.gameItemId;
-
                 var key = GetKey(gameItem, statDefinitionHash);
 
                 StatItem<T> statItem;
@@ -208,9 +216,30 @@ namespace UnityEngine.GameFoundation
                     {
                         throw new System.InvalidOperationException($"Stat value type does not match. Expected {statDefinition.statValueType} but received {typeof(T)}");
                     }
+
+                    var gameItemId = gameItem.gameItemId;
                     statItem = new StatItem<T>(gameItemId, statDefinition.id, value);
                     m_StatItems[key] = statItem;
+
+                    // add stat to list of stats FOR THE GAME ITEM
+                    List<int> statList;
+                    if (!m_GameItemStatList.TryGetValue(gameItemId, out statList))
+                    {
+                        // if no list exists FOR THE GAME ITEM (i.e. this is the first stat ever for this game item)
+                        m_GameItemStatList[gameItemId] = new List<int>() { statDefinitionHash }; 
+                    }
+
+                    // if some stats already exist for this game item then add the new stat to the list
+                    else
+                    {
+                        if (!statList.Contains(statDefinitionHash))
+                        {
+                            statList.Add(statDefinitionHash);
+                        }
+                    }
                 }
+
+                // save value for the stat
                 statItem.value = value;
             }
 
@@ -230,7 +259,33 @@ namespace UnityEngine.GameFoundation
                 }
 
                 var key = GetKey(gameItem, statDefinitionHash);
-                return m_StatItems.Remove(key);
+                if (!m_StatItems.Remove(key))
+                {
+                    return false;
+                }
+
+                // stat was removed--remove it also from the list of stats FOR THE GAME ITEM
+                var statList = m_GameItemStatList[gameItem.gameItemId];
+
+                // if removing the last stat from the list
+                if (statList.Count == 1)
+                {
+                    Debug.Assert(statList[0] == statDefinitionHash, "The final stat must be the stat being removed.");
+
+                    // remove the entire list since it's now empty
+                    m_GameItemStatList.Remove(gameItem.gameItemId);
+                }
+
+                // if NOT the last stat then find it and remove only the 1 stat
+                else
+                {
+                    Debug.Assert(statList.Count > 1, "There should NEVER be 0 items in stats list or the stat would have already been removed.");
+
+                    // remove the specified stat from the list of stats for the specified game item
+                    statList.Remove(statDefinitionHash);
+                }
+
+                return true;
             }
 
             /// <summary>
@@ -376,33 +431,41 @@ namespace UnityEngine.GameFoundation
                     case StatDictionarySerializableData.StatType.Int:
 
                         var intStats = StatDictionary<int>.statItems;
-                        
+                        var gameItemIntStatList = StatDictionary<int>.gameItemStatList;
+
                         for (int i = 0; i < statDictionary.stats.Length; i++)
                         {
+                            var stat = statDictionary.stats[i];
                             StatItem<int> item = new StatItem<int>(
-                                statDictionary.stats[i].statItem.gameItemId,
-                                statDictionary.stats[i].statItem.definitionId,
-                                statDictionary.stats[i].statItem.intValue,
-                                statDictionary.stats[i].statItem.defaultIntValue);
+                                stat.statItem.gameItemId,
+                                stat.statItem.definitionId,
+                                stat.statItem.intValue,
+                                stat.statItem.defaultIntValue);
                             
-                            intStats[statDictionary.stats[i].statDictionaryId] = item;
+                            intStats[stat.statDictionaryId] = item;
+
+                            AddStatToGameItemStatList(gameItemIntStatList, stat.statItem.gameItemId, stat.statDictionaryId);
                         }
-                        
+
                         break;
                     
                     case StatDictionarySerializableData.StatType.Float:
                         
                         var floatStats = StatDictionary<float>.statItems;
-                        
+                        var gameItemFloatStatList = StatDictionary<float>.gameItemStatList;
+
                         for (int i = 0; i < statDictionary.stats.Length; i++)
                         {
+                            var stat = statDictionary.stats[i];
                             StatItem<float> item = new StatItem<float>(
-                                statDictionary.stats[i].statItem.gameItemId,
-                                statDictionary.stats[i].statItem.definitionId,
-                                statDictionary.stats[i].statItem.floatValue,
-                                statDictionary.stats[i].statItem.defaultFloatValue);
-                            
-                            floatStats[statDictionary.stats[i].statDictionaryId] = item;
+                                stat.statItem.gameItemId,
+                                stat.statItem.definitionId,
+                                stat.statItem.floatValue,
+                                stat.statItem.defaultFloatValue);
+
+                            floatStats[stat.statDictionaryId] = item;
+
+                            AddStatToGameItemStatList(gameItemFloatStatList, stat.statItem.gameItemId, stat.statDictionaryId);
                         }
                         
                         break;
@@ -414,7 +477,53 @@ namespace UnityEngine.GameFoundation
 
             return true;
         }
-        
+
+        private static void AddStatToGameItemStatList(Dictionary<int, List<int>> gameItemStatList, int gameItemId, long statDictionaryId)
+        {
+            int statHash = (int)(statDictionaryId & 0xffffffff);
+
+            List<int> statList;
+            if (!gameItemStatList.TryGetValue(gameItemId, out statList))
+            {
+                gameItemStatList[gameItemId] = new List<int>() { statHash };
+            }
+            else
+            {
+                statList.Add(statHash);
+            }
+        }
+
+        // called by game item destructor to clean up stats for the game item
+        internal static void OnGameItemDiscarded(GameItem gameItem)
+        {
+            // since inventory manager can be used without a stat manager, we should only ...
+            // ... remove stats if the stat manager is actually active
+            if (IsInitialized)
+            {
+                RemoveGameItemStats<int>(gameItem);
+                RemoveGameItemStats<float>(gameItem);
+            }
+        }
+
+        // private helper method to remove all stats for game item of a specific type (int or float)
+        static void RemoveGameItemStats<T>(GameItem gameItem) where T: new()
+        {
+            var statItems = StatDictionary<T>.statItems;
+            var gameItemStatList = StatDictionary<T>.gameItemStatList;
+
+            List<int> statList;
+            if (gameItemStatList.TryGetValue(gameItem.gameItemId, out statList))
+            {
+                foreach (int statHash in statList)
+                {
+                    var key = StatDictionary<T>.GetKey(gameItem, statHash);
+                    statItems.Remove(key);
+                }
+
+                gameItemStatList.Remove(gameItem.gameItemId);
+            }
+        }
+
         internal static StatManagerSerializableData GetSerializableData()
         {
             var statDictionaries = new StatDictionarySerializableData[2]

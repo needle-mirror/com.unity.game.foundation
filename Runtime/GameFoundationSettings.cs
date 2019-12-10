@@ -100,6 +100,9 @@ namespace UnityEngine.GameFoundation
         [SerializeField]
         private GameFoundationDatabase m_Database;
 
+        /// <summary>
+        /// The GameFoundationDatabase in use.
+        /// </summary>
         public static GameFoundationDatabase database
         {
             get { return singleton.m_Database; }
@@ -141,16 +144,5 @@ namespace UnityEngine.GameFoundation
 #endif
             }
         }
-
-#if UNITY_EDITOR
-        /// <summary>
-        /// Set GameFoundationSettings asset file.
-        /// </summary>
-        [MenuItem("Window/Game Foundation/Settings", false, 2000)]
-        public static void SelectGameFoundationSettingsAssetFile()
-        {
-            Selection.SetActiveObjectWithContext(singleton, null);
-        }
-#endif
     }
 }

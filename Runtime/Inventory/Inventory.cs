@@ -23,17 +23,17 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <param name="inventoryDefinition">The InventoryDefinition this Inventory is based off of.</param>
         /// <param name="inventoryId">The Id this Inventory will use.</param>
-        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId = null) 
-            : this(inventoryDefinition, inventoryId, 0)
+        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId = null, string displayName = null) 
+            : this(inventoryDefinition, inventoryId, displayName, 0)
         {
         }
         
-        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId, int gameItemId) 
-            : base(inventoryDefinition, inventoryId, gameItemId)
+        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId, string displayName, int gameItemId) 
+            : base(inventoryDefinition, inventoryId, displayName, gameItemId)
         {
             if (!Tools.IsValidId(id))
             {
-                throw new System.ArgumentException("Inventory can only be alphanumeric with optional dashes or underscores.");
+                throw new System.ArgumentException("Inventory Id can only be alphanumeric with optional dashes or underscores.");
             }
         }
 
@@ -116,6 +116,11 @@ namespace UnityEngine.GameFoundation
             return GetQuantity(inventoryItem.hash);
         }
 
+        /// <summary>
+        /// Gets the requested item definition based on the given hash.
+        /// </summary>
+        /// <param name="itemDefinitionHash">The hash of the item definition we want.</param>
+        /// <returns>Reference to the definition, or null if not available.</returns>
         protected override BaseItemDefinition<InventoryDefinition, Inventory, InventoryItemDefinition, InventoryItem> GetItemDefinition(int itemDefinitionHash)
         {
             return InventoryManager.catalog == null ? null : InventoryManager.catalog.GetItemDefinition(itemDefinitionHash);
@@ -149,7 +154,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>Summary string for this Inventory.</returns>
         public override string ToString()
         {
-            return $"Inventory(Id: '{id}' DisplayName: '{displayName}' Definition: '{definition.id}' Count: {itemsInCollection?.Count}";
+            return $"Inventory(Id: '{id ?? "null"}' DisplayName: '{displayName ?? "null"}' Definition: '{definition?.id ?? "null"}' Count: {(itemsInCollection?.Count ?? 0)}";
         }
     }
 }

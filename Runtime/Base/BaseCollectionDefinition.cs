@@ -21,6 +21,9 @@ namespace UnityEngine.GameFoundation
         where T3 : BaseItemDefinition<T1, T2, T3, T4>
         where T4 : BaseItem<T1, T2, T3, T4>
     {
+        /// <summary>
+        /// Default constructor.
+        /// </summary>
         protected BaseCollectionDefinition()
         {
         }
@@ -51,12 +54,24 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with all default items in this collection definition.
+        /// Note: this returns the current state of default items in this collection definition.
+        /// To ensure that there are no invalid or duplicate entries, the 'defaultItem' list will
+        /// always be cleared and 'recycled' (i.e. updated) with current data from the definition.
         /// </summary>
-        /// <param name="defaultItems">The list to fill up.</param>
+        /// <param name="defaultItems">The list to clear and write all default items into.</param>
         public void GetDefaultItems(List<DefaultItem> defaultItems)
         {
-            if (m_DefaultItems == null || defaultItems == null)
+            if (defaultItems == null)
+            {
                 return;
+            }
+
+            defaultItems.Clear();
+
+            if (m_DefaultItems == null)
+            {
+                return;
+            }
             
             defaultItems.AddRange(m_DefaultItems);
         }

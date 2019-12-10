@@ -30,6 +30,8 @@ namespace UnityEngine.GameFoundation.DataPersistence
         /// <summary>
         /// Basic constructor that take in the id of the item in the dictionary and the serialized data of this stat.
         /// </summary>
+        /// <param name="statDictionaryId">The id of the stat dictionary.</param>
+        /// <param name="statItem">The data for this stat item.</param>
         public StatSerializableData(long statDictionaryId, StatItemSerializableData statItem)
         {
             m_StatDictionaryId = statDictionaryId;

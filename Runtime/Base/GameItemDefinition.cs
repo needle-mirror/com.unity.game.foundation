@@ -123,12 +123,21 @@ namespace UnityEngine.GameFoundation
         /// <returns>An array of all categories on this game item definition.</returns>
         public CategoryDefinition[] GetCategories()
         {
-            var categories = QueryCategories();
-
-            if (categories == null)
+            if (m_Categories == null)
                 return null;
 
-            return categories.ToArray();
+            List<CategoryDefinition> actualCategories = new List<CategoryDefinition>();
+            foreach (int categoryHash in m_Categories)
+            {
+                CategoryDefinition category = GetCategoryDefinition(categoryHash);
+
+                if (category != null)
+                {
+                    actualCategories.Add(category);
+                }
+            }
+
+            return actualCategories.ToArray();
         }
 
         /// <summary>
@@ -138,38 +147,35 @@ namespace UnityEngine.GameFoundation
         public void GetCategories(List<CategoryDefinition> categories)
         {
             if (categories == null)
+            {
                 return;
+            }
 
-            categories.AddRange(QueryCategories());
-        }
+            categories.Clear();
 
-        [SerializeField]
-        private List<BaseDetailDefinition> m_DetailDefinitionValues = new List<BaseDetailDefinition>();
-        
-        private Dictionary<Type, BaseDetailDefinition> m_DetailDefinitions = new Dictionary<Type, BaseDetailDefinition>();
-
-        private List<CategoryDefinition> QueryCategories()
-        {
             if (m_Categories == null)
-                return null;
+            {
+                return;
+            }
 
-            List<CategoryDefinition> actualCategories = new List<CategoryDefinition>();
             foreach (int categoryHash in m_Categories)
             {
                 CategoryDefinition category = GetCategoryDefinition(categoryHash);
 
-                if (category == null)
+                if (category != null)
                 {
-                    continue;
+                    categories.Add(category);
                 }
-
-                actualCategories.Add(category);
             }
-            return actualCategories;
         }
 
+        [SerializeField]
+        private List<BaseDetailDefinition> m_DetailDefinitionValues = new List<BaseDetailDefinition>();
+
+        private Dictionary<Type, BaseDetailDefinition> m_DetailDefinitions = new Dictionary<Type, BaseDetailDefinition>();
+
         /// <summary>
-        /// Gets a CategoryDefinition from this GameItemDefinition categories with the following Hash 
+        /// Gets a CategoryDefinition from this GameItemDefinition categories with the following Hash
         /// </summary>
         /// <param name="categoryHash">CategoryDefinition Hash of CategoryDefinition to get</param>
         /// <returns>Requested Category Definition</returns>
@@ -205,6 +211,7 @@ namespace UnityEngine.GameFoundation
         /// Adds the given Categories to this GameItemDefinition by list.
         /// </summary>
         /// <param name="categories">The list of CategoryDefinitions to add.</param>
+        /// <returns>True if the categories were added, false if a null list was provided.</returns>
         public bool AddCategories(List<CategoryDefinition> categories)
         {
             Tools.ThrowIfPlayMode("Cannot add CategoryDefinitions to a GameItemDefinition while in play mode.");
@@ -246,25 +253,71 @@ namespace UnityEngine.GameFoundation
         public BaseDetailDefinition[] GetDetailDefinitions()
         {
             if (m_DetailDefinitions == null)
+            {
                 return null;
+            }
 
-            BaseDetailDefinition[] baseDetailDefinitions = new BaseDetailDefinition[m_DetailDefinitions.Count];
-            m_DetailDefinitions.Values.CopyTo(baseDetailDefinitions, 0);
+            // count how many entries are actually of the correct type (and NOT polymorphic entries)
+            int count = 0;
+            foreach(var kv in m_DetailDefinitions)
+            {
+                if (kv.Key == kv.Value.GetType())
+                {
+                    ++ count;
+                }
+            }
+
+            // setup return array
+            var baseDetailDefinitions = new BaseDetailDefinition[count];
+
+            // fill the return array with the detail definitions of the exact type of key
+            // note: this skips any 'polymorphic' entries which were added to allow base class types to find derived class entries
+            count = 0;
+            foreach (var kv in m_DetailDefinitions)
+            {
+                if (kv.Key == kv.Value.GetType())
+                {
+                    baseDetailDefinitions[count] = kv.Value;
+                    ++ count;
+                }
+            }
+
             return baseDetailDefinitions;
         }
 
         /// <summary>
         /// Fills in the given list with all detail definitions on this game item definition.
+        /// Note: this returns the current state of detail definitions.  To ensure that there
+        /// are no invalid or duplicate entries, the 'detailDefinitions' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="detailDefinitions">The list to fill up.</param>
+        /// <param name="detailDefinitions">The list to clear and fill with detail definitions.</param>
         public void GetDetailDefinitions(List<BaseDetailDefinition> detailDefinitions)
         {
-            if (m_DetailDefinitions == null || detailDefinitions == null)
+            if (detailDefinitions == null)
             {
                 return;
             }
 
-            detailDefinitions.AddRange(m_DetailDefinitions.Values);
+            detailDefinitions.Clear();
+
+            if (m_DetailDefinitions == null)
+            {
+                return;
+            }
+
+            // clear the list (avoids needless allocations
+            detailDefinitions.Clear();
+
+            // fill results list with only detail definitions the exactly match the type of their dictionary key
+            // note: this skips all the 'polymorphic' entries which all base class types to find objects of derived classes
+            foreach (var kv in m_DetailDefinitions)
+            {
+                if (kv.Key == kv.Value.GetType())
+                {
+                    detailDefinitions.Add(kv.Value);
+                }
+            }
         }
 
         /// <summary>
@@ -290,14 +343,48 @@ namespace UnityEngine.GameFoundation
 
             // if the Detail already exists then throw
             var detailDefinitionType = detailDefinition.GetType();
-            if (m_DetailDefinitions.ContainsKey(detailDefinitionType))
+
+
+            BaseDetailDefinition oldDetailDefinition;
+            if (m_DetailDefinitions.TryGetValue(detailDefinitionType, out oldDetailDefinition))
             {
-                throw new ArgumentException(string.Format("The definition \"{0}\" already has a {1} detail.", m_Id, detailDefinitionType.Name));
+                if (oldDetailDefinition.GetType() == detailDefinitionType)
+                {
+                   throw new ArgumentException(string.Format("The DetailDefinition \"{0}\" already has a {1} detail.", m_Id, detailDefinitionType.Name));
+                }
             }
-            
+
+            // add specified detail by detail's type to the dictionary
+            // note: this MAY overwrite a detail with a more derived type which is correct since this IS the item of exactly the specified type
+            m_DetailDefinitions[detailDefinitionType] = detailDefinition;
+
+            // also search base class types for the detail and add this detail for all base classes
+            // note: this allows polymorphic behavior so, if base class is looked up, it will find the derived class 
+            var typeOn = detailDefinitionType;
+            while (true)
+            {
+                typeOn = typeOn.BaseType;
+                if (typeOn == null || typeOn == typeof(BaseDetailDefinition))
+                {
+                    break;
+                }
+                BaseDetailDefinition testDetailDefinition;
+                if (m_DetailDefinitions.TryGetValue(typeOn, out testDetailDefinition))
+                {
+                    if (testDetailDefinition != null && testDetailDefinition != oldDetailDefinition)
+                    {
+                        break;
+                    }
+                }
+
+                m_DetailDefinitions[typeOn] = detailDefinition;
+            }
+
+            detailDefinition.owner = this;
+
             // TODO: Make this into a more general use dependency system for details down the road.
             // Special case, when adding a CurrencyDetail, we automatically want an AnalyticsDetail to be added.
-            if (detailDefinition.GetType() == typeof(CurrencyDetailDefinition))
+            if (detailDefinitionType == typeof(CurrencyDetailDefinition))
             {
                 var hasAnalyticsAlready = GetDetailDefinition<AnalyticsDetailDefinition>();
                 if (hasAnalyticsAlready == null)
@@ -305,10 +392,6 @@ namespace UnityEngine.GameFoundation
                     AddDetailDefinition<AnalyticsDetailDefinition>();
                 }
             }
-
-            detailDefinition.owner = this;
-
-            m_DetailDefinitions.Add(detailDefinitionType, detailDefinition);
 
             // naming convention for details objects
             string itemTypeShortName = GetType().Name.Replace("Definition", "");
@@ -340,10 +423,13 @@ namespace UnityEngine.GameFoundation
 
             return newDetailDefinition;
         }
+        
+        
 
         /// <summary> 
         /// This will return a reference to the requested DetailDefinition by type.
         /// </summary>
+        /// <param name="lookInReferenceDefinition">Whether or not to also check the reference definition for the requested detail.</param>
         /// <typeparam name="T">The type of DetailDefinition requested.</typeparam>
         /// <returns>A reference to the DetailDefinition, or null if this GameItemDefinition does not have one.</returns>
         public T GetDetailDefinition<T>(bool lookInReferenceDefinition = true)
@@ -354,7 +440,7 @@ namespace UnityEngine.GameFoundation
                 return m_DetailDefinitions[typeof(T)] as T;
             }
 
-            if (lookInReferenceDefinition && referenceDefinition != null)
+            if (lookInReferenceDefinition && !ReferenceEquals(referenceDefinition,null))
             {
                 return referenceDefinition.GetDetailDefinition<T>();
             }
@@ -366,6 +452,7 @@ namespace UnityEngine.GameFoundation
         /// Remove the requested DetailDefinition by type from this GameItemDefinition.
         /// </summary>
         /// <typeparam name="T">The type of DetailDefinition we want to remove.</typeparam>
+        /// <returns>Whether or not the requested detail type was removed successfully.</returns>
         public bool RemoveDetailDefinition<T>()
             where T : BaseDetailDefinition
         {
@@ -395,13 +482,55 @@ namespace UnityEngine.GameFoundation
                 return false;
             }
 
-            var detailType = detailDefinition.GetType();
-            if (!m_DetailDefinitions.ContainsKey(detailType))
+            var detailDefinitionType = detailDefinition.GetType();
+            BaseDetailDefinition baseDetailDefinitionToRemove;
+            if (!m_DetailDefinitions.TryGetValue(detailDefinitionType, out baseDetailDefinitionToRemove))
+            {
+                return false;
+            }
+            
+            // Special case, when removing a CurrencyDetail, make sure it's not already in the wallet
+            if (detailDefinitionType == typeof(CurrencyDetailDefinition))
+            {
+                InventoryDefinition walletDef = InventoryManager.catalog.GetCollectionDefinition(InventoryCatalog.k_WalletInventoryDefinitionId);
+                foreach (DefaultItem item in walletDef.GetDefaultItems())
+                {
+                    InventoryItemDefinition defaultItemDefinition = GameFoundationSettings.database.inventoryCatalog.GetItemDefinition(item.definitionHash);
+                    if (defaultItemDefinition != null && (defaultItemDefinition.hash == hash || (defaultItemDefinition.referenceDefinition != null && defaultItemDefinition.referenceDefinition.hash == hash)))
+                    {
+                        Debug.LogWarning("Cannot remove the Currency detail off of a definition that is currently within the wallet. Please remove it from the wallet first.");
+                        return false;
+                    }
+                }
+            }
+
+            if (!m_DetailDefinitions.Remove(detailDefinitionType))
             {
                 return false;
             }
 
-            m_DetailDefinitions.Remove(detailType);
+            // remove all details linked from base classes to this same detail (they were used to allow polymorphism)
+            while (true)
+            {
+                detailDefinitionType = detailDefinitionType.BaseType;
+                if (detailDefinitionType == null || detailDefinitionType == typeof(BaseDetailDefinition))
+                {
+                    break;
+                }
+
+                BaseDetailDefinition baseDetailDefinition;
+                if (!m_DetailDefinitions.TryGetValue(detailDefinitionType, out baseDetailDefinition))
+                {
+                    break;
+                }
+
+                if (baseDetailDefinition != baseDetailDefinitionToRemove)
+                {
+                    break;
+                }
+
+                m_DetailDefinitions.Remove(detailDefinitionType);
+            }
 
 #if UNITY_EDITOR
             if (EditorUtility.IsPersistent(this))
@@ -517,7 +646,16 @@ namespace UnityEngine.GameFoundation
 
             for (int i = 0; i < m_DetailDefinitionValues.Count; i++)
             {
-                m_DetailDefinitions.Add(m_DetailDefinitionValues[i].GetType(), m_DetailDefinitionValues[i]);
+                if (m_DetailDefinitionValues[i] != null)
+                {
+                    m_DetailDefinitionValues[i].owner = this;
+                    m_DetailDefinitions.Add(m_DetailDefinitionValues[i].GetType(), m_DetailDefinitionValues[i]);
+                }
+                else
+                {
+                    m_DetailDefinitionValues.RemoveAt(i);
+                    i--;
+                }
             }
         }
 
@@ -538,6 +676,12 @@ namespace UnityEngine.GameFoundation
             return gameItem;
         }
 
+        /// <summary>
+        /// Sets up this game item definition with the given info.
+        /// </summary>
+        /// <param name="id">The id this will use.</param>
+        /// <param name="displayName">The display name this will use.</param>
+        /// <exception cref="ArgumentException">Thrown if invalid values are given.</exception>
         protected virtual void Initialize(string id, string displayName)
         {
             if (string.IsNullOrEmpty(id))

@@ -21,7 +21,7 @@
 
             if (!Tools.IsValidId(id))
             {
-                throw new System.ArgumentException("InventoryDefinition can only be alphanumeric with optional dashes or underscores.");
+                throw new System.ArgumentException("InventoryDefinition Id can only be alphanumeric with optional dashes or underscores.");
             }
 
             var inventoryDefinition = ScriptableObject.CreateInstance<InventoryDefinition>();
@@ -31,9 +31,9 @@
             return inventoryDefinition;
         }
 
-        internal override Inventory CreateCollection(string collectionId, string displayName, int gameItemId = 0)
+        internal override Inventory CreateCollection(string collectionId, string displayName = null, int gameItemId = 0)
         {
-            return new Inventory(this, collectionId, gameItemId);
+            return new Inventory(this, collectionId, displayName, gameItemId);
         }
 
         /// <summary>
@@ -45,7 +45,7 @@
         /// <returns>Whether or not the adding was successful.</returns>
         public override bool AddDefaultItem(InventoryItemDefinition itemDefinition, int quantity = 0)
         {
-            if (!ProtectWalletInventory(itemDefinition))
+            if (!IsWalletCompatible(itemDefinition))
             {
                 return false;
             }
@@ -64,7 +64,7 @@
             InventoryItemDefinition defaultItemDefinition =
                 GameFoundationSettings.database.inventoryCatalog.GetItemDefinition(defaultItem.definitionHash);
 
-            if (!ProtectWalletInventory(defaultItemDefinition))
+            if (!IsWalletCompatible(defaultItemDefinition))
             {
                 return false;
             }
@@ -72,7 +72,12 @@
             return base.AddDefaultItem(defaultItem);
         }
 
-        protected bool ProtectWalletInventory(InventoryItemDefinition itemDefinition)
+        /// <summary>
+        /// Helper method to make sure the given item definition is valid if this is the wallet.
+        /// </summary>
+        /// <param name="itemDefinition">The item definition we are checking.</param>
+        /// <returns>Whether or not it is valid.</returns>
+        private bool IsWalletCompatible(InventoryItemDefinition itemDefinition)
         {
             if (hash == InventoryManager.walletInventoryHash)
             {

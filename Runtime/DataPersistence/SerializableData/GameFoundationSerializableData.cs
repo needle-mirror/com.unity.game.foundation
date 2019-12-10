@@ -10,7 +10,7 @@
         [SerializeField] StatManagerSerializableData m_StatManagerData;
         [SerializeField] GameItemLookupSerializableData m_GameItemLookupData;
         
-        [SerializeField] int m_Version = 0;
+        [SerializeField] int m_Version = 1;
 
         /// <summary>
         /// The data of InventoryManager to be persisted.

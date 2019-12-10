@@ -7,7 +7,7 @@ namespace UnityEditor.GameFoundation
     /// <summary>
     /// Module for UI and logic of category filter.
     /// </summary>
-    internal static class CategoryFilterEditor
+    internal class CategoryFilterEditor
     {
         enum DefaultFilterOptions
         {
@@ -17,8 +17,8 @@ namespace UnityEditor.GameFoundation
         private const string k_None = "<None>";
         private const string k_All = "<All>";
         private const int k_ListOffset = 2;
-        private static int s_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
-        private static string[] s_CategoryNamesForFilter = null;
+        private int m_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
+        private string[] m_CategoryNamesForFilter = null;
 
         /// <summary>
         /// Gets a filtered list of items based on the currently selected category.
@@ -27,23 +27,23 @@ namespace UnityEditor.GameFoundation
         /// to the current category.</param>
         /// <param name="catalogCategories">The list of possible categories that can be filtered to.</param>
         /// <returns>Filtered list of GameItemDefinitions.</returns>
-        public static List<T> GetFilteredItems<T>(List<T> fullList, List<CategoryDefinition> catalogCategories) where T : GameItemDefinition
+        public List<T> GetFilteredItems<T>(List<T> fullList, CategoryDefinition[] catalogCategories) where T : GameItemDefinition
         {
             if (fullList == null)
             {
                 return null;
             }
 
-            if (s_SelectedFilterCategoryIdx < 0 || s_SelectedFilterCategoryIdx >= (catalogCategories.Count + k_ListOffset))
+            if (m_SelectedFilterCategoryIdx < 0 || m_SelectedFilterCategoryIdx >= (catalogCategories.Length + k_ListOffset))
             {
-                s_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
+                m_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
             }
 
-            if (s_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.All)
+            if (m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.All)
             {
                 return fullList;
             }
-            else if (s_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
+            else if (m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
             {
                 return fullList.FindAll(gameItemDefinition =>
                 {
@@ -60,7 +60,7 @@ namespace UnityEditor.GameFoundation
                         return false;
                     }
 
-                    return categories.Any(categoryDefinition => categoryDefinition.hash == catalogCategories[s_SelectedFilterCategoryIdx - k_ListOffset].hash);
+                    return categories.Any(categoryDefinition => categoryDefinition.hash == catalogCategories[m_SelectedFilterCategoryIdx - k_ListOffset].hash);
                 });
         }
 
@@ -68,13 +68,13 @@ namespace UnityEditor.GameFoundation
         /// Draws the UI for the filter selection popup.
         /// </summary>
         /// <param name="categoryChanged">out parameter modifier. Returns bool for whether or not the category filter has been changed.</returns>
-        public static void DrawCategoryFilter(out bool categoryChanged)
+        public void DrawCategoryFilter(out bool categoryChanged)
         {
             CollectionEditorTools.SetGUIEnabledAtRunTime(true);
-            int newFilterIdx = EditorGUILayout.Popup(s_SelectedFilterCategoryIdx, s_CategoryNamesForFilter);
-            if (newFilterIdx != s_SelectedFilterCategoryIdx)
+            int newFilterIdx = EditorGUILayout.Popup(m_SelectedFilterCategoryIdx, m_CategoryNamesForFilter);
+            if (newFilterIdx != m_SelectedFilterCategoryIdx)
             {
-                s_SelectedFilterCategoryIdx = newFilterIdx;
+                m_SelectedFilterCategoryIdx = newFilterIdx;
                 categoryChanged = true;
             }
             else
@@ -88,7 +88,7 @@ namespace UnityEditor.GameFoundation
         /// Refreshes the list of possible categories that can be filtered to based on the given list.
         /// </summary>
         /// <param name="catalogCategories">The list of possible categories that can be filtered to.</param>
-        public static void RefreshSidebarCategoryFilterList(List<CategoryDefinition> catalogCategories)
+        public void RefreshSidebarCategoryFilterList(CategoryDefinition[] catalogCategories)
         {
             int categoryFilterCount = k_ListOffset;
             if (catalogCategories != null)
@@ -96,15 +96,15 @@ namespace UnityEditor.GameFoundation
                 categoryFilterCount += catalogCategories.Count();
             }
             // Create Names for Pull-down menus
-            s_CategoryNamesForFilter = new string[categoryFilterCount];
-            s_CategoryNamesForFilter[(int)DefaultFilterOptions.All] = k_All;
-            s_CategoryNamesForFilter[(int)DefaultFilterOptions.None] = k_None;
+            m_CategoryNamesForFilter = new string[categoryFilterCount];
+            m_CategoryNamesForFilter[(int)DefaultFilterOptions.All] = k_All;
+            m_CategoryNamesForFilter[(int)DefaultFilterOptions.None] = k_None;
 
             if (catalogCategories != null)
             {
-                for (int i = 0; i < catalogCategories.Count; i++)
+                for (int i = 0; i < catalogCategories.Length; i++)
                 {
-                    s_CategoryNamesForFilter[i + k_ListOffset] = catalogCategories[i].displayName;
+                    m_CategoryNamesForFilter[i + k_ListOffset] = catalogCategories[i].displayName;
                 }
             }
         }
@@ -114,25 +114,25 @@ namespace UnityEditor.GameFoundation
         /// </summary>
         /// <param name="catalogCategories">The list of possible categories that can be filtered to.</param>
         /// <returns>The current CategoryDefinition selected by the filter.</returns>
-        public static CategoryDefinition GetCurrentFilteredCategory(List<CategoryDefinition> catalogCategories)
+        public CategoryDefinition GetCurrentFilteredCategory(CategoryDefinition[] catalogCategories)
         {
             if (catalogCategories == null
-                || s_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.All
-                || s_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
+                || m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.All
+                || m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
             {
                 return null;
             }
 
-            return catalogCategories.ElementAt(s_SelectedFilterCategoryIdx - k_ListOffset);
+            return catalogCategories.ElementAt(m_SelectedFilterCategoryIdx - k_ListOffset);
         }
 
         /// <summary>
         /// Resets Category Filters list of potential category names and the selected filter index.
         /// </summary>
-        public static void ResetCategoryFilter()
+        public void ResetCategoryFilter()
         {
-            s_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
-            s_CategoryNamesForFilter = null;
+            m_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
+            m_CategoryNamesForFilter = null;
         }
     }
 }

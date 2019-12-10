@@ -44,7 +44,14 @@ namespace UnityEngine.GameFoundation
         public string displayName
         {
             get { return m_DisplayName; }
-            set { m_DisplayName = value; }
+            set { SetDisplayName(value); }
+        }
+
+        private void SetDisplayName(string name)
+        {
+            Tools.ThrowIfPlayMode("Cannot set the display name of a CategoryDefinition while in play mode.");
+
+            m_DisplayName = name;
         }
 
         /// <summary>

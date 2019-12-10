@@ -27,12 +27,24 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with all stat definitions in this catalog.
+        /// Note: this returns the current state of all stat definitions.  To 
+        /// ensure that there are no invalid or duplicate entries, the list will 
+        /// always be cleared and 'recycled' (i.e. updated) with current data.
         /// </summary>
-        /// <param name="statDefinitions">The list to fill up.</param>
+        /// <param name="statDefinitions">The list to clear and fill with updated data.</param>
         public void GetStatDefinitions(List<StatDefinition> statDefinitions)
         {
-            if (m_StatDefinitions == null || statDefinitions == null)
+            if (statDefinitions == null)
+            {
                 return;
+            }
+
+            statDefinitions.Clear();
+
+            if (m_StatDefinitions == null)
+            {
+                return;
+            }
             
             statDefinitions.AddRange(m_StatDefinitions);
         }

@@ -356,15 +356,5 @@ namespace UnityEngine.GameFoundation
             get { return InventoryManager.wallet.onItemQuantityChanged; }
             set { InventoryManager.wallet.onItemQuantityChanged = value; }
         }
-
-        /// <summary>
-        /// Callback for when an InventoryItem quantity has gone above its minimum.
-        /// </summary>
-        /// <returns>The CollectionItemEvent fired when an InventoryItem quantity has gone above its minimum.</returns>
-        public static Inventory.BaseCollectionItemEvent onItemQuantityOverflow
-        {
-            get { return InventoryManager.wallet.onItemQuantityOverflow; }
-            set { InventoryManager.wallet.onItemQuantityOverflow = value; }
-        }
     }
 }

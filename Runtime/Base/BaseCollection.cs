@@ -20,11 +20,18 @@ namespace UnityEngine.GameFoundation
         where T3 : BaseItemDefinition<T1, T2, T3, T4>
         where T4 : BaseItem<T1, T2, T3, T4>
     {
-        protected BaseCollection(T1 definition, string id = "") : this(definition, id, 0)
+        /// <summary>
+        /// Basic constructor that takes in a definition and optional id and display name.
+        /// These get passed along to GameItem.
+        /// </summary>
+        /// <param name="definition">The definition this collection will be based off of.</param>
+        /// <param name="id">The id of this collection.</param>
+        /// <param name="displayName">The display name fo this collection.</param>
+        protected BaseCollection(T1 definition, string id = "", string displayName = null) : this(definition, id, displayName, 0)
         {
         }
 
-        internal BaseCollection(T1 definition, string id, int gameItemId) : base(definition, id, gameItemId)
+        internal BaseCollection(T1 definition, string id, string displayName, int gameItemId) : base(definition, id, displayName, gameItemId)
         {
             // save off definition used for this Collection
             m_Definition = definition;
@@ -51,7 +58,6 @@ namespace UnityEngine.GameFoundation
         private BaseCollectionItemEvent m_OnItemAdded;
         private BaseCollectionItemEvent m_OnItemRemoved;
         private BaseCollectionItemEvent m_OnItemQuantityChanged;
-        private BaseCollectionItemEvent m_OnItemQuantityOverflow;
 
         /// <summary>
         /// Fired whenever a Collection is reset.
@@ -91,16 +97,6 @@ namespace UnityEngine.GameFoundation
         {
             get { return m_OnItemQuantityChanged; }
             set { m_OnItemQuantityChanged = value; }
-        }
-
-        /// <summary>
-        /// Callback for when an Item intValue has gone above its maximum.
-        /// </summary>
-        /// <returns>BaseCollectionItemEvent for Item overflow (quantity too large).</returns>
-        public BaseCollectionItemEvent onItemQuantityOverflow
-        {
-            get { return m_OnItemQuantityOverflow; }
-            set { m_OnItemQuantityOverflow = value; }
         }
 
         [SerializeField]
@@ -160,12 +156,24 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills in the given array of items with the items in this collection.
+        /// Note: this returns the current state of all items in the collection.  To ensure 
+        /// that there are no invalid or duplicate entries, the 'items' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the collection.
         /// </summary>
-        /// <param name="items">The given list that will be filled with this collection's items.</param>
+        /// <param name="items">The list of items to clear and fill with this collection's items.</param>
         public void GetItems(List<T4> items)
         {
-            if (m_ItemsInCollection == null || items == null)
+            if (items == null)
+            {
                 return;
+            }
+
+            items.Clear();
+
+            if (m_ItemsInCollection == null)
+            {
+                return;
+            }
             
             items.AddRange(m_ItemsInCollection.Values);
         }
@@ -263,7 +271,7 @@ namespace UnityEngine.GameFoundation
             else
             {
                 BaseItemDefinition<T1, T2, T3, T4> itemDefinition = GetItemDefinition(itemDefinitionHash);
-                if (itemDefinition == null)
+                if (ReferenceEquals(itemDefinition,null))
                 {
                     return null;
                 }
@@ -271,18 +279,17 @@ namespace UnityEngine.GameFoundation
                 itemToReturn = itemDefinition.CreateItem(this, gameItemId);
                 itemToReturn.intValue = quantity;
                 m_ItemsInCollection.Add(itemDefinitionHash, itemToReturn);
-            }
-
-            if (onItemQuantityChanged != null)
-            {
-                onItemQuantityChanged.Invoke(itemToReturn);
+                
+                if (onItemQuantityChanged != null)
+                {
+                    onItemQuantityChanged.Invoke(itemToReturn);
+                }
             }
 
             if (onItemAdded != null)
             {
                 onItemAdded.Invoke(itemToReturn);
             }
-            // TODO: Check if intValue is overflowing and call OnItemQuantityOverflow Event, also contrain quantity
             
             return itemToReturn;
         }
@@ -349,13 +356,25 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// This will put all items that have the given category into the given list of items.
+        /// Note: this returns the current state of all qualifying items in the collection.
+        /// To ensure that there are no invalid or duplicate entries, the 'items' list will
+        /// always be cleared and 'recycled' (i.e. updated) with current data from the collection.
         /// </summary>
         /// <param name="categoryId">The hash of the Category we are checking for.</param>
-        /// <param name="items">The list of items to put the results into.</param>
+        /// <param name="items">The list of items to clear and put the results into.</param>
         public void GetItemsByCategory(string categoryId, List<T4> items)
         {
-            if (string.IsNullOrEmpty(categoryId))
+            if (items == null)
+            {
                 return;
+            }
+
+            items.Clear();
+
+            if (string.IsNullOrEmpty(categoryId))
+            {
+                return;
+            }
             
             GetItemsByCategory(Tools.StringToHash(categoryId), items);
         }
@@ -372,7 +391,7 @@ namespace UnityEngine.GameFoundation
             {
                 var definition = keyItemPair.Value.definition;
 
-                if (definition == null)
+                if (ReferenceEquals(definition,null))
                     continue;
 
                 foreach (var category in definition.GetCategories())
@@ -388,16 +407,21 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will put all items that have the given category into the given list of items.
+        /// This will put all items that have the given category into the given list.
+        /// Note: this returns the current state of all qualifying items in the collection.
+        /// To ensure that there are no invalid or duplicate entries, the 'items' list will
+        /// always be cleared and 'recycled' (i.e. updated) with current data from the collection.
         /// </summary>
         /// <param name="categoryHash">The hash of the Category we are checking for.</param>
-        /// <param name="items">The list of items to put the results into.</param>
+        /// <param name="items">The list of items to clear and put the results into.</param>
         public void GetItemsByCategory(int categoryHash, List<T4> items)
         {
             if (items == null)
             {
                 return;
             }
+
+            items.Clear();
             
             var retrievedItems = GetItemsByCategory(categoryHash);
 
@@ -423,18 +447,31 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// This will put all items that have the given category into the given list of items.
+        /// This will put all items that have the given category into the given list.
+        /// Note: this returns the current state of all qualifying items in the collection.
+        /// To ensure that there are no invalid or duplicate entries, the 'items' list will
+        /// always be cleared and 'recycled' (i.e. updated) with current data from the collection.
         /// </summary>
         /// <param name="category">The category we are checking for.</param>
-        /// <param name="items">The list of items to put the results into.</param>
+        /// <param name="items">The list of items to clear and put the results into.</param>
         public void GetItemsByCategory(CategoryDefinition category, List<T4> items)
         {
-            if (category == null)
+            if (items == null)
+            {
                 return;
+            }
+
+            items.Clear();
+
+            if (category == null)
+            {
+                return;
+            }
 
             GetItemsByCategory(category.hash, items);
         }
 
+        /// <summary>
         /// Remove quantity amount of items from item with ItemDefinition Id definitionId.
         /// If the amount would leave the affected item with less than 0 value, it is removed from the collection.
         /// </summary>
@@ -507,6 +544,9 @@ namespace UnityEngine.GameFoundation
                     {
                         onItemRemoved.Invoke(item);
                     }
+
+                    // immediately discard game item to remove all its stats and its reference from GameItemLookup
+                    item.Discard();
                 }
                 return removed;
             }
@@ -597,12 +637,23 @@ namespace UnityEngine.GameFoundation
             // clear all Items
             m_ItemsInCollection.Clear();
 
-            // fire 'removed' events for all Items just removed
-            if (onItemRemoved != null)
+            // if no onItemRemove event then just discard of all items
+            if (onItemRemoved == null)
             {
                 foreach (var item in itemsToRemove)
                 {
+                    // immediately discard game item to remove all its stats and its reference from GameItemLookup
+                    item.Discard();
+                }
+            }
+            else
+            {
+                // iterate all items to fire on-item-removed events and immediately discard of them
+                foreach (var item in itemsToRemove)
+                {
                     onItemRemoved.Invoke(item);
+
+                    item.Discard();
                 }
             }
 
@@ -686,7 +737,6 @@ namespace UnityEngine.GameFoundation
 
             // TODO: When/if quantity becomes a stat, this may need to be removed if stats end up having their own notification fire calls.
             NotificationSystem.FireNotification(NotificationType.Modified, item);
-            // TODO: Check if intValue is overflowing and call OnItemQuantityOverflow Event
         }
 
         /// <summary>
@@ -718,8 +768,7 @@ namespace UnityEngine.GameFoundation
             }
         }
 
-        // iterate all default Items in the CollectionDefinition (if there are any) and add them to the Collection
-        protected void AddAllDefaultItems()
+        private void AddAllDefaultItems()
         {
             bool notificationDisabled = NotificationSystem.temporaryDisable;
             if (!notificationDisabled)
@@ -727,15 +776,12 @@ namespace UnityEngine.GameFoundation
                 NotificationSystem.temporaryDisable = true;
             }
             
-            if (m_Definition != null)
-            { 
-                var defaultItems = m_Definition.GetDefaultItems();
-                if (defaultItems != null)
+            var defaultItems = m_Definition?.GetDefaultItems();
+            if (!ReferenceEquals(defaultItems,null))
+            {
+                foreach (var defaultItem in defaultItems)
                 {
-                    foreach (var defaultItem in defaultItems)
-                    {
-                        AddItem(defaultItem.definitionHash, defaultItem.quantity);
-                    }
+                    AddItem(defaultItem.definitionHash, defaultItem.quantity);
                 }
             }
             
@@ -743,6 +789,25 @@ namespace UnityEngine.GameFoundation
             {
                 NotificationSystem.temporaryDisable = false;
             }
+        }
+
+        // discard of all items to remove all their stats and the items themselves from GameItemLookup
+        protected internal override void Discard()
+        {
+            // copy the items list to ensure that disposing of them doesn't change the list and effect iteration
+            var items = GetItems();
+
+            // call discard on each item in the items list
+            if (items != null)
+            {
+                foreach(var item in items)
+                {
+                    item.Discard();
+                }
+            }
+
+            // pass on discard request to GameItem so it is also discarded properly
+            base.Discard();
         }
     }
 }

@@ -15,7 +15,9 @@ namespace UnityEngine.GameFoundation
             Initialized,
             Failed
         }
-        
+
+        public static string currentVersion { get; private set; }
+
         internal const string k_GameFoundationPersistenceId = "gamefoundation_persistence";
 
         private static InitializationStatus m_InitializationStatus = InitializationStatus.NotInitialized;
@@ -55,11 +57,11 @@ namespace UnityEngine.GameFoundation
             if (dataPersistence != null)
             {
                 LoadData(dataPersistence,
-                    (data) =>
+                    data =>
                     {
                         InitializeSystems(data, onInitializeCompleted, onInitializeFailed);
                     },
-                    () =>
+                    error =>
                     {
                         InitializeSystems(null, onInitializeCompleted, onInitializeFailed);
                     });
@@ -68,6 +70,10 @@ namespace UnityEngine.GameFoundation
             {
                 InitializeSystems(null, onInitializeCompleted, onInitializeFailed);
             }
+
+            currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+            Debug.Log($"Successfully initialized Game Foundation version {currentVersion}");
         }
 
         static void InitializeSystems(ISerializableData data, Action onInitializeCompleted = null, Action onInitializeFailed = null)
@@ -118,26 +124,28 @@ namespace UnityEngine.GameFoundation
         public static void Load(
             IDataPersistence dataPersistence, 
             Action onLoadCompleted = null, 
-            Action onLoadFailed = null)
+            Action<Exception> onLoadFailed = null)
         {
             if (dataPersistence == null)
             {
-                onLoadFailed?.Invoke();
-                Debug.LogWarning("DataPersistence cannot be null on persistence process.");
+                const string kExceptionMessage = "A valid DataPersistence is required to load GameFoundation.";
+                onLoadFailed?.Invoke(new ArgumentException(kExceptionMessage));
+                Debug.LogWarning(kExceptionMessage);
+
                 return;
             }
 
             LoadData(dataPersistence,
-                (data) =>
+                data =>
                 {
                     try
                     {
                         FillAllSystems(data);
                         onLoadCompleted?.Invoke();
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        onLoadFailed?.Invoke();
+                        onLoadFailed?.Invoke(e);
                     }
                     
                 }, onLoadFailed);
@@ -152,26 +160,32 @@ namespace UnityEngine.GameFoundation
         public static void Save(
             IDataPersistence dataPersistence, 
             Action onSaveCompleted = null, 
-            Action onSaveFailed = null)
+            Action<Exception> onSaveFailed = null)
         {
             if (dataPersistence == null)
             {
-                onSaveFailed?.Invoke();
-                Debug.LogWarning("DataPersistence cannot be null on persistence process.");
+                const string kExceptionMessage = "A valid DataPersistence is required to save GameFoundation.";
+                onSaveFailed?.Invoke(new ArgumentException(kExceptionMessage));
+                Debug.LogWarning(kExceptionMessage);
+
                 return;
             }
             
             if (!InventoryManager.IsInitialized)
             {
-                onSaveFailed?.Invoke();
-                Debug.LogWarning("Cannot save GameFoundation. InventoryManager is not initialized.");
+                const string kExceptionMessage = "Cannot save GameFoundation. InventoryManager is not initialized.";
+                onSaveFailed?.Invoke(new NullReferenceException(kExceptionMessage));
+                Debug.LogWarning(kExceptionMessage);
+
                 return;
             }
             
             if (!StatManager.IsInitialized)
             {
-                onSaveFailed?.Invoke();
-                Debug.LogWarning("Cannot save GameFoundation. StatManager is not initialized.");
+                const string kExceptionMessage = "Cannot save GameFoundation. StatManager is not initialized.";
+                onSaveFailed?.Invoke(new NullReferenceException(kExceptionMessage));
+                Debug.LogWarning(kExceptionMessage);
+
                 return;
             }
 
@@ -191,9 +205,10 @@ namespace UnityEngine.GameFoundation
         internal static void Uninitialize()
         {
             m_InitializationStatus = InitializationStatus.NotInitialized;
-            
-            GameItemLookup.Unintialize();
+
+            // note: InventoryManager must be unitialized first since it relies on game item lookups to do its work.
             InventoryManager.Uninitialize();
+            GameItemLookup.Unintialize();
             StatManager.Uninitialize();
             AnalyticsWrapper.Uninitialize();
         }
@@ -202,35 +217,38 @@ namespace UnityEngine.GameFoundation
         (
             IDataPersistence dataPersistence,
             Action<ISerializableData> onLoadCompleted = null,
-            Action onLoadFailed = null)
+            Action<Exception> onLoadFailed = null)
         {
             if (dataPersistence == null)
             {
-                onLoadFailed?.Invoke();
-                Debug.LogWarning("DataPersistence cannot be null on persistence process.");
+                const string kExceptionMessage = "A valid DataPersistence is required to load data.";
+                onLoadFailed?.Invoke(new ArgumentException(kExceptionMessage));
+                Debug.LogWarning(kExceptionMessage);
+                
+                return;
             }
             
             dataPersistence.Load<GameFoundationSerializableData>(k_GameFoundationPersistenceId,
-                (data) =>
+                data =>
                 {
                     try
                     {
                         onLoadCompleted?.Invoke(data);
                     }
-                    catch
+                    catch (Exception e)
                     {
-                        onLoadFailed?.Invoke();
+                        onLoadFailed?.Invoke(e);
                     }
                 },
-                () => { onLoadFailed?.Invoke(); });
+                error => { onLoadFailed?.Invoke(error); });
         }
 
         private static void FillAllSystems(ISerializableData data)
         {
             NotificationSystem.temporaryDisable = true;
             GameItemLookup.FillFromLookupData(data);
-            StatManager.FillFromStatsData(data);
             InventoryManager.FillFromInventoriesData(data);
+            StatManager.FillFromStatsData(data);
             NotificationSystem.temporaryDisable = false;
         }
     }

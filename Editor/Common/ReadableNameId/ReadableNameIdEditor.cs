@@ -14,6 +14,8 @@ namespace UnityEditor.GameFoundation
         private bool m_AutomaticIdGenerationMode = true;
         private bool m_IdEditingAllowedMode = true;
         private HashSet<string> m_OldIds = new HashSet<string>();
+        private static GUIContent s_DisplayNameLabel = new GUIContent("Display Name", "This is the readable name of the definition being created. Can be used for logging and displaying to users.");
+        private static GUIContent s_IdLabel = new GUIContent("Id", "This is the code-friendly identifier of the definition being created. Valid Ids are alphanumeric with optional dashes or underscores. Can be used for looking up and referencing definitions in code.");
 
         public ReadableNameIdEditor(bool createNewMode, HashSet<string> oldIds)
         {
@@ -38,7 +40,7 @@ namespace UnityEditor.GameFoundation
             using (new EditorGUILayout.VerticalScope())
             {
                 GUI.SetNextControlName("displayName");
-                displayName = EditorGUILayout.TextField("Display Name", displayName);
+                displayName = EditorGUILayout.TextField(s_DisplayNameLabel, displayName);
 
                 if (m_IdEditingAllowedMode)
                 {
@@ -46,7 +48,7 @@ namespace UnityEditor.GameFoundation
 
                     GUI.changed = false;
                     GUI.SetNextControlName("id");
-                    itemId = EditorGUILayout.TextField("Id", itemId);
+                    itemId = EditorGUILayout.TextField(s_IdLabel, itemId);
                     if (GUI.changed)
                     {
                         m_AutomaticIdGenerationMode = false;
@@ -65,7 +67,7 @@ namespace UnityEditor.GameFoundation
                 {
                     using (new EditorGUILayout.HorizontalScope())
                     {
-                        EditorGUILayout.LabelField("Id", GUILayout.Width(145));
+                        EditorGUILayout.LabelField(s_IdLabel, GUILayout.Width(145));
                         EditorGUILayout.SelectableLabel(itemId, GUILayout.Height(15), GUILayout.ExpandWidth(true));
                     }
                 }

@@ -11,7 +11,7 @@ namespace UnityEngine.GameFoundation
     {
         private static Dictionary<int, GameItem> m_Instances = new Dictionary<int, GameItem>();
 
-        private static int m_LastGuidUsed = 0;
+        private static int m_LastGameItemIdUsed = 0;
         private static bool m_IsInitialized = false;
 
         /// <summary>
@@ -55,7 +55,10 @@ namespace UnityEngine.GameFoundation
         internal static void Reset()
         {
             m_Instances = new Dictionary<int, GameItem>();
-            m_LastGuidUsed = 0;
+
+            // note: we do NOT want to reset this id since any existing game items being held by developer should NOT ...
+            //  ...  cause stats to clear on newly-created items that happen to have the same GameItemId
+//          m_LastGameItemIdUsed = 0;
         }
 
         internal static bool FillFromLookupData(ISerializableData data)
@@ -72,14 +75,14 @@ namespace UnityEngine.GameFoundation
                 return false;
             }
                 
-            m_LastGuidUsed = lookupData.gameItemLookupData.lastGuidUsed;
+            m_LastGameItemIdUsed = lookupData.gameItemLookupData.lastGameItemIdUsed;
 
             return true;
         }
 
         internal static GameItemLookupSerializableData GetSerializableData()
         {
-            GameItemLookupSerializableData data = new GameItemLookupSerializableData(m_LastGuidUsed);
+            GameItemLookupSerializableData data = new GameItemLookupSerializableData(m_LastGameItemIdUsed);
             return data;
         }
         
@@ -142,8 +145,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>Hash to assign to newly created GameItem.</returns>
         public static int GetNextIdForInstance()
         {
-            ++m_LastGuidUsed;
-            return m_LastGuidUsed;
+            ++m_LastGameItemIdUsed;
+            return m_LastGameItemIdUsed;
         }
     }
 }

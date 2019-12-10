@@ -1,0 +1,23 @@
+using UnityEngine;
+using UnityEngine.GameFoundation;
+
+public class #SCRIPTNAME# : BaseDetailDefinition
+{
+    /// <summary>
+    /// Returns 'friendly' display name for this #SCRIPTNAME#.
+    /// </summary>
+    /// <returns>The 'friendly' display name for this #SCRIPTNAME#.</returns>
+    public override string DisplayName() 
+    { 
+        return "#SCRIPTNAME#"; 
+    }
+
+    /// <summary>
+    /// Tooltip to display when hovering over this detail in the editor.
+    /// </summary>
+    /// <returns>The tooltip's text.</returns>
+    public override string TooltipMessage()
+    {
+        return string.Empty;
+    }
+}

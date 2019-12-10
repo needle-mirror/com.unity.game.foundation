@@ -9,40 +9,39 @@ namespace UnityEditor.GameFoundation
     {
         private string m_CurrentCategoryDefinitionId = null;
 
-        protected override List<CategoryDefinition> m_Items
-        {
-            get
-            {
-                return EditorAPIHelper.GetInventoryCatalogCategoriesList();
-            }
-        }
-
-        protected override List<CategoryDefinition> m_FilteredItems
-        {
-            get
-            { return m_Items; }
-        }
-
         public CategoryDefinitionEditor(string name, InventoryEditorWindow window) : base(name, window)
         {
+        }
+        
+        protected override List<CategoryDefinition> GetFilteredItems()
+        {
+            return GetItems();
+        }
+
+        public override void RefreshItems()
+        {
+            base.RefreshItems();
+
+            if (GameFoundationSettings.database != null
+                && GameFoundationSettings.database.inventoryCatalog != null)
+            {
+                GameFoundationSettings.database.inventoryCatalog.GetCategories(GetItems());
+            }
         }
 
         public override void OnWillEnter()
         {
             base.OnWillEnter();
 
-            var itemCatalogDatabase = GameFoundationSettings.database.inventoryCatalog;
-            if (itemCatalogDatabase == null)
-                return;
-
             SelectFilteredItem(0); // Select the first Item
+            GameFoundationAnalytics.SendOpenTabEvent(GameFoundationAnalytics.TabName.Categories);
         }
 
         protected override void SelectItem(CategoryDefinition categoryDefinition)
         {
             if (categoryDefinition != null)
             {
-                m_ReadableNameIdEditor = new ReadableNameIdEditor(false, new HashSet<string>(m_Items.Select(i => i.id)));
+                m_ReadableNameIdEditor = new ReadableNameIdEditor(false, new HashSet<string>(GetItems().Select(i => i.id)));
                 m_CurrentCategoryDefinitionId = categoryDefinition.id;
             }
 
@@ -51,29 +50,59 @@ namespace UnityEditor.GameFoundation
 
         protected override void CreateNewItem()
         {
-            m_ReadableNameIdEditor = new ReadableNameIdEditor(true, new HashSet<string>(m_Items.Select(i => i.id)));
+            m_ReadableNameIdEditor = new ReadableNameIdEditor(true, new HashSet<string>(GetItems().Select(i => i.id)));
         }
 
-        protected override void AddItem(CategoryDefinition category)
+        protected override void AddItem(CategoryDefinition categoryDefinition)
         {
-            EditorAPIHelper.AddCategoryDefinitionToInventoryCatalog(category);
-            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
-            window.Repaint();
+            if (GameFoundationSettings.database == null)
+            {
+                Debug.LogError("Category " + categoryDefinition.displayName + " could not be added because the Game Foundation database is null");
+            }
+            else if (GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                Debug.LogError("Category " + categoryDefinition.displayName + " could not be added because the inventory catalog is null");
+            }
+            else
+            {
+                GameFoundationSettings.database.inventoryCatalog.AddCategory(categoryDefinition);
+                EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+            }
         }
 
         protected override void CreateNewItemFinalize()
         {
-            CategoryDefinition categoryDefinition = EditorAPIHelper.CreateCategoryDefinition(m_NewItemId, m_NewItemDisplayName);
+            if (GameFoundationSettings.database == null)
+            {
+                Debug.LogError("Could not create new category definition because the Game Foundation database is null.");
+                return;
+            }
+
+            if (GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                Debug.LogError("Could not create new category definition because the inventory catalog is null.");
+                return;
+            }
+
+            CategoryDefinition categoryDefinition = new CategoryDefinition(m_NewItemId, m_NewItemDisplayName);
 
             EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
             AddItem(categoryDefinition);
             SelectItem(categoryDefinition);
             m_CurrentCategoryDefinitionId = m_NewItemId;
-            DrawDetail(categoryDefinition, m_Items.FindIndex(x => x.Equals(m_SelectedItem)), m_Items.Count);
+            RefreshItems();
+            List<CategoryDefinition> categoryDefinitions = GetItems();
+            DrawDetail(categoryDefinition, categoryDefinitions.FindIndex(x => x.Equals(m_SelectedItem)), categoryDefinitions.Count);
         }
 
         protected override void DrawDetail(CategoryDefinition categoryDefinition, int index, int count)
         {
+            if (GameFoundationSettings.database == null
+                || GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                return;
+            }
+
             EditorGUILayout.LabelField("General", GameFoundationEditorStyles.titleStyle);
 
             using (new GUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
@@ -100,18 +129,30 @@ namespace UnityEditor.GameFoundation
             EndSidebarItem(item, index);
         }
 
-        protected override void OnRemoveItem(CategoryDefinition item)
+        protected override void OnRemoveItem(CategoryDefinition categoryDefinition)
         {
-            if (item != null)
+            if (categoryDefinition != null)
             {
                 // loop through all inventory items and attempt to remove category in case they are referring to it.
                 foreach (InventoryItemDefinition inventoryItemDefinition in GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions())
                 {
-                    inventoryItemDefinition.RemoveCategory(item);
+                    inventoryItemDefinition.RemoveCategory(categoryDefinition);
                 }
 
-                CategoryFilterEditor.ResetCategoryFilter();
-                EditorAPIHelper.RemoveCategoryDefinitionFromInventoryCatalog(item);
+                m_CategoryFilterEditor.ResetCategoryFilter();
+
+                if (GameFoundationSettings.database.inventoryCatalog != null)
+                {
+                    bool successfullyRemoved = GameFoundationSettings.database.inventoryCatalog.RemoveCategory(categoryDefinition);
+                    if (!successfullyRemoved)
+                    {
+                        Debug.LogError("Category " + categoryDefinition.displayName + " was unable to be removed from inventory catalog list.");
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Category " + categoryDefinition.displayName + " could not be removed from inventory catalog because catalog is null");
+                }
             }
         }
     }

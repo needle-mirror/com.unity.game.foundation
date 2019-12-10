@@ -3,6 +3,7 @@
     /// <summary>
     /// This is one record in the Stat Manager’s list of current Stats at runtime.
     /// </summary>
+    /// <typeparam name="T">The type of value to use.</typeparam>
     public class StatItem<T> where T : new()
     {
         /// <summary>

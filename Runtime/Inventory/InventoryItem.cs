@@ -44,7 +44,7 @@ namespace UnityEngine.GameFoundation
         {
             if (inventory != null)
             {
-                inventory.SetQuantity(id, value);
+                inventory.SetQuantity(hash, value);
             }
             else
             {

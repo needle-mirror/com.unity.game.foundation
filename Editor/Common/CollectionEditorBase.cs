@@ -10,9 +10,8 @@ namespace UnityEditor.GameFoundation
 
         protected T m_SelectedItem { get; set; }
         protected T m_PreviouslySelectedItem = null;
-        protected abstract List<T> m_Items { get; }
-        protected abstract List<T> m_FilteredItems { get; }
-
+        private List<T> m_Items;
+ 
         protected Vector2 m_ScrollPosition;
         protected Vector2 m_ScrollPositionDetail;
 
@@ -28,12 +27,22 @@ namespace UnityEditor.GameFoundation
 
         protected ReadableNameIdEditor m_ReadableNameIdEditor;
 
+        protected CategoryFilterEditor m_CategoryFilterEditor = new CategoryFilterEditor();
+
+
         public CollectionEditorBase(string name, CollectionEditorWindowBase window)
         {
             this.name = name;
             this.window = window;
         }
 
+        protected List<T> GetItems()
+        {
+            return m_Items;
+        }
+
+        protected abstract List<T> GetFilteredItems();
+            
         // Update
         public virtual void Update()
         {
@@ -112,6 +121,8 @@ namespace UnityEditor.GameFoundation
         // Enter - Exit
         public virtual void OnWillEnter()
         {
+            RefreshItems();
+
             m_IsCreating = false;
 
             SelectItem(null);
@@ -123,7 +134,6 @@ namespace UnityEditor.GameFoundation
 
             SelectItem(null);
         }
-
 
         // Side Bar
         protected virtual void DrawSidebar()
@@ -167,7 +177,8 @@ namespace UnityEditor.GameFoundation
 
         protected virtual void DrawSidebarList()
         {
-            var filteredItems = m_FilteredItems;
+            var filteredItems = GetFilteredItems();
+
             for (int i = 0; i < filteredItems.Count; ++i)
             {
                 DrawSidebarListItem(filteredItems[i], i);
@@ -335,6 +346,21 @@ namespace UnityEditor.GameFoundation
             m_ItemToRemove = item;
         }
 
+        /// <summary>
+        /// This updates the cached list of items.
+        /// The base implementation only constructs and clears the list.
+        /// The inherited implementation should populate the list.
+        /// </summary>
+        public virtual void RefreshItems()
+        {
+            if (m_Items == null)
+            {
+                m_Items = new List<T>();
+            }
+
+            m_Items.Clear();
+        }
+
         protected void ClearAndRemoveItems()
         {
             if (m_Items == null)
@@ -348,7 +374,7 @@ namespace UnityEditor.GameFoundation
                 OnRemoveItem(m_ItemToRemove);
                 m_ItemToRemove = null;
                 SelectItem(null);
-                window.Repaint();
+                RefreshItems();
             }
         }
 
@@ -364,11 +390,12 @@ namespace UnityEditor.GameFoundation
             GUI.FocusControl(null);
         }
 
-        protected virtual void SelectFilteredItem(int listIndex)
+        protected void SelectFilteredItem(int listIndex)
         {
-            if (m_FilteredItems != null && m_FilteredItems.Count > listIndex && listIndex >= 0)
+            List<T> filteredItems = GetFilteredItems();
+            if (filteredItems != null && filteredItems.Count > listIndex && listIndex >= 0)
             {
-                SelectItem(m_FilteredItems[listIndex]);
+                SelectItem(filteredItems[listIndex]);
             }
             else
             {

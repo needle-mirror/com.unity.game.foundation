@@ -103,11 +103,21 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills in the given list with all categories in this catalog.
+        /// Note: this returns the current state of all categories in the catelog.  To ensure
+        /// that there are no invalid or duplicate entries, the 'categories' list 
+        /// will always be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="categories">The list to fill up with categories.</param>
+        /// <param name="categories">The list to clear and write all categories to.</param>
         public void GetCategories(List<CategoryDefinition> categories)
         {
-            if (m_Categories == null || categories == null)
+            if (categories == null)
+            {
+                return;
+            }
+
+            categories.Clear();
+
+            if (m_Categories == null)
             {
                 return;
             }
@@ -167,11 +177,21 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Adds all collection definitions into the given list.
+        /// Note: this returns the current state of all collection definitions in the catelog.  To ensure
+        /// that there are no invalid or duplicate entries, the 'collectionDefinitions' list 
+        /// will always be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="collectionDefinitions">The list to add collection definitions to.</param>
+        /// <param name="collectionDefinitions">The list to clear and write all collection definitions to.</param>
         public void GetCollectionDefinitions(List<T1> collectionDefinitions)
         {
-            if (m_CollectionDefinitions == null || collectionDefinitions == null)
+            if (collectionDefinitions == null)
+            {
+                return;
+            }
+
+            collectionDefinitions.Clear();
+
+            if (m_CollectionDefinitions == null)
             {
                 return;
             }
@@ -238,11 +258,21 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills in the given list with all item definitions in this catalog.
+        /// Note: this returns the current state of all item definitions in the catelog.  To ensure
+        /// that there are no invalid or duplicate entries, the 'itemDefinitions' list 
+        /// will always be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="itemDefinitions">The list to fill up.</param>
+        /// <param name="itemDefinitions">The list to clear and write all item definitions to.</param>
         public void GetItemDefinitions(List<T3> itemDefinitions)
         {
-            if (m_ItemDefinitions == null || itemDefinitions == null)
+            if (itemDefinitions == null)
+            {
+                return;
+            }
+
+            itemDefinitions.Clear();
+
+            if (m_ItemDefinitions == null)
             {
                 return;
             }
@@ -310,11 +340,21 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with all default collection definitions in this catalog.
+        /// Note: this returns the current state of all default collection definitions in the catelog.  To
+        /// ensure that there are no invalid or duplicate entries, the 'defaultCollectionDefinitions' list 
+        /// will always be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="defaultCollectionDefinitions">The list to fill up.</param>
+        /// <param name="defaultCollectionDefinitions">The list to clear and write all default collection definitions to.</param>
         public void GetDefaultCollectionDefinitions(List<DefaultCollectionDefinition> defaultCollectionDefinitions)
         {
-            if (m_DefaultCollectionDefinitions == null || defaultCollectionDefinitions == null)
+            if (defaultCollectionDefinitions == null)
+            {
+                return;
+            }
+
+            defaultCollectionDefinitions.Clear();
+
+            if (m_DefaultCollectionDefinitions == null)
             {
                 return;
             }
@@ -441,12 +481,22 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills in the given list with items matching the given category.
+        /// Note: this returns the current state of items in the catalog.  To ensure
+        /// that there are no invalid or duplicate entries, the 'items' list will always
+        /// be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
         /// <param name="categoryId">The id of the CategoryDefinition we want.</param>
-        /// <param name="items">The list to fill up.</param>
+        /// <param name="items">The list to clear and write matching items into.</param>
         public void GetItemDefinitionsByCategory(string categoryId, List<T3> items)
         {
-            if (string.IsNullOrEmpty(categoryId) || items == null)
+            if (items == null)
+            {
+                return;
+            }
+
+            items.Clear();
+
+            if (string.IsNullOrEmpty(categoryId))
             {
                 return;
             }
@@ -481,15 +531,20 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills in the given list with items matching the given category.
+        /// Note: this returns the current state of matching items in the catelog.  To ensure
+        /// that there are no invalid or duplicate entries, the 'items' list will always 
+        /// be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
         /// <param name="categoryHash">The id hash of the CategoryDefinition we want to check for.</param>
-        /// <param name="items">The list to fill up.</param>
+        /// <param name="items">The list to clear and write matching items into.</param>
         public void GetItemDefinitionsByCategory(int categoryHash, List<T3> items)
         {
             if (items == null)
             {
                 return;
             }
+
+            items.Clear();
             
             items.AddRange(GetItemDefinitionsByCategory(categoryHash));
         }
@@ -511,12 +566,22 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills in the given list with items matching the given category.
+        /// Note: this returns the current state of matching items in the catelog.  To ensure
+        /// that there are no invalid or duplicate entries, the 'items' list will always 
+        /// be cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
         /// <param name="category">The Category we want to check for.</param>
-        /// <param name="items">The list to fill up.</param>
+        /// <param name="items">The list to clear and write matching items into.</param>
         public void GetItemDefinitionsByCategory(CategoryDefinition category, List<T3> items)
         {
-            if (category == null || items == null)
+            if (items == null)
+            {
+                return;
+            }
+
+            items.Clear();
+
+            if (category == null)
             {
                 return;
             }
@@ -575,47 +640,6 @@ namespace UnityEngine.GameFoundation
         public bool IsItemDefinitionHashUnique(int itemDefinitionHash)
         {
             return GetItemDefinition(itemDefinitionHash) == null;
-        }
-
-        /// <summary>
-        /// Check if the given CategoryDefinition is found in this Catalog's list of CategoryDefinitions.
-        /// </summary>
-        /// <param name="category">The CategoryDefinition we are checking for.</param>
-        /// <returns>True if the CategoryDefinition is found, else False.</returns>
-        public bool HasCategoryDefinition(CategoryDefinition category)
-        {
-            if (category == null)
-            {
-                return false;
-            }
-
-            foreach (CategoryDefinition currentCategory in m_Categories)
-            {
-                if (currentCategory.hash == category.hash)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Check if the given CategoryDefinition display name is found in this Catalog's list of CategoryDefinitions.
-        /// </summary>
-        /// <param name="categoryName">The display name of the Category we are checking for.</param>
-        /// <returns>True if the CategoryDefinition is found.</returns>
-        public bool HasCategoryDefinition(string categoryName)
-        {
-            foreach (CategoryDefinition category in m_Categories)
-            {
-                if (category.displayName == categoryName)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
 #if UNITY_EDITOR

@@ -13,6 +13,13 @@ namespace UnityEngine.GameFoundation
     [System.Serializable]
     public class DefaultCollectionDefinition
     {
+        /// <summary>
+        /// Constructor for setting up the id, display name, and the hash.
+        /// </summary>
+        /// <param name="id">The id this will use.</param>
+        /// <param name="displayName">The display name this will use.</param>
+        /// <param name="baseCollectionDefinitionHash">The hash this will use.</param>
+        /// <exception cref="ArgumentException">Thrown if the given id is invalid.</exception>
         public DefaultCollectionDefinition(string id, string displayName, int baseCollectionDefinitionHash)
         {
             Tools.ThrowIfPlayMode("Cannot create a DefaultCollectionDefinition while in play mode.");

@@ -13,9 +13,16 @@ namespace UnityEngine.GameFoundation
     public class StatDetailDefinition : BaseDetailDefinition, ISerializationCallbackReceiver
     {
         /// <summary>
-        /// Returns 'friendly' display name for this detail definition.
+        /// Returns 'friendly' display name for this StatDetailDefinition.
         /// </summary>
+        /// <returns>'friendly' display name for this detail definition.</returns>
         public override string DisplayName() { return "Stat Detail"; }
+
+        /// <summary>
+        /// Returns string message which explains the purpose of this StatDetailDefinition, for the purpose of displaying as a tooltip in editor.
+        /// </summary>
+        /// <returns>The string tooltip message of this StatDetailDefinition.</returns>
+        public override string TooltipMessage() { return "The stat detail allows the attachment of stats with specific default values to the given definition."; }
 
         private Dictionary<int, int> m_StatDefaultIntValues;
         private Dictionary<int, float> m_StatDefaultFloatValues;

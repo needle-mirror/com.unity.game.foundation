@@ -9,16 +9,20 @@ namespace UnityEngine.GameFoundation
     /// </summary>
     public class GameItem
     {
+        // prevent discard of game item multiple times
+        private bool m_Discarded = false;
+
         /// <summary>
         /// Constructor for a GameItem.
         /// </summary>
         /// <param name="definition">The GameItemDefinition this GameItem should use.</param>
         /// <param name="id">The Id this GameItem will use.</param>
-        public GameItem(GameItemDefinition definition, string id = null) : this(definition, id, 0)
+        /// <param name="displayName">The display name this GameItem will use.</param>
+        public GameItem(GameItemDefinition definition, string id = null, string displayName = null) : this(definition, id, displayName, 0)
         {
         }
         
-        internal GameItem(GameItemDefinition definition, string id, int gameItemId)
+        internal GameItem(GameItemDefinition definition, string id, string displayName, int gameItemId)
         {
             // assign this gameItem a unique gameItem Id and register it with the GameItem instance lookup class
             m_GameItemId = gameItemId != 0 ? gameItemId : GameItemLookup.GetNextIdForInstance();
@@ -41,7 +45,11 @@ namespace UnityEngine.GameFoundation
                 m_Hash = Tools.StringToHash(m_Id);
             }
 
-            if (definition == null)
+            // save display name.  note: could be null, in which case we'll always return definition's display name
+            m_DisplayName = displayName;
+
+            // save definition, catgories, details, etc.
+            if (ReferenceEquals(definition, null))
             {
                 m_Definition = null;
                 m_Categories = new CategoryDefinition[] { };
@@ -50,7 +58,7 @@ namespace UnityEngine.GameFoundation
             { 
                 m_Definition = definition;
                 var categories = definition.GetCategories();
-                if (categories == null || categories.Length == 0)
+                if (ReferenceEquals(categories, null) || categories.Length == 0)
                 {
                     m_Categories = new CategoryDefinition[] { };
                 }
@@ -65,9 +73,8 @@ namespace UnityEngine.GameFoundation
                     }
                 }
 
-                m_DisplayName = definition.displayName;
                 var details = definition.GetDetailDefinitions();
-                if (details != null)
+                if (!ReferenceEquals(details, null))
                 {
                     foreach (var detailDefinition in details)
                     {
@@ -75,10 +82,10 @@ namespace UnityEngine.GameFoundation
                     }
                 }
 
-                if (definition.referenceDefinition != null)
+                if (!ReferenceEquals(definition.referenceDefinition, null))
                 {
                     var referenceDetail = definition.referenceDefinition.GetDetailDefinitions();
-                    if (referenceDetail != null)
+                    if (!ReferenceEquals(referenceDetail, null))
                     {
                         foreach (var detailDefinition in referenceDetail)
                         {
@@ -143,11 +150,29 @@ namespace UnityEngine.GameFoundation
             }
         }
 
+        // remove all references to this game item--called when inventories are reset or items removed from them
+        // remove all stats and removes it from the GameItemLookup directory.
+        protected internal virtual void Discard()
+        {
+            if (!m_Discarded)
+            {
+                // remove all stats for specified this game item
+                StatManager.OnGameItemDiscarded(this);
+
+                // remove game item lookup for this game item
+                GameItemLookup.UnregisterInstance(m_GameItemId);
+
+                // remember the item was discarded so we don't do it again
+                m_Discarded = true;
+            }
+        }
+
+        /// <summary>
         // in finalizer, remove gameItem from gameItem instance lookup
-        //TODO: this approach may need further consideration as finalizers are not called until gc so GameItems may remain in table indefinitely
+        /// </summary>
         ~GameItem()
         {
-            GameItemLookup.UnregisterInstance(m_GameItemId);
+            Discard();
         }
 
         [SerializeField]
@@ -171,7 +196,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>The name of this GameItem for the user to display.</returns>
         public string displayName
         {
-            get { return m_DisplayName; }
+            get { return m_DisplayName != null ? m_DisplayName : m_Definition?.displayName; }
             internal set { m_DisplayName = value; }
         }
 
@@ -244,12 +269,24 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with all details attached to this game item.
+        /// Note: this returns the current state of all details attached.  To ensure that
+        /// there are no invalid or duplicate entries, the 'details' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the game item.
         /// </summary>
-        /// <param name="details">The list to fill up.</param>
+        /// <param name="details">The list to clear and fill with this game item's details.</param>
         protected void GetDetails(List<BaseDetail> details)
         {
-            if (m_Details == null || details == null)
+            if (details == null)
+            {
                 return;
+            }
+
+            details.Clear();
+
+            if (m_Details == null)
+            {
+                return;
+            }
             
             details.AddRange(m_Details.Values);
         }
@@ -261,7 +298,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>A reference to the Detail instance that was added or null if no runtime Detail is needed for the specified DetailDefinition.</returns>
         protected BaseDetail AddDetail(BaseDetailDefinition detailDefinition)
         {
-            if (detailDefinition == null)
+            if (ReferenceEquals(detailDefinition, null))
             {
                 Debug.LogWarning("Null detail definition given, this will not be added.");
                 return null;
@@ -291,13 +328,42 @@ namespace UnityEngine.GameFoundation
                 return null;
             }
             
-            var type = detail.GetType();
+            var detailType = detail.GetType();
 
-            if (m_Details.ContainsKey(type))
+            BaseDetail oldDetail;
+            if (m_Details.TryGetValue(detailType, out oldDetail))
             {
-                throw new ArgumentException("Cannot add a duplicate detail.");
+                if (oldDetail.GetType() == detailType)
+                {
+                   throw new ArgumentException("Cannot add a duplicate detail.");
+                }
             }
-            m_Details.Add(type, detail);
+
+            // add specified detail by detail's type to the dictionary
+            // note: this MAY overwrite a detail with a more derived type which is correct since this IS the item of exactly the specified type
+            m_Details[detailType] = detail;
+
+            // also search base class types for the detail and add this detail for all base classes
+            // note: this allows polymorphic behavior so, if base class is looked up, it will find the derived class 
+            var typeOn = detailType;
+            while (true)
+            {
+                typeOn = typeOn.BaseType;
+                if (typeOn == null || typeOn == typeof(BaseDetail))
+                {
+                    break;
+                }
+                BaseDetail testDetail;
+                if (m_Details.TryGetValue(typeOn, out testDetail))
+                {
+                    if (testDetail != null && testDetail != oldDetail)
+                    {
+                        break;
+                    }
+                }
+
+                m_Details[typeOn] = detail;
+            }
 
             return detail;
         }
@@ -319,7 +385,7 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <typeparam name="T">The type of Detail to return.</typeparam>
         /// <returns>A reference to the Detail or null if not found.</returns>
-        protected T GetDetail<T>() where T : BaseDetail
+        internal protected T GetDetail<T>() where T : BaseDetail
         {
             var type = typeof(T);
             BaseDetail detail;
@@ -338,9 +404,44 @@ namespace UnityEngine.GameFoundation
         /// <returns>True if Detail was successfully removed, else false.</returns>
         protected bool RemoveDetail<T>() where T : BaseDetail
         {
+            // remove the reference to the detail by specified type
             var type = typeof(T);
-            
-            return m_Details.Remove(type);
+
+            BaseDetail baseDetailToRemove;
+            if (!m_Details.TryGetValue(type, out baseDetailToRemove))
+            {
+                return false;
+            }
+
+            if (!m_Details.Remove(type))
+            {
+                return false;
+            }
+
+            // remove all details linked from base classes to this same detail (they were used to allow polymorphism)
+            while (true)
+            {
+                type = type.BaseType;
+                if (type == null || type == typeof(BaseDetail))
+                {
+                    break;
+                }
+
+                BaseDetail baseDetail;
+                if (!m_Details.TryGetValue(type, out baseDetail))
+                {
+                    break;
+                }
+
+                if (baseDetail != baseDetailToRemove)
+                {
+                    break;
+                }
+
+                m_Details.Remove(type);
+            }
+
+            return true;
         }
 
         #region StatsHelpers
@@ -452,7 +553,6 @@ namespace UnityEngine.GameFoundation
         {
             StatManager.SetFloatValue(this, statDefinitionHash, value);
         }
-
         #endregion
     }
 }

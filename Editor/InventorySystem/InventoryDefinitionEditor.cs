@@ -14,46 +14,59 @@ namespace UnityEditor.GameFoundation
         private DefaultItem m_DefaultItemToRemove;
         private DefaultCollectionDefinition m_DefaultInventoryDefinition;
         private bool m_CreateDefaultInventory;
-        private GUIContent m_AutoCreateInventoryLabel;
-
-        protected override List<InventoryDefinition> m_Items
-        {
-            get
-            {
-                return EditorAPIHelper.GetInventoryCatalogCollectionDefinitionsList();
-            }
-        }
-
-        protected override List<InventoryDefinition> m_FilteredItems
-        {
-            get { return m_Items; }
-        }
+        private static GUIContent s_AutoCreateInventoryLabel = new GUIContent("Auto Create Instance", "When checked, an instance of this InventoryDefinition will automatically get instantiated at runtime when Game Foundation initializes.");
+        private static GUIContent s_DefaultItemsLabel = new GUIContent("Default Items", "When this inventory is instantiated at runtime, these items will be created and added to it automatically.");
+        private static GUIContent s_OtherAvailableItemsLabel = new GUIContent("Other Available Items", "Items that are eligible to be added to this inventory as a default item.");
+        private static GUIContent s_OtherAvailableWalletItemsLabel = new GUIContent("Other Available Items", "Items that are eligible to be added to this inventory as a default item. Only inventory items with the currency detail attached to either themselves or their reference definition are eligible to be added to the Wallet inventory.");
 
         public InventoryDefinitionEditor(string name, InventoryEditorWindow window) : base(name, window)
         {
-            m_AutoCreateInventoryLabel = new GUIContent("Auto Create Instance", "When checked, this InventoryDefinition is added to a list of DefaultCollectionDefinitions so that an instance of it will automatically be created at runtime initialization.");
+        }
+        
+        protected override List<InventoryDefinition> GetFilteredItems()
+        {
+            return GetItems();
+        }
+
+        public override void RefreshItems()
+        {
+            base.RefreshItems();
+
+            if (GameFoundationSettings.database != null
+                && GameFoundationSettings.database.inventoryCatalog != null)
+            {
+                GameFoundationSettings.database.inventoryCatalog.GetCollectionDefinitions(GetItems());
+            }
         }
 
         public override void OnWillEnter()
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.database.inventoryCatalog == null)
-            {
-                return;
-            }
-
             SelectFilteredItem(0); // Select the first Item
+            GameFoundationAnalytics.SendOpenTabEvent(GameFoundationAnalytics.TabName.Inventories);
         }
 
         protected override void CreateNewItem()
         {
-            m_ReadableNameIdEditor = new ReadableNameIdEditor(true, new HashSet<string>(m_Items.Select(i => i.id)));
+            m_ReadableNameIdEditor = new ReadableNameIdEditor(true, new HashSet<string>(GetItems().Select(i => i.id)));
         }
 
         protected override void CreateNewItemFinalize()
         {
-            InventoryDefinition inventory = EditorAPIHelper.CreateInventoryDefinition(m_NewItemId, m_NewItemDisplayName);
+            if (GameFoundationSettings.database == null)
+            {
+                Debug.LogError("Could not create new inventory definition because the Game Foundation database is null.");
+                return;
+            }
+
+            if (GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                Debug.LogError("Could not create new inventory definition because the inventory catalog is null.");
+                return;
+            }
+
+            InventoryDefinition inventory = InventoryDefinition.Create(m_NewItemId, m_NewItemDisplayName);
 
             if (inventory != null)
             {
@@ -61,7 +74,8 @@ namespace UnityEditor.GameFoundation
                 CollectionEditorTools.AssetDatabaseAddObject(inventory, GameFoundationSettings.database.inventoryCatalog);
                 SelectItem(inventory);
                 m_InventoryId = m_NewItemId;
-                DrawGeneralDetail(inventory, m_Items.FindIndex(x => x.Equals(m_SelectedItem)));
+                RefreshItems();
+                DrawGeneralDetail(inventory);
             }
             else
             {
@@ -71,22 +85,38 @@ namespace UnityEditor.GameFoundation
 
         protected override void AddItem(InventoryDefinition inventoryDefinition)
         {
-            EditorAPIHelper.AddInventoryDefinitionToInventoryCatalog(inventoryDefinition);
-            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
-            window.Repaint();
+            if (GameFoundationSettings.database == null)
+            {
+                Debug.LogError("Inventory Definition " + inventoryDefinition.displayName + " could not be added because the Game Foundation database is null");
+            }
+            else if (GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                Debug.LogError("Inventory Definition " + inventoryDefinition.displayName + " could not be added because the inventory catalog is null");
+            }
+            else
+            {
+                GameFoundationSettings.database.inventoryCatalog.AddCollectionDefinition(inventoryDefinition);
+                EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+            }
         }
 
         protected override void DrawDetail(InventoryDefinition inventory, int index, int count)
         {
-            DrawGeneralDetail(inventory, index);
+            DrawGeneralDetail(inventory);
 
             EditorGUILayout.Space();
 
             DrawInventoryDetail(inventory, index, count);
         }
 
-        private void DrawGeneralDetail(InventoryDefinition inventoryDefinition, int index)
+        private void DrawGeneralDetail(InventoryDefinition inventoryDefinition)
         {
+            if (GameFoundationSettings.database == null
+                || GameFoundationSettings.database.inventoryCatalog == null)
+            {
+                return;
+            }
+
             EditorGUILayout.LabelField("General", GameFoundationEditorStyles.titleStyle);
 
             using (new GUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
@@ -105,7 +135,7 @@ namespace UnityEditor.GameFoundation
                     GUI.enabled = false;
                 }
 
-                bool newAutoCreateInventorySelection = EditorGUILayout.Toggle(m_AutoCreateInventoryLabel, m_CreateDefaultInventory);
+                bool newAutoCreateInventorySelection = EditorGUILayout.Toggle(s_AutoCreateInventoryLabel, m_CreateDefaultInventory);
                 if (newAutoCreateInventorySelection != m_CreateDefaultInventory)
                 {
                     if (newAutoCreateInventorySelection)
@@ -148,12 +178,9 @@ namespace UnityEditor.GameFoundation
 
             var inventoryCatalogAllItemDefinitions = GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions();
 
-            EditorGUILayout.LabelField("Default Items", GameFoundationEditorStyles.titleStyle);
+            EditorGUILayout.LabelField(s_DefaultItemsLabel, GameFoundationEditorStyles.titleStyle);
 
             EditorGUILayout.BeginVertical(GameFoundationEditorStyles.boxStyle);
-
-            EditorGUILayout.LabelField("When this inventory is instantiated, these items will be created and added to it automatically.");
-            EditorGUILayout.Space();
 
             GUILayout.BeginHorizontal(GameFoundationEditorStyles.tableViewToolbarStyle);
             EditorGUILayout.LabelField("Inventory Item", GameFoundationEditorStyles.tableViewToolbarTextStyle, GUILayout.Width(150));
@@ -254,7 +281,11 @@ namespace UnityEditor.GameFoundation
         {
             var inventoryCatalogAllItemDefinitions = GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions();
 
-            EditorGUILayout.LabelField("Other Available Items", GameFoundationEditorStyles.titleStyle);
+            GUIContent otherItemsLabel = (inventoryDefinition.id == InventoryCatalog.k_WalletInventoryDefinitionId)
+                ? s_OtherAvailableWalletItemsLabel
+                : s_OtherAvailableItemsLabel;
+
+            EditorGUILayout.LabelField(otherItemsLabel, GameFoundationEditorStyles.titleStyle);
 
             EditorGUILayout.BeginVertical(GameFoundationEditorStyles.boxStyle);
             GUILayout.BeginHorizontal(GameFoundationEditorStyles.tableViewToolbarStyle);
@@ -267,7 +298,7 @@ namespace UnityEditor.GameFoundation
             foreach (InventoryItemDefinition inventoryItemDefinition in inventoryCatalogAllItemDefinitions)
             {
                 // wallets can only have currencies as auto-add items
-                if (inventoryDefinition.id == EditorAPIHelper.k_WalletInventoryDefinitionId &&
+                if (inventoryDefinition.id == InventoryCatalog.k_WalletInventoryDefinitionId &&
                     inventoryItemDefinition.GetDetailDefinition<CurrencyDetailDefinition>() == null)
                 {
                     continue;
@@ -338,7 +369,7 @@ namespace UnityEditor.GameFoundation
         {
             if (inventoryDefinition != null)
             {
-                m_ReadableNameIdEditor = new ReadableNameIdEditor(false, new HashSet<string>(m_Items.Select(i => i.id)));
+                m_ReadableNameIdEditor = new ReadableNameIdEditor(false, new HashSet<string>(GetItems().Select(i => i.id)));
                 m_InventoryId = inventoryDefinition.id;
                 m_DefaultInventoryDefinition = GameFoundationSettings.database.inventoryCatalog.GetDefaultCollectionDefinition(inventoryDefinition.id);
                 m_CreateDefaultInventory = IsIdReserved(m_InventoryId) || m_DefaultInventoryDefinition != null;
@@ -347,20 +378,36 @@ namespace UnityEditor.GameFoundation
             base.SelectItem(inventoryDefinition);
         }
 
-        protected override void OnRemoveItem(InventoryDefinition item)
+        protected override void OnRemoveItem(InventoryDefinition inventoryDefinition)
         {
-            // If an inventory item is deleted, handling removing its asset as well
-            if (item != null)
+            if (inventoryDefinition != null)
             {
-                CollectionEditorTools.AssetDatabaseRemoveObject(item);
-                EditorAPIHelper.RemoveInventoryDefinitionFromInventoryCatalog(item);
-                EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+                if (GameFoundationSettings.database == null)
+                {
+                    Debug.LogError("Inventory Definition " + inventoryDefinition.displayName + " could not be removed because the Game Foundation database is null");
+                }
+                else if (GameFoundationSettings.database.inventoryCatalog == null)
+                {
+                    Debug.LogError("Inventory Definition " + inventoryDefinition.displayName + " could not be removed because the inventory catalog is null");
+                }
+                else
+                {
+                    if (GameFoundationSettings.database.inventoryCatalog.RemoveCollectionDefinition(inventoryDefinition))
+                    {
+                        CollectionEditorTools.AssetDatabaseRemoveObject(inventoryDefinition);
+                        EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+                    }
+                    else
+                    {
+                        Debug.LogError("Inventory Definition " + inventoryDefinition.displayName + " was not removed from the inventory catalog.");
+                    }
+                }
             }
         }
 
         protected static bool IsIdReserved(string id)
         {
-            return id == EditorAPIHelper.k_MainInventoryDefinitionId || id == EditorAPIHelper.k_WalletInventoryDefinitionId;
+            return id == InventoryCatalog.k_MainInventoryDefinitionId || id == InventoryCatalog.k_WalletInventoryDefinitionId;
         }
     }
 }

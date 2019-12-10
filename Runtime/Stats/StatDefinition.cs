@@ -11,7 +11,14 @@
         /// </summary>
         public enum StatValueType
         {
+            /// <summary>
+            /// Stats that use ints.
+            /// </summary>
             Int,
+            
+            /// <summary>
+            /// Stats that use floats.
+            /// </summary>
             Float,
         }
 
@@ -64,6 +71,9 @@
         [SerializeField]
         private int m_IdHash;
 
+        [SerializeField]
+        private string m_DisplayName;
+        
         /// <summary>
         /// Custom string attached to this Stat definition.
         /// </summary>
@@ -71,10 +81,15 @@
         public string displayName
         {
             get { return m_DisplayName; }
-            set { m_DisplayName = value; }
+            set { SetDisplayName(value); }
         }
-        [SerializeField]
-        private string m_DisplayName;
+
+        private void SetDisplayName(string name)
+        {
+            Tools.ThrowIfPlayMode("Cannot set the display name of a StatDefinition while in play mode.");
+
+            m_DisplayName = name;
+        }
 
         /// <summary>
         /// Stat value type for this Stat definition.

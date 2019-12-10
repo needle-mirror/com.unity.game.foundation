@@ -50,11 +50,21 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with all categories found in this catalog.
+        /// Note: this returns the current state of categories.  To ensure that there
+        /// are no invalid or duplicate entries, the 'categories' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="categories">The list to be filled up</param>
+        /// <param name="categories">The list to clear and fill with all categories.</param>
         public void GetCategories(List<CategoryDefinition> categories)
         {
-            if (m_Categories == null || categories == null)
+            if (categories == null)
+            {
+                return;
+            }
+
+            categories.Clear();
+
+            if (m_Categories == null)
             {
                 return;
             }
@@ -114,16 +124,26 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given array with all game item definitions in this catalog.
+        /// Note: this returns the current state of game item definitions.  To ensure that there
+        /// are no invalid or duplicate entries, the 'gameItemDefinitions' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
-        /// <param name="gameItems">The list to fill up.</param>
-        public void GetGameItemDefinitions(List<GameItemDefinition> gameItems)
+        /// <param name="gameItemDefinitions">The list to clear and fill with all game item definitions.</param>
+        public void GetGameItemDefinitions(List<GameItemDefinition> gameItemDefinitions)
         {
-            if (m_Definitions == null || gameItems == null)
+            if (gameItemDefinitions == null)
+            {
+                return;
+            }
+
+            gameItemDefinitions.Clear();
+
+            if (m_Definitions == null)
             {
                 return;
             }
             
-            gameItems.AddRange(m_Definitions);
+            gameItemDefinitions.AddRange(m_Definitions);
         }
 
         /// <summary>
@@ -268,12 +288,22 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with the GameItemDefinitions that have the designated category.
+        /// Note: this returns the current state of game item definitions.  To ensure that there
+        /// are no invalid or duplicate entries, the 'gameItemDefinitions' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
         /// <param name="categoryId">The id string of the Category we want to iterate.</param>
-        /// <param name="gameItemDefinitions">The list to fill up.</param>
+        /// <param name="gameItemDefinitions">The list to clear and fill with matching data.</param>
         public void GetDefinitionsByCategory(string categoryId, List<GameItemDefinition> gameItemDefinitions)
         {
-            if (string.IsNullOrEmpty(categoryId) || gameItemDefinitions == null)
+            if (gameItemDefinitions == null)
+            {
+                return;
+            }
+
+            gameItemDefinitions.Clear();
+
+            if (string.IsNullOrEmpty(categoryId))
             {
                 return;
             }
@@ -301,11 +331,21 @@ namespace UnityEngine.GameFoundation
 
         /// <summary>
         /// Fills the given list with the GameItemDefinitions that have the designated category.
+        /// Note: this returns the current state of game item definitions.  To ensure that there
+        /// are no invalid or duplicate entries, the 'gameItemDefinitions' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
         /// </summary>
         /// <param name="categoryHash">The id hash of the Category we want to iterate.</param>
-        /// <param name="gameItemDefinitions">The list to fill up.</param>
+        /// <param name="gameItemDefinitions">The list to clear and fill with matching data.</param>
         public void GetDefinitionsByCategory(int categoryHash, List<GameItemDefinition> gameItemDefinitions)
         {
+            if (gameItemDefinitions == null)
+            {
+                return;
+            }
+
+            gameItemDefinitions.Clear();
+
             if (m_Definitions == null)
             {
                 return;
