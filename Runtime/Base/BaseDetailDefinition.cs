@@ -1,4 +1,4 @@
-﻿namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// BaseDetailDefinition are used to modify CollectionDefinitions or 
@@ -6,35 +6,22 @@
     /// runtime versions of themselves (i.e. BaseDetail) based on the 
     /// need for non-constant values.  
     /// </summary>
-    public abstract class BaseDetailDefinition : ScriptableObject
+    public abstract class BaseDetailDefinition
     {
-        // pointer to BaseItemDefinition OR BaseCollectionDefinition
-        private GameItemDefinition m_Owner;
-
         /// <summary>
         /// The GameItemDefinition this DetailDefinition is attached to. Can be cast to either a BaseItemDefinition
         /// or BaseCollectionDefinition.
         /// </summary>
         /// <returns>The GameItemDefinition this DetailDefinition is attached to.</returns>
-        public GameItemDefinition owner
-        {
-            get { return m_Owner; }
-            internal set { m_Owner = value; }
-        }
+        public GameItemDefinition owner { get; internal set; }
 
         /// <summary>
-        /// Returns 'friendly' display name for this DetailDefinition.
+        /// Constructor to build a BaseDetailDefinition object.
         /// </summary>
-        /// <returns>The 'friendly' display name for this DetailDefinition.</returns>
-        public abstract string DisplayName();
-
-        /// <summary>
-        /// Returns string message which explains the purpose of this DetailDefinition, for the purpose of displaying as a tooltip in editor.
-        /// </summary>
-        /// <returns>The string tooltip message of this DetailDefinition.</returns>
-        public virtual string TooltipMessage()
+        /// <param name="owner">The GameItemDefinition that is attached to this DetailDefinition.</param>
+        protected BaseDetailDefinition(GameItemDefinition owner = null)
         {
-            return string.Empty;
+            this.owner = owner;
         }
 
         // build runtime (instance) version of this DetailDefinition

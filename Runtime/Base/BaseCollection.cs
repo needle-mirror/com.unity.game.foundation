@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using UnityEngine.Events;
 
 namespace UnityEngine.GameFoundation
 {
@@ -35,13 +34,6 @@ namespace UnityEngine.GameFoundation
         {
             // save off definition used for this Collection
             m_Definition = definition;
-            
-            // if the Collection is new, it wil create its Default Items
-            if (gameItemId == 0)
-            {
-                // iterate all default Items in the Collection's CollectionDefinition (if any) and add them to the Collection
-                AddAllDefaultItems();   
-            }
         }
 
         /// <summary>
@@ -65,8 +57,16 @@ namespace UnityEngine.GameFoundation
         /// <returns>BaseCollectionEvent for Collection reset.</returns>
         public BaseCollectionEvent onCollectionReset
         {
-            get { return m_OnCollectionReset; }
-            set { m_OnCollectionReset = value; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_OnCollectionReset;
+            }
+            set
+            {
+                LogWarningIfDisposed();
+                m_OnCollectionReset = value;
+            }
         }
 
         /// <summary>
@@ -75,8 +75,16 @@ namespace UnityEngine.GameFoundation
         /// <returns>BaseCollectionItemEvent for Item added.</returns>
         public BaseCollectionItemEvent onItemAdded
         {
-            get { return m_OnItemAdded; }
-            set { m_OnItemAdded = value; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_OnItemAdded;
+            }
+            set
+            {
+                LogWarningIfDisposed();
+                m_OnItemAdded = value;
+            }
         }
 
         /// <summary>
@@ -85,8 +93,16 @@ namespace UnityEngine.GameFoundation
         /// <returns>BaseCollectionItemEvent for Item added.</returns>
         public BaseCollectionItemEvent onItemRemoved
         {
-            get { return m_OnItemRemoved; }
-            set { m_OnItemRemoved = value; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_OnItemRemoved;
+            }
+            set
+            {
+                LogWarningIfDisposed();
+                m_OnItemRemoved = value;
+            }
         }
 
         /// <summary>
@@ -95,8 +111,16 @@ namespace UnityEngine.GameFoundation
         /// <returns>BaseCollectionItemEvent for Item quantity changed.</returns>
         public BaseCollectionItemEvent onItemQuantityChanged
         {
-            get { return m_OnItemQuantityChanged; }
-            set { m_OnItemQuantityChanged = value; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_OnItemQuantityChanged;
+            }
+            set
+            {
+                LogWarningIfDisposed();
+                m_OnItemQuantityChanged = value;
+            }
         }
 
         [SerializeField]
@@ -108,7 +132,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>CollectionDefinition for this Collection.</returns>
         public T1 collectionDefinition
         {
-            get { return m_Definition; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Definition;
+            }
         }
 
         /// <summary>
@@ -117,7 +145,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>CollectionDefinition Id string for this Collection.</returns>
         public string collectionDefinitionId
         {
-            get { return m_Definition?.id; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Definition?.id;
+            }
         }
 
         /// <summary>
@@ -126,10 +158,14 @@ namespace UnityEngine.GameFoundation
         /// <returns>CollectionDefinition Hash for this Collection.</returns>
         public int collectionDefinitionHash
         {
-            get { return m_Definition != null ? m_Definition.hash : 0; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Definition != null ? m_Definition.hash : 0;
+            }
         }
 
-        private Dictionary<int, T4> m_ItemsInCollection = new Dictionary<int, T4>();
+        internal Dictionary<int, T4> m_ItemsInCollection = new Dictionary<int, T4>();
 
         /// <summary>
         /// Dictionary of all Items in this collection. Maps ItemDefinition Hash to BaseItem
@@ -146,6 +182,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>The array of all game items in this collection.</returns>
         public T4[] GetItems()
         {
+            LogWarningIfDisposed();
+
             if (m_ItemsInCollection == null)
                 return null;
 
@@ -163,6 +201,8 @@ namespace UnityEngine.GameFoundation
         /// <param name="items">The list of items to clear and fill with this collection's items.</param>
         public void GetItems(List<T4> items)
         {
+            LogWarningIfDisposed();
+
             if (items == null)
             {
                 return;
@@ -185,7 +225,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>Specified Item by ItemDefinition Id string.</returns>
         public T4 this[string itemDefinitionId]
         {
-            get { return GetItem(itemDefinitionId); }
+            get
+            {
+                LogWarningIfDisposed();
+                return GetItem(itemDefinitionId);
+            }
         }
 
         /// <summary>
@@ -195,7 +239,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>Specified Item by ItemDefinition Hash.</returns>
         public T4 this[int itemDefinitionHash]
         {
-            get { return GetItem(itemDefinitionHash); }
+            get
+            {
+                LogWarningIfDisposed();
+                return GetItem(itemDefinitionHash);
+            }
         }
 
         /// <summary>
@@ -205,7 +253,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>Specified Item by ItemDefinition.</returns>
         public T4 this[T3 itemDefinition]
         {
-            get { return GetItem(itemDefinition); }
+            get
+            {
+                LogWarningIfDisposed();
+                return GetItem(itemDefinition);
+            }
         }
 
         /// <summary>
@@ -214,9 +266,8 @@ namespace UnityEngine.GameFoundation
         /// returns an existing reference when to the instance when the Item was already in the Collection.
         /// </summary>
         /// <param name="itemDefinition">The ItemDefinition we are adding.</param>
-        /// <param name="quantity">How many of this instance we are adding.</param>
         /// <returns>The reference to the instance that was added, or null if ItemDefinition is invalid.</returns>
-        public T4 AddItem(T3 itemDefinition, int quantity = 1)
+        public T4 AddItem(T3 itemDefinition)
         {
             if (itemDefinition == null)
             {
@@ -224,7 +275,7 @@ namespace UnityEngine.GameFoundation
                 return null;
             }
             
-            return AddItem(itemDefinition.hash, quantity);
+            return AddItem(itemDefinition.hash);
         }
 
         /// <summary>
@@ -233,9 +284,8 @@ namespace UnityEngine.GameFoundation
         /// returns an existing reference when to the instance when the Item was already in the Collection.
         /// </summary>
         /// <param name="itemDefinitionId">The Id of the ItemDefinition we are adding.</param>
-        /// <param name="quantity">How many of this instance we are adding.</param>
         /// <returns>The reference to the instance that was added, or null if definitionId is invalid.</returns>
-        public T4 AddItem(string itemDefinitionId, int quantity = 1)
+        public T4 AddItem(string itemDefinitionId)
         {
             if (string.IsNullOrEmpty(itemDefinitionId))
             {
@@ -243,7 +293,7 @@ namespace UnityEngine.GameFoundation
                 return null;
             }
             
-            return AddItem(Tools.StringToHash(itemDefinitionId), quantity);
+            return AddItem(Tools.StringToHash(itemDefinitionId));
         }
 
         /// <summary>
@@ -252,45 +302,38 @@ namespace UnityEngine.GameFoundation
         /// returns an existing reference when to the instance when the Item was already in the Collection.
         /// </summary>
         /// <param name="itemDefinitionHash">The Hash of the ItemDefinition we are adding.</param>
-        /// <param name="quantity">How many of this instance we are adding.</param>
         /// <returns>The reference to the instance that was added.</returns>
-        public virtual T4 AddItem(int itemDefinitionHash, int quantity = 1)
+        public virtual T4 AddItem(int itemDefinitionHash)
         {
-            return AddItem(itemDefinitionHash, quantity, 0);
+            return AddItem(itemDefinitionHash, 0);
         }
 
-        internal virtual T4 AddItem(int itemDefinitionHash, int quantity, int gameItemId)
+        internal virtual T4 AddItem(int itemDefinitionHash, int gameItemId)
         {
+            LogWarningIfDisposed();
+
             T4 itemToReturn;
             
             if (ContainsItem(itemDefinitionHash))
             {
-                itemToReturn = m_ItemsInCollection[itemDefinitionHash];
-                SetIntValue(itemDefinitionHash, itemToReturn.intValue + quantity);
+                return m_ItemsInCollection[itemDefinitionHash];
             }
-            else
+            
+            BaseItemDefinition<T1, T2, T3, T4> itemDefinition = GetItemDefinition(itemDefinitionHash);
+            if (ReferenceEquals(itemDefinition,null))
             {
-                BaseItemDefinition<T1, T2, T3, T4> itemDefinition = GetItemDefinition(itemDefinitionHash);
-                if (ReferenceEquals(itemDefinition,null))
-                {
-                    return null;
-                }
-                
-                itemToReturn = itemDefinition.CreateItem(this, gameItemId);
-                itemToReturn.intValue = quantity;
-                m_ItemsInCollection.Add(itemDefinitionHash, itemToReturn);
-                
-                if (onItemQuantityChanged != null)
-                {
-                    onItemQuantityChanged.Invoke(itemToReturn);
-                }
+                return null;
             }
+                
+            itemToReturn = itemDefinition.CreateItem(this, gameItemId);
+            itemToReturn.intValue = 1;
+            m_ItemsInCollection.Add(itemDefinitionHash, itemToReturn);
 
             if (onItemAdded != null)
             {
                 onItemAdded.Invoke(itemToReturn);
             }
-            
+
             return itemToReturn;
         }
 
@@ -336,6 +379,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>The reference to the Item instance or null if not found.</returns>
         public T4 GetItem(int itemDefinitionHash)
         {
+            LogWarningIfDisposed();
+
             T4 item;
             m_ItemsInCollection.TryGetValue(itemDefinitionHash, out item);
             return item;
@@ -386,6 +431,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>An array of the Items that have the given Category.</returns>
         public T4[] GetItemsByCategory(int categoryHash)
         {
+            LogWarningIfDisposed();
+
             List<T4> toReturn = new List<T4>();
             foreach (var keyItemPair in m_ItemsInCollection)
             {
@@ -416,6 +463,8 @@ namespace UnityEngine.GameFoundation
         /// <param name="items">The list of items to clear and put the results into.</param>
         public void GetItemsByCategory(int categoryHash, List<T4> items)
         {
+            LogWarningIfDisposed();
+
             if (items == null)
             {
                 return;
@@ -470,48 +519,6 @@ namespace UnityEngine.GameFoundation
 
             GetItemsByCategory(category.hash, items);
         }
-
-        /// <summary>
-        /// Remove quantity amount of items from item with ItemDefinition Id definitionId.
-        /// If the amount would leave the affected item with less than 0 value, it is removed from the collection.
-        /// </summary>
-        /// <param name="itemDefinitionId">Item Definition Id of the item we are decrementing quantity or removing from the collection.</param>
-        /// <param name="quantity">Proposed amount to decrement.</param>
-        /// <returns>Whether the item has been removed from the collection</returns>
-        public bool RemoveItem(string itemDefinitionId, int quantity)
-        {
-            if (string.IsNullOrEmpty(itemDefinitionId))
-                return false;
-            
-            return RemoveItem(Tools.StringToHash(itemDefinitionId), quantity);
-        }
-
-        /// <summary>
-        /// Remove quantity amount of items from InventoryItem with ItemDefinition Hash definitionHash.
-        /// If the amount would leave the affected item with less than 0 value, it is removed from the collection.
-        /// </summary>
-        /// <param name="itemDefinitionHash">Item Definition Hash of the item we are decrementing quantity or removing from the collection.</param>
-        /// <param name="quantity">Proposed amount to decrement.</param>
-        /// <returns>Whether the item has been removed from the collection</returns>
-        public bool RemoveItem(int itemDefinitionHash, int quantity)
-        {
-            if (quantity == 0)
-            {
-                return false;
-            }
-            
-            T4 item = GetItem(itemDefinitionHash);
-            if (item != null)
-            {
-                if (quantity >= item.intValue)
-                {
-                    return RemoveItem(itemDefinitionHash);
-                }
-                SetIntValue(itemDefinitionHash, item.intValue - quantity);
-                return true;
-            }
-            return false;
-        }
         
         /// <summary>
         /// Removes an InventoryItem entry of the specified Item by ItemDefinition Id.
@@ -533,6 +540,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>True if item was removed from the collection.</returns>
         public bool RemoveItem(int itemDefinitionHash)
         {
+            LogWarningIfDisposed();
+
             T4 item = GetItem(itemDefinitionHash);
             if (item != null)
             {
@@ -573,6 +582,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>The amount of items that were removed.</returns>
         public int RemoveItemsByCategory(int categoryHash)
         {
+            LogWarningIfDisposed();
+
             List<int> toRemove = new List<int>();       //TODO: algorithm allocates list--refactor to avoid new list, if possible. UPDATE: After some research, I believe a list will be necessary for a reasonable solution.
             foreach (var keyItemPair in m_ItemsInCollection)
             {
@@ -619,6 +630,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>The amount of items that were removed.</returns>
         public int RemoveAll()
         {
+            LogWarningIfDisposed();
+
             if (m_ItemsInCollection.Count == 0)
             {
                 return 0;
@@ -680,6 +693,8 @@ namespace UnityEngine.GameFoundation
         /// <returns>True/False whether or not the instance is within this Collection.</returns>
         public bool ContainsItem(int itemDefinitionHash)
         {
+            LogWarningIfDisposed();
+
             return m_ItemsInCollection.ContainsKey(itemDefinitionHash);
         }
 
@@ -722,6 +737,8 @@ namespace UnityEngine.GameFoundation
         /// <exception cref="ArgumentException">If the given Hash is not a valid entry.</exception>
         protected void SetIntValue(int itemDefinitionHash, int value)
         {
+            LogWarningIfDisposed();
+
             if (!ContainsItem(itemDefinitionHash))
             {
                 throw new ArgumentException("The given definition hash was not found, cannot set value.");
@@ -744,6 +761,8 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         public void Reset()
         {
+            LogWarningIfDisposed();
+
             bool notificationDisabled = NotificationSystem.temporaryDisable;
             if (!notificationDisabled)
             {
@@ -768,7 +787,7 @@ namespace UnityEngine.GameFoundation
             }
         }
 
-        private void AddAllDefaultItems()
+        internal void AddAllDefaultItems()
         {
             bool notificationDisabled = NotificationSystem.temporaryDisable;
             if (!notificationDisabled)
@@ -781,7 +800,7 @@ namespace UnityEngine.GameFoundation
             {
                 foreach (var defaultItem in defaultItems)
                 {
-                    AddItem(defaultItem.definitionHash, defaultItem.quantity);
+                    AddItem(defaultItem.definitionHash).intValue = defaultItem.quantity;
                 }
             }
             
@@ -791,23 +810,18 @@ namespace UnityEngine.GameFoundation
             }
         }
 
-        // discard of all items to remove all their stats and the items themselves from GameItemLookup
-        protected internal override void Discard()
+        /// <summary>
+        /// Discard all items in collection.
+        /// </summary>
+        protected override void CustomDiscard()
         {
-            // copy the items list to ensure that disposing of them doesn't change the list and effect iteration
-            var items = GetItems();
+            if (m_ItemsInCollection == null)
+                return;
 
-            // call discard on each item in the items list
-            if (items != null)
+            foreach (var item in m_ItemsInCollection)
             {
-                foreach(var item in items)
-                {
-                    item.Discard();
-                }
+                item.Value.Discard();
             }
-
-            // pass on discard request to GameItem so it is also discarded properly
-            base.Discard();
         }
     }
 }

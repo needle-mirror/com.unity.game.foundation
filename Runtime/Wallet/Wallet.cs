@@ -15,11 +15,10 @@ namespace UnityEngine.GameFoundation
         /// returns an existing InventoryItem when the InventoryItem was already in the Wallet.
         /// </summary>
         /// <param name="itemdefinitionId">The Id of the InventoryItemDefinition we are adding.</param>
-        /// <param name="quantity">How many of this InventoryItem we are adding.</param>
         /// <returns>The new InventoryItem that was added, or null if Id is invalid.</returns>
-        public static InventoryItem AddItem(string itemdefinitionId, int quantity = 1)
+        public static InventoryItem AddItem(string itemdefinitionId)
         {
-            return InventoryManager.wallet.AddItem(itemdefinitionId, quantity);
+            return InventoryManager.wallet.AddItem(itemdefinitionId);
         }
 
         /// <summary>
@@ -28,11 +27,10 @@ namespace UnityEngine.GameFoundation
         /// returns an existing reference when to the InventoryItem when the InventoryItem was already in the Wallet.
         /// </summary>
         /// <param name="itemDefinitionHash">The Hash of the InventoryItemDefinition we are adding.</param>
-        /// <param name="quantity">How many of this InventoryItem we are adding.</param>
         /// <returns>The InventoryItem that was added.</returns>
-        public static InventoryItem AddItem(int itemDefinitionHash, int quantity = 1)
+        public static InventoryItem AddItem(int itemDefinitionHash)
         {
-            return InventoryManager.wallet.AddItem(itemDefinitionHash, quantity);
+            return InventoryManager.wallet.AddItem(itemDefinitionHash);
         }
 
         /// <summary>
@@ -41,11 +39,10 @@ namespace UnityEngine.GameFoundation
         /// returns an existing reference when to the InventoryItem when the InventoryItem was already in the Wallet.
         /// </summary>
         /// <param name="itemDefinition">The InventoryItemDefinition we are adding.</param>
-        /// <param name="quantity">How many of this InventoryItem we are adding.</param>
         /// <returns>The InventoryItem that was added.</returns>
-        public static InventoryItem AddItem(InventoryItemDefinition itemDefinition, int quantity = 1)
+        public static InventoryItem AddItem(InventoryItemDefinition itemDefinition)
         {
-            return InventoryManager.wallet.AddItem(itemDefinition, quantity);
+            return InventoryManager.wallet.AddItem(itemDefinition);
         }
 
         /// <summary>

@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace UnityEngine.GameFoundation
+﻿namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Anything that goes into a Collection should be an Item, and
@@ -39,7 +37,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>The ItemDefinition this Item is based on.</returns>
         public new T3 definition
         {
-            get { return m_Definition; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Definition;
+            }
         }
 
         /// <summary>
@@ -48,7 +50,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>ItemDefinition Id this Item is based on.</returns>
         public string definitionId
         {
-            get { return m_Definition.id; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Definition.id;
+            }
         }
 
         private T2 m_Owner;
@@ -63,15 +69,19 @@ namespace UnityEngine.GameFoundation
         }
 
         [SerializeField]
-        private int m_intValue;
+        internal int m_intValue;
 
         /// <summary>
         /// The integer value associated with this Item, usually signifying quantity of Items in a Collection.
         /// </summary>
         /// <returns>The integer value associated with this Item.</returns>
-        public int intValue
+        public virtual int intValue
         {
-            get { return m_intValue; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_intValue;
+            }
             internal set { m_intValue = value; }
         }
 
@@ -82,6 +92,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>The specified DetailDefinition attached to this Item.</returns>
         public T GetDetailDefinition<T>() where T : BaseDetailDefinition
         {
+            LogWarningIfDisposed();
             return m_Definition?.GetDetailDefinition<T>();
         }
     }

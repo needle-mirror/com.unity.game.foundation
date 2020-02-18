@@ -1,4 +1,7 @@
-﻿namespace UnityEngine.GameFoundation
+using System;
+using System.Collections.Generic;
+
+namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Preset values and rules for an InventoryItem.
@@ -9,31 +12,23 @@
     /// <inheritdoc/>
     public class InventoryItemDefinition : BaseItemDefinition<InventoryDefinition, Inventory, InventoryItemDefinition, InventoryItem>
     {
+        /// <summary>
+        /// Constructor to build an InventoryItemDefinition object.
+        /// </summary>
+        /// <param name="id">The string id value for this InventoryItemDefinition. Throws error if null, empty or invalid.</param>
+        /// <param name="displayName">The readable string display name value for this InventoryItemDefinition. Throws error if null or empty.</param>
+        /// <param name="referenceDefinition">The reference GameItemDefinition for this InventoryItemDefinition. Null is an allowed value.</param>
+        /// <param name="categories">The list of CategoryDefinition hashes that are the categories applied to this InventoryItemDefinition. If null value is passed in an empty list will be created.</param>
+        /// <param name="detailDefinitions">The dictionary of Type, BaseDetailDefinition pairs that are the detail definitions applied to this InventoryItemDefinition. If null value is passed in an empty dictionary will be created.</param>
+        /// <exception cref="System.ArgumentException">Throws if id or displayName are null or empty or if the id is not valid. Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        internal InventoryItemDefinition(string id, string displayName, GameItemDefinition referenceDefinition = null, List<int> categories = null, Dictionary<Type, BaseDetailDefinition> detailDefinitions = null)
+            : base(id, displayName, referenceDefinition, categories, detailDefinitions)
+        {
+        }
+        
         internal override InventoryItem CreateItem(BaseCollection<InventoryDefinition, Inventory, InventoryItemDefinition, InventoryItem> owner, int gameItemId = 0)
         {
             return new InventoryItem(this, owner as Inventory, gameItemId);
-        }
-
-        /// <summary>
-        /// Creates a new InventoryItemDefinition.
-        /// </summary>
-        /// <param name="id">The Id this InventoryItemDefinition will use.</param>
-        /// <param name="displayName">The display name of the InventoryItemDefinition.</param>
-        /// <returns>Reference to the newly made InventoryItemDefinition.</returns>
-        public new static InventoryItemDefinition Create(string id, string displayName)
-        {
-            Tools.ThrowIfPlayMode("Cannot make an InventoryItemDefinition while in play mode.");
-
-            if (!Tools.IsValidId(id))
-            {
-                throw new System.ArgumentException("InventoryItemDefinition id can only be alphanumeric with optional dashes or underscores.");
-            }
-
-            InventoryItemDefinition definition = ScriptableObject.CreateInstance<InventoryItemDefinition>();
-            definition.Initialize(id, displayName);
-            definition.name = $"{id}_InventoryItem";
-
-            return definition;
         }
 
         /// <summary>
@@ -43,35 +38,7 @@
         /// <returns>Reference to the category definition of the requested hash.</returns>
         protected override CategoryDefinition GetCategoryDefinition(int categoryHash)
         {
-            return GameFoundationSettings.database.inventoryCatalog.GetCategory(categoryHash);
-        }
-
-        internal override void OnRemove()
-        {
-            if (Application.isPlaying)
-            {
-                throw new System.Exception("InventoryItemDefinitions cannot be removed during play mode.");
-            }
-
-            base.OnRemove();
-
-            RemoveItemFromInventoriesDefaultItems(this);
-        }
-
-        private void RemoveItemFromInventoriesDefaultItems(InventoryItemDefinition item)
-        {
-            var inventoryCatalogAllInventoryDefinitions = GameFoundationSettings.database.inventoryCatalog.GetCollectionDefinitions();
-            foreach (InventoryDefinition inventoryDefinition in inventoryCatalogAllInventoryDefinitions)
-            {
-                DefaultItem[] defaultItems = inventoryDefinition.GetDefaultItems();
-                foreach (DefaultItem defaultItem in defaultItems)
-                {
-                    if (defaultItem.definitionHash == item.hash)
-                    {
-                        inventoryDefinition.RemoveDefaultItem(defaultItem);
-                    }
-                }
-            }
+            return CatalogManager.inventoryCatalog.GetCategory(categoryHash);
         }
     }
 }

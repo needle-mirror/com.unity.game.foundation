@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using UnityEngine.GameFoundation.DataAccessLayers;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -14,7 +14,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// Reference to the panel to display when the wrong database is in use.
         /// </summary>
         public GameObject wrongDatabasePanel;
-        
+
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
         /// </summary>
@@ -32,12 +32,12 @@ namespace UnityEngine.GameFoundation.Sample
         private Inventory m_Backpack;
         private InventoryItem m_Sword;
         private InventoryItem m_HealthPotion;
-        
+
         /// <summary>
         /// Stats are associated with game items, so we will need one to keep track of the player's health.
         /// </summary>
         private GameItem m_PlayerStats;
-        
+
         /// <summary>
         /// Standard starting point for Unity scripts.
         /// </summary>
@@ -51,16 +51,20 @@ namespace UnityEngine.GameFoundation.Sample
                 return;
             }
 
-            // Initialize must always be called before working with any game foundation code.
-            GameFoundation.Initialize();
+            // - Initialize must always be called before working with any game foundation code.
+            // - GameFoundation requires an IDataAccessLayer object that will provide and persist
+            //   the data required for the various services (Inventory, Stats, ...).
+            // - For this sample we don't need to persist any data so we use the MemoryDataLayer
+            //   that will store GameFoundation's data only for the play session.
+            GameFoundation.Initialize(new MemoryDataLayer());
 
             // Create a backpack inventory instance and keep the reference. Grab its sword reference as well.
             m_Backpack = InventoryManager.CreateInventory("backpack", "MainBackpack", "Backpack");
             m_Sword = m_Backpack.GetItem("sword");
             m_HealthPotion = m_Backpack.GetItem("healthPotion");
-            
+
             // Setup our player stats instance.
-            m_PlayerStats = new GameItem(GameFoundationSettings.database.gameItemCatalog.GetGameItemDefinition("player"));
+            m_PlayerStats = new GameItem(CatalogManager.gameItemCatalog.GetGameItemDefinition("player"));
 
             // Here we bind our UI refresh method to callbacks on the inventory manager.
             // These callbacks will automatically be invoked anytime an inventory is added, or removed.
@@ -71,7 +75,7 @@ namespace UnityEngine.GameFoundation.Sample
 
             RefreshUI();
         }
-        
+
         /// <summary>
         /// This will fill out the main text box with information about the main inventory.
         /// </summary>
@@ -84,7 +88,6 @@ namespace UnityEngine.GameFoundation.Sample
             // Loop through every type of item within the inventory and display its name and quantity.
             foreach (InventoryItem inventoryItem in m_Backpack.GetItems())
             {
-
                 // All game items have an associated display name, this includes game items.
                 string itemName = inventoryItem.displayName;
 
@@ -92,7 +95,7 @@ namespace UnityEngine.GameFoundation.Sample
                 int quantity = inventoryItem.quantity;
 
                 mainText.text += "<b>" + itemName + "</b>: ";
-                
+
                 mainText.text += quantity + "\n";
 
                 // For items with health restore, durability, or damage stats, we want to display their values here.
@@ -100,20 +103,20 @@ namespace UnityEngine.GameFoundation.Sample
                 {
                     mainText.text += "- Health Restore: " + inventoryItem.GetStatInt("healthRestore") + "\n";
                 }
-                
+
                 if (StatManager.HasFloatValue(inventoryItem, "damage"))
                 {
                     mainText.text += "- Damage: " + inventoryItem.GetStatFloat("damage") + "\n";
                 }
-                
+
                 if (StatManager.HasIntValue(inventoryItem, "durability") && inventoryItem.quantity > 0)
                 {
                     mainText.text += "- Durability: " + inventoryItem.GetStatInt("durability") + "\n";
                 }
-                
+
                 mainText.text += "\n";
             }
-            
+
             RefreshDamageAndHealButtons();
         }
 
@@ -125,13 +128,13 @@ namespace UnityEngine.GameFoundation.Sample
             // Query the player's current health, and damage value of the sword
             float health = m_PlayerStats.GetStatFloat("health");
             float damage = m_Sword.GetStatFloat("damage");
-            
+
             if (m_Sword.quantity > 0 && health > damage)
             {
                 // Apply the damage if possible and update the stat
                 health -= damage;
                 m_PlayerStats.SetStatFloat("health", health);
-                
+
                 // Lower the sword's durability, if it drops to 0, a single sword has been used.
                 int durability = m_Sword.GetStatInt("durability");
                 if (durability == 1)
@@ -143,7 +146,7 @@ namespace UnityEngine.GameFoundation.Sample
                 {
                     m_Sword.SetStatInt("durability", m_Sword.GetStatInt("durability") - 1);
                 }
-                
+
                 RefreshUI();
             }
         }

@@ -5,35 +5,35 @@ namespace UnityEditor.GameFoundation
 {
     internal abstract class CollectionEditorBase<T> : ICollectionEditor where T : class
     {
-        public string name { get; protected set; }
-        public CollectionEditorWindowBase window { get; protected set; }
+        private const float k_SideBarWidth = 270f;
+        private const float k_ContentDetailMaxWidth = 630f;
 
-        protected T m_SelectedItem { get; set; }
-        protected T m_PreviouslySelectedItem = null;
+        public string name { get; }
+
+        protected T m_SelectedItem { get; private set; }
+        private T m_PreviouslySelectedItem;
         private List<T> m_Items;
- 
-        protected Vector2 m_ScrollPosition;
-        protected Vector2 m_ScrollPositionDetail;
 
-        protected Rect m_SidebarItemOffset;
+        private Vector2 m_ScrollPosition;
+        private Vector2 m_ScrollPositionDetail;
 
-        private T m_ItemToRemove = null;
+        private Rect m_SidebarItemOffset;
 
-        protected bool m_IsCreating = false;
-        public bool isCreating { get { return m_IsCreating; } }
+        private T m_ItemToRemove;
 
-        protected static string m_NewItemDisplayName = string.Empty;
-        protected static string m_NewItemId = string.Empty;
+        protected bool m_ClickedCreateButton;
+        public bool isCreating { get; private set; }
+
+        protected string m_NewItemDisplayName = string.Empty;
+        protected string m_NewItemId = string.Empty;
 
         protected ReadableNameIdEditor m_ReadableNameIdEditor;
 
-        protected CategoryFilterEditor m_CategoryFilterEditor = new CategoryFilterEditor();
+        protected readonly CategoryFilterEditor m_CategoryFilterEditor = new CategoryFilterEditor();
 
-
-        public CollectionEditorBase(string name, CollectionEditorWindowBase window)
+        protected CollectionEditorBase(string name)
         {
             this.name = name;
-            this.window = window;
         }
 
         protected List<T> GetItems()
@@ -42,37 +42,31 @@ namespace UnityEditor.GameFoundation
         }
 
         protected abstract List<T> GetFilteredItems();
-            
-        // Update
-        public virtual void Update()
+
+        public virtual void Draw()
         {
             ClearAndRemoveItems();
 
-            Draw();
-        }
-
-        // Draw
-        protected virtual void Draw()
-        {
-            EditorGUILayout.BeginHorizontal();
-
-            EditorGUI.BeginDisabledGroup(Application.isPlaying);
-            DrawSidebar();
-            DrawContent();
-            EditorGUI.EndDisabledGroup();
-
-            EditorGUILayout.EndHorizontal();
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledGroupScope(Application.isPlaying))
+                {
+                    DrawSidebar();
+                    DrawContent();
+                }
+            }
         }
 
         protected abstract void DrawDetail(T item, int index, int count);
 
-        protected void DrawCreateForm()
+        private void DrawCreateForm()
         {
             EditorGUILayout.LabelField("General", GameFoundationEditorStyles.titleStyle);
 
             using (new EditorGUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
             {
                 DrawCreateInputFields();
+
                 DrawWarningMessage();
 
                 GUILayout.Space(6f);
@@ -83,26 +77,28 @@ namespace UnityEditor.GameFoundation
 
                     if (GUILayout.Button("Cancel", GUILayout.Width(120f)))
                     {
-                        m_IsCreating = false;
+                        isCreating = false;
                         SelectItem(m_PreviouslySelectedItem);
                         m_PreviouslySelectedItem = null;
                     }
 
                     GUILayout.Space(6f);
 
-                    if ((string.IsNullOrEmpty(m_NewItemDisplayName)
-                        || string.IsNullOrEmpty(m_NewItemId)) 
+                    if (string.IsNullOrEmpty(m_NewItemDisplayName)
+                        || string.IsNullOrEmpty(m_NewItemId) 
                         || m_ReadableNameIdEditor.HasRegisteredId(m_NewItemId)
                         || !CollectionEditorTools.IsValidId(m_NewItemId))
                     {
                         CollectionEditorTools.SetGUIEnabledAtEditorTime(false);
                     }
+
                     if (GUILayout.Button("Create", GUILayout.Width(120f)))
                     {
                         CreateNewItemFinalize();
 
-                        m_IsCreating = false;
+                        isCreating = false;
                     }
+
                     CollectionEditorTools.SetGUIEnabledAtEditorTime(true);
                 }
             }
@@ -111,49 +107,43 @@ namespace UnityEditor.GameFoundation
         protected virtual void DrawCreateInputFields()
         {
             m_ReadableNameIdEditor.DrawReadableNameIdFields(ref m_NewItemId, ref m_NewItemDisplayName);
+
+            if (m_ClickedCreateButton)
+            {
+                EditorGUI.FocusTextInControl("displayName");
+            }
         }
 
         protected virtual void DrawWarningMessage()
         {
-            EditorGUILayout.HelpBox("Once the Create button is clicked Id cannot be changed.", MessageType.Warning);
+            EditorGUILayout.HelpBox("Once the Create button is clicked, the Id cannot be changed.", MessageType.Warning);
         }
 
-        // Enter - Exit
         public virtual void OnWillEnter()
         {
             RefreshItems();
 
-            m_IsCreating = false;
+            isCreating = false;
 
             SelectItem(null);
         }
 
         public virtual void OnWillExit()
         {
-            m_IsCreating = false;
+            isCreating = false;
 
             SelectItem(null);
         }
 
-        // Side Bar
-        protected virtual void DrawSidebar()
+        private void DrawSidebar()
         {
-            BeginSidebar();
-            DrawSidebarContent();
-            EndSidebar();
+            using (new EditorGUILayout.VerticalScope(GameFoundationEditorStyles.sideBarStyle, GUILayout.Width(k_SideBarWidth)))
+            {
+                DrawSidebarContent();
+            }
         }
 
-        protected virtual void BeginSidebar()
-        {
-            EditorGUILayout.BeginVertical(GameFoundationEditorStyles.sideBarStyle, GUILayout.Width(GetSideBarWidth()));
-        }
-
-        protected virtual float GetSideBarWidth()
-        {
-            return 270f;
-        }
-
-        protected virtual void DrawSidebarContent()
+        private void DrawSidebarContent()
         {
             m_ScrollPosition = EditorGUILayout.BeginScrollView(m_ScrollPosition);
 
@@ -163,10 +153,12 @@ namespace UnityEditor.GameFoundation
 
             if (GUILayout.Button("+", GameFoundationEditorStyles.createButtonStyle))
             {
-                if (!m_IsCreating || CollectionEditorTools.ConfirmDiscardingNewItem())
+                m_ClickedCreateButton = true;
+
+                if (!isCreating || CollectionEditorTools.ConfirmDiscardingNewItem())
                 {
                     m_PreviouslySelectedItem = m_SelectedItem;
-                    m_IsCreating = true;
+                    isCreating = true;
                     m_NewItemDisplayName = string.Empty;
                     m_NewItemId = string.Empty;
                     SelectItem(null);
@@ -177,47 +169,39 @@ namespace UnityEditor.GameFoundation
 
         protected virtual void DrawSidebarList()
         {
+            // TODO: reuse a list so we don't reallocate
+
             var filteredItems = GetFilteredItems();
 
-            for (int i = 0; i < filteredItems.Count; ++i)
+            foreach (T item in filteredItems)
             {
-                DrawSidebarListItem(filteredItems[i], i);
+                DrawSidebarListItem(item);
             }
         }
 
-        protected virtual void EndSidebar()
+        protected abstract void DrawSidebarListItem(T item);
+
+        protected void BeginSidebarItem(T item, Vector2 backgroundSize, Vector2 contentMargin)
         {
-            EditorGUILayout.EndHorizontal();
-        }
-
-        protected abstract void DrawSidebarListItem(T item, int index);
-
-
-        // Side Bar Items
-        protected virtual void BeginSidebarItem(T item, int index, Vector2 size)
-        {
-            BeginSidebarItem(item, index, size, Vector2.zero);
-        }
-
-        protected virtual void BeginSidebarItem(T item, int index, Vector2 backgroundSize, Vector2 contentMargin)
-        {
-            Rect rect = EditorGUILayout.GetControlRect(true, backgroundSize.y);
+            var rect = EditorGUILayout.GetControlRect(true, backgroundSize.y);
             rect.width = backgroundSize.x;
 
             GUI.backgroundColor =
                 item.Equals(m_SelectedItem) ? new Color(0.1f, 0.1f, 0.1f, .2f) : new Color(0, 0, 0, 0.0f);
 
             CollectionEditorTools.SetGUIEnabledAtRunTime(true);
+
             if (GUI.Button(rect, string.Empty))
             {
-                if (!m_IsCreating || CollectionEditorTools.ConfirmDiscardingNewItem())
+                if (!isCreating || CollectionEditorTools.ConfirmDiscardingNewItem())
                 {
                     // if you click an item in the list, then cancel any creation in progress
-                    m_IsCreating = false;
+                    isCreating = false;
 
                     SelectItem(item);
                 }
             }
+
             CollectionEditorTools.SetGUIEnabledAtRunTime(false);
 
             GUI.backgroundColor = Color.white;
@@ -231,70 +215,63 @@ namespace UnityEditor.GameFoundation
             EditorGUILayout.BeginHorizontal(GUILayout.Height(backgroundSize.y));
         }
 
-        protected virtual void EndSidebarItem(T item, int index)
+        protected void EndSidebarItem()
         {
             GUI.color = Color.white;
-
+        
             EditorGUILayout.EndHorizontal();
         }
 
-        protected virtual void DrawSidebarItemLabel(string text, int width, GUIStyle style, int height = -1)
+        protected void DrawSidebarItemLabel(string text, int width, GUIStyle style, int height = -1)
         {
             m_SidebarItemOffset.width = width;
             m_SidebarItemOffset.height = (height == -1) ? m_SidebarItemOffset.height : height;
 
             if (style == null)
+            {
                 EditorGUI.LabelField(m_SidebarItemOffset, text);
+            }
             else
+            {
                 EditorGUI.LabelField(m_SidebarItemOffset, text, style);
+            }
 
             m_SidebarItemOffset.x += width;
         }
 
-        protected virtual bool DrawSidebarItemButton(string text, GUIStyle style, int width, int height = -1)
+        private bool DrawSidebarItemButton(string text, GUIStyle style, int width, int height = -1)
         {
             m_SidebarItemOffset.width = width;
             m_SidebarItemOffset.height = (height == -1) ? m_SidebarItemOffset.height : height;
 
-            bool clicked = GUI.Button(m_SidebarItemOffset, text, style);
+            var clicked = GUI.Button(m_SidebarItemOffset, text, style);
 
             m_SidebarItemOffset.x += width;
 
             return clicked;
         }
 
-        protected virtual void DrawSidebarItemRemoveButton(T item)
+        protected void DrawSidebarItemRemoveButton(T item)
         {
             if (DrawSidebarItemButton("X", GameFoundationEditorStyles.deleteButtonStyle, 18, 18))
             {
                 if (EditorUtility.DisplayDialog("Are you sure?", "Do you want to delete " + name + "?", "Yes", "No"))
                 {
-                    RemoveItem(item);
+                    m_ItemToRemove = item;
                 }
             }
         }
 
-        // Content
-        protected virtual void DrawContent()
+        private void DrawContent()
         {
-            BeginContent();
-            DrawContentDetail();
-            EndContent();
-        }
+            using (var scrollViewScope =
+                new GUILayout.ScrollViewScope(
+                    m_ScrollPositionDetail, false, false, GUILayout.MaxWidth(k_ContentDetailMaxWidth)))
+            {
+                m_ScrollPositionDetail = scrollViewScope.scrollPosition;
 
-        protected virtual void BeginContent()
-        {
-            m_ScrollPositionDetail = EditorGUILayout.BeginScrollView(m_ScrollPositionDetail, GUILayout.MaxWidth(GetContentDetailMaxWidth()));
-        }
-
-        protected virtual float GetContentDetailMaxWidth()
-        {
-            return 630f;
-        }
-
-        protected virtual void EndContent()
-        {
-            EditorGUILayout.EndScrollView();
+                DrawContentDetail();
+            }
         }
 
         public void ValidateSelection()
@@ -306,27 +283,35 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        protected virtual void DrawContentDetail()
+        private void DrawContentDetail()
         {
             if (m_SelectedItem != null)
             {
-                m_IsCreating = false;
+                isCreating = false;
 
                 DrawDetail(m_SelectedItem, m_Items.FindIndex(x => x.Equals(m_SelectedItem)), m_Items.Count);
             }
-            else if (m_IsCreating)
+            else if (isCreating)
             {
                 DrawCreateForm();
+
+                if (Event.current.type == EventType.Repaint)
+                {
+                    m_ClickedCreateButton = false;
+                }
             }
             else
             {
                 using (new EditorGUILayout.VerticalScope())
                 {
                     GUILayout.FlexibleSpace();
+
                     using (new EditorGUILayout.HorizontalScope())
                     {
                         GUILayout.FlexibleSpace();
+
                         GUILayout.Label("No object selected.");
+
                         GUILayout.FlexibleSpace();
                     }
 
@@ -335,16 +320,10 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        // Actions
         protected abstract void CreateNewItem();
         protected abstract void CreateNewItemFinalize();
         protected abstract void AddItem(T item);
         protected abstract void OnRemoveItem(T item);
-
-        protected virtual void RemoveItem(T item)
-        {
-            m_ItemToRemove = item;
-        }
 
         /// <summary>
         /// This updates the cached list of items.
@@ -361,38 +340,35 @@ namespace UnityEditor.GameFoundation
             m_Items.Clear();
         }
 
-        protected void ClearAndRemoveItems()
+        private void ClearAndRemoveItems()
         {
             if (m_Items == null)
             {
                 return;
             }
 
-            // Remove Item
-            if (m_ItemToRemove != null)
+            if (m_ItemToRemove == null)
             {
-                OnRemoveItem(m_ItemToRemove);
-                m_ItemToRemove = null;
-                SelectItem(null);
-                RefreshItems();
+                return;
             }
+
+            OnRemoveItem(m_ItemToRemove);
+            m_ItemToRemove = null;
+            SelectItem(null);
+            RefreshItems();
         }
 
         protected virtual void SelectItem(T item)
         {
             m_SelectedItem = item;
 
-            ClearFocus();
-        }
-
-        protected void ClearFocus()
-        {
             GUI.FocusControl(null);
         }
 
         protected void SelectFilteredItem(int listIndex)
         {
-            List<T> filteredItems = GetFilteredItems();
+            var filteredItems = GetFilteredItems();
+
             if (filteredItems != null && filteredItems.Count > listIndex && listIndex >= 0)
             {
                 SelectItem(filteredItems[listIndex]);

@@ -6,76 +6,26 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// Serializable data structure that contains the state of an inventory.
     /// </summary>
     [Serializable]
-    public class InventorySerializableData
+    public struct InventorySerializableData
     {
-        [SerializeField] string m_DefinitionId = null;
-        [SerializeField] string m_InventoryId = null;
-        [SerializeField] string m_DisplayName = null;
-        [SerializeField] InventoryItemSerializableData[] m_Items = null;
-        [SerializeField] int m_GameItemLookupId;
-        
         /// <summary>
         /// The definition Id of the inventory
         /// </summary>
-        public string definitionId
-        {
-            get { return m_DefinitionId; }
-        }
-        
+        public string definitionId;
+
         /// <summary>
         /// The inventory id of the inventory
         /// </summary>
-        public string inventoryId
-        {
-            get { return m_InventoryId; }
-        }
+        public string Id;
 
         /// <summary>
         /// The friendly name of the inventory that will be displayed
         /// </summary>
-        public string displayName
-        {
-            get { return m_DisplayName; }
-        }
-
-        /// <summary>
-        /// The items this inventory contains
-        /// </summary>
-        public InventoryItemSerializableData[] items
-        {
-            get { return m_Items; }
-        }
+        public string displayName;
 
         /// <summary>
         /// The GameItemId of the item use by GameItemLookup
         /// </summary>
-        public int gameItemLookupId
-        {
-            get { return m_GameItemLookupId; }
-        }
-        
-        /// <summary>
-        /// Basic constructor that takes in an inventory definition id and an array of InventoryItemData of all inventory items contained in the inventory.
-        /// </summary>
-        /// <param name="definitionId">The definition id of the inventory</param>
-        /// <param name="inventoryId">The id of the inventory</param>
-        /// <param name="displayName">The friendly name of the inventory that will be displayed</param>
-        /// <param name="items">The inventory items contained in the inventory</param>
-        /// <param name="gameItemLookupId">The GameItemId of the item use by GameItemLookup</param>
-        public InventorySerializableData(string definitionId, string inventoryId, string displayName, InventoryItemSerializableData[] items, int gameItemLookupId)
-        {
-            m_DefinitionId = definitionId;
-            m_InventoryId = inventoryId;
-            m_DisplayName = displayName;
-            m_Items = items;
-            m_GameItemLookupId = gameItemLookupId;
-        }
-
-        /// <summary>
-        /// Default constructor for serialization purpose
-        /// </summary>
-        public InventorySerializableData()
-        {
-        }
+        public int gameItemId;
     }
 }

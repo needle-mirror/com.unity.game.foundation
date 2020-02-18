@@ -1,4 +1,6 @@
-﻿namespace UnityEngine.GameFoundation.Sample
+﻿using UnityEngine.GameFoundation.CatalogManagement;
+
+namespace UnityEngine.GameFoundation.Sample
 {
     /// <summary>
     /// This class is not an actual sample, but provides functionality for all other samples as needed.
@@ -16,7 +18,7 @@
             string databaseName;
             try
             {
-                databaseName = GameFoundationSettings.database.name;
+                databaseName = GameFoundationDatabaseSettings.database.name;
             }
             catch
             {

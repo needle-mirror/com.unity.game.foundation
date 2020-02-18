@@ -7,11 +7,6 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// </summary>
     public abstract class BaseDataPersistence : IDataPersistence
     {
-        /// <summary>
-        /// Current save version of DataPersistence in use. Value will be incremented each time data persistence is changed to ensure the version number matches the DataSerializer to allow proper serialization.
-        /// </summary>
-        public static readonly int k_SaveVersion = 1;
-
         IDataSerializer m_Serializer;
 
         /// <summary>
@@ -32,10 +27,9 @@ namespace UnityEngine.GameFoundation.DataPersistence
         }
 
         /// <inheritdoc />
-        public abstract void Load<TSerializableData>(string identifier, Action<TSerializableData> onLoadCompleted = null, Action<Exception> onLoadFailed = null)
-            where TSerializableData : ISerializableData;
+        public abstract void Load(Action<GameFoundationSerializableData> onLoadCompleted = null, Action<Exception> onLoadFailed = null);
 
         /// <inheritdoc />
-        public abstract void Save(string identifier, ISerializableData content, Action onSaveCompleted = null, Action<Exception> onSaveFailed = null);
+        public abstract void Save(GameFoundationSerializableData content, Action onSaveCompleted = null, Action<Exception> onSaveFailed = null);
     }
 }

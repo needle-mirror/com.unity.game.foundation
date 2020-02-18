@@ -1,17 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
     [CustomEditor(typeof(StatDetailDefinition))]
     internal class StatDetailDefinitionEditor : BaseDetailDefinitionEditor
     {
-        private SerializedProperty m_StatDefaultIntValues_Keys_SerializedProperty;
-        private SerializedProperty m_StatDefaultIntValues_Values_SerializedProperty;
-        private SerializedProperty m_StatDefaultFloatValues_Keys_SerializedProperty;
-        private SerializedProperty m_StatDefaultFloatValues_Values_SerializedProperty;
+        private SerializedProperty m_SerializedDefaultKeyList;
+        private SerializedProperty m_SerializedDefaultValueList;
         private List<StatDefaultsListItem> m_ListItems = new List<StatDefaultsListItem>();
         private List<StatDefinition> m_AvailableStatDefinitions = new List<StatDefinition>();
         private string[] m_AvailableStatDefinitionDisplayNames;
@@ -32,11 +30,8 @@ namespace UnityEditor.GameFoundation
                 return;
             }
 
-            m_StatDefaultIntValues_Keys_SerializedProperty = serializedObject.FindProperty("m_StatDefaultIntValues_Keys");
-            m_StatDefaultIntValues_Values_SerializedProperty = serializedObject.FindProperty("m_StatDefaultIntValues_Values");
-
-            m_StatDefaultFloatValues_Keys_SerializedProperty = serializedObject.FindProperty("m_StatDefaultFloatValues_Keys");
-            m_StatDefaultFloatValues_Values_SerializedProperty = serializedObject.FindProperty("m_StatDefaultFloatValues_Values");
+            m_SerializedDefaultKeyList = serializedObject.FindProperty("m_DefaultKeyList");
+            m_SerializedDefaultValueList = serializedObject.FindProperty("m_DefaultValueList");
 
             RefreshStatDefaultsCache();
         }
@@ -48,40 +43,23 @@ namespace UnityEditor.GameFoundation
         {
             m_ListItems.Clear();
 
-            if (GameFoundationSettings.database.statCatalog == null)
+            if (GameFoundationDatabaseSettings.database.statCatalog == null)
             {
                 return;
             }
 
             m_AvailableStatDefinitions.Clear();
-            m_AvailableStatDefinitions.InsertRange(0, GameFoundationSettings.database.statCatalog.GetStatDefinitions());
+            m_AvailableStatDefinitions.InsertRange(0, GameFoundationDatabaseSettings.database.statCatalog.GetStatDefinitions());
 
-            // INT
-
-            for (int i = 0; i < m_StatDefaultIntValues_Keys_SerializedProperty.arraySize; i++)
+            for (int i = 0; i < m_SerializedDefaultKeyList.arraySize; i++)
             {
-                int idHash = m_StatDefaultIntValues_Keys_SerializedProperty.GetArrayElementAtIndex(i).intValue;
+                int idHash = m_SerializedDefaultKeyList.GetArrayElementAtIndex(i).intValue;
 
-                StatDefinition statDef = GameFoundationSettings.database.statCatalog.GetStatDefinition(idHash);
+                StatDefinition statDef = GameFoundationDatabaseSettings.database.statCatalog.GetStatDefinition(idHash);
 
                 if (statDef != null)
                 {
-                    m_ListItems.Add(new StatDefaultsListItem(i, statDef, m_StatDefaultIntValues_Values_SerializedProperty.GetArrayElementAtIndex(i)));
-                    m_AvailableStatDefinitions.Remove(statDef);
-                }
-            }
-
-            // FLOAT
-
-            for (int i = 0; i < m_StatDefaultFloatValues_Keys_SerializedProperty.arraySize; i++)
-            {
-                int idHash = m_StatDefaultFloatValues_Keys_SerializedProperty.GetArrayElementAtIndex(i).intValue;
-
-                StatDefinition statDef = GameFoundationSettings.database.statCatalog.GetStatDefinition(idHash);
-
-                if (statDef != null)
-                {
-                    m_ListItems.Add(new StatDefaultsListItem(i, statDef, m_StatDefaultFloatValues_Values_SerializedProperty.GetArrayElementAtIndex(i)));
+                    m_ListItems.Add(new StatDefaultsListItem(i, statDef, m_SerializedDefaultValueList.GetArrayElementAtIndex(i)));
                     m_AvailableStatDefinitions.Remove(statDef);
                 }
             }
@@ -119,7 +97,7 @@ namespace UnityEditor.GameFoundation
                 return;
             }
 
-            if (GameFoundationSettings.database.statCatalog == null)
+            if (GameFoundationDatabaseSettings.database.statCatalog == null)
             {
                 EditorGUILayout.HelpBox("No stat catalog found. Open the Game Foundation > Stat window to create one.", MessageType.Warning);
 
@@ -141,7 +119,6 @@ namespace UnityEditor.GameFoundation
                 if (m_ListItems.Count > 0)
                 {
                     int indexToDelete = -1;
-                    StatDefinition.StatValueType typeToDelete = StatDefinition.StatValueType.Int; // TODO: would like 'None' in this enum
 
                     for (int i = m_ListItems.Count - 1; i >= 0; i--)
                     {
@@ -167,7 +144,6 @@ namespace UnityEditor.GameFoundation
                             if (GUILayout.Button("X", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(40f)))
                             {
                                 indexToDelete = listItem.indexInOriginalList;
-                                typeToDelete = listItem.statDefinition.statValueType;
                             }
                         }
                     }
@@ -175,22 +151,8 @@ namespace UnityEditor.GameFoundation
                     // do any actual deletion outside the rendering loop to prevent sync issues
                     if (indexToDelete >= 0)
                     {
-                        switch (typeToDelete)
-                        {
-                            case StatDefinition.StatValueType.Int:
-                                m_StatDefaultIntValues_Keys_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
-                                m_StatDefaultIntValues_Values_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
-                                break;
-
-                            case StatDefinition.StatValueType.Float:
-                                m_StatDefaultFloatValues_Keys_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
-                                m_StatDefaultFloatValues_Values_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
-                                break;
-
-                            default:
-                                Debug.LogError("invalid type detected when trying to delete a stat default value");
-                                break;
-                        }
+                        m_SerializedDefaultKeyList.DeleteArrayElementAtIndex(indexToDelete);
+                        m_SerializedDefaultValueList.DeleteArrayElementAtIndex(indexToDelete);
                     }
                 }
                 else
@@ -201,7 +163,7 @@ namespace UnityEditor.GameFoundation
                     if (m_AvailableStatDefinitionDisplayNames.Length <= 1)
                     {
                         EditorGUILayout.HelpBox(
-                            "Before you can add stats here, you'll need to create stats in the Stat window.",
+                            "You need to create stats in the Stat window in order to add stats here.",
                             MessageType.Info);
 
                         if (GUILayout.Button("Stat Window"))
@@ -252,43 +214,29 @@ namespace UnityEditor.GameFoundation
                         // placeholder for value
                         GUILayout.FlexibleSpace();
 
-                        if (selectedStatDefinition == null)
+                        using (new EditorGUI.DisabledScope(selectedStatDefinition == null))
                         {
-                            GUI.enabled = false;
-                        }
-                        if (GUILayout.Button("Add", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(40f)))
-                        {
-                            if (selectedStatDefinition != null)
+                            if (GUILayout.Button("Add", GameFoundationEditorStyles.tableViewButtonStyle, GUILayout.Width(40f)))
                             {
-                                switch (selectedStatDefinition.statValueType)
+                                if (selectedStatDefinition != null)
                                 {
-                                    case StatDefinition.StatValueType.Int:
-                                        int newIntIndex = m_StatDefaultIntValues_Keys_SerializedProperty.arraySize;
-                                        m_StatDefaultIntValues_Keys_SerializedProperty.InsertArrayElementAtIndex(newIntIndex);
-                                        m_StatDefaultIntValues_Keys_SerializedProperty.GetArrayElementAtIndex(newIntIndex).intValue = selectedStatDefinition.idHash;
-                                        m_StatDefaultIntValues_Values_SerializedProperty.InsertArrayElementAtIndex(newIntIndex);
-                                        s_StatDefinitionJustAdded = selectedStatDefinition;
-                                        break;
+                                    var newStatIndex = m_SerializedDefaultKeyList.arraySize;
+                                    m_SerializedDefaultKeyList.InsertArrayElementAtIndex(newStatIndex);
+                                    m_SerializedDefaultKeyList.GetArrayElementAtIndex(newStatIndex).intValue = selectedStatDefinition.idHash;
+                                    m_SerializedDefaultValueList.InsertArrayElementAtIndex(newStatIndex);
+                                    var typeProperty = m_SerializedDefaultValueList.GetArrayElementAtIndex(newStatIndex)
+                                        .FindPropertyRelative(nameof(StatUnion.type));
+                                    typeProperty.intValue = (int)selectedStatDefinition.statValueType;
 
-                                    case StatDefinition.StatValueType.Float:
-                                        int newFloatIndex = m_StatDefaultFloatValues_Keys_SerializedProperty.arraySize;
-                                        m_StatDefaultFloatValues_Keys_SerializedProperty.InsertArrayElementAtIndex(newFloatIndex);
-                                        m_StatDefaultFloatValues_Keys_SerializedProperty.GetArrayElementAtIndex(newFloatIndex).intValue = selectedStatDefinition.idHash;
-                                        m_StatDefaultFloatValues_Values_SerializedProperty.InsertArrayElementAtIndex(newFloatIndex);
-                                        s_StatDefinitionJustAdded = selectedStatDefinition;
-                                        break;
-
-                                    default:
-                                        Debug.LogError("invalid type detected when trying to add a stat default value");
-                                        break;
+                                    s_StatDefinitionJustAdded = selectedStatDefinition;
                                 }
-                            }
-                            else
-                            {
-                                Debug.LogError("selected stat definition is null when trying to add a stat default value");
-                            }
+                                else
+                                {
+                                    Debug.LogError("selected stat definition is null when trying to add a stat default value");
+                                }
 
-                            s_NewStatDefinitionSelectedIndex = 0;
+                                s_NewStatDefinitionSelectedIndex = 0;
+                            }
                         }
 
                         GUI.enabled = true;

@@ -1,0 +1,124 @@
+﻿namespace UnityEngine.GameFoundation.CatalogManagement
+{
+    /// <summary>
+    /// This is one entry in the list of possible stats an item could have.
+    /// </summary>
+    [System.Serializable]
+    public class StatDefinition
+    {
+        /// <summary>
+        /// Enum to determine the value type for this StatDefinition
+        /// </summary>
+        public enum StatValueType
+        {
+            /// <summary>
+            /// Stats that use ints.
+            /// </summary>
+            Int,
+            
+            /// <summary>
+            /// Stats that use floats.
+            /// </summary>
+            Float,
+        }
+
+        /// <summary>
+        /// This is one entry in the list of possible Stats an item could have.
+        /// This method throws if not in editor mode.
+        /// </summary>
+        /// <param name="id">The Id this StatDefinition will use.</param>
+        /// <param name="displayName">The name this StatDefinition will use.</param>
+        /// <param name="statValueType">The value type this StatDefinition will hold.</param>
+        public StatDefinition(string id, string displayName, StatValueType statValueType)
+        {
+            Tools.ThrowIfPlayMode("Cannot construct a StatDefinition while in play mode.");
+
+            if (string.IsNullOrEmpty(id))
+            {
+                throw new System.ArgumentNullException("StatDefinition cannot have null or empty ids.");
+            }
+
+            if (!Tools.IsValidId(id))
+            {
+                throw new System.ArgumentException("StatDefinition can only be alphanumeric with optional dashes or underscores.");
+            }
+            
+            m_Id = id;
+            m_DisplayName = displayName;
+            m_StatValueType = statValueType;
+        }
+
+        /// <summary>
+        /// Id for this Stat definition.
+        /// </summary>
+        /// <returns>id for this Stat definition.</returns>
+        public string id
+        {
+            get { return m_Id; }
+        }
+        [SerializeField]
+        private string m_Id;
+
+        /// <summary>
+        /// Hash for Id string for this Stat definition.
+        /// </summary>
+        /// <returns>Hash for Id string for this Stat definition.</returns>
+        public int idHash
+        {
+            get
+            {
+                if (m_IdHash == 0 && !string.IsNullOrEmpty(m_Id))
+                {
+                    m_IdHash = Tools.StringToHash(m_Id);
+                }
+                return m_IdHash;
+            }
+        }
+
+        private int m_IdHash;
+
+        [SerializeField]
+        private string m_DisplayName;
+        
+        /// <summary>
+        /// Custom string attached to this Stat definition.
+        /// </summary>
+        /// <returns>Custom string attached to this Stat definition.</returns>
+        public string displayName
+        {
+            get { return m_DisplayName; }
+            set { SetDisplayName(value); }
+        }
+
+        private void SetDisplayName(string name)
+        {
+            Tools.ThrowIfPlayMode("Cannot set the display name of a StatDefinition while in play mode.");
+
+            m_DisplayName = name;
+        }
+
+        /// <summary>
+        /// Stat value type for this Stat definition.
+        /// </summary>
+        /// <returns>Stat value type for this Stat definition.</returns>
+        public StatValueType statValueType
+        {
+            get { return m_StatValueType; }
+        }
+        [SerializeField]
+        private StatValueType m_StatValueType;
+
+        internal bool DoesValueTypeMatch(System.Type type)
+        {
+            switch (statValueType)
+            {
+                case StatValueType.Int:
+                    return type == typeof(int);
+                case StatValueType.Float:
+                    return type == typeof(float);
+                default:
+                    throw new System.InvalidOperationException("Invalid type passed to DoesValueTypeMatch");
+            }
+        }
+    }
+}

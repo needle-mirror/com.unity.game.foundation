@@ -1,15 +1,15 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
     internal class GameItemDefinitionEditor : CollectionEditorBase<GameItemDefinition>
     {
-        private string m_CurrentItemId = null;
+        private string m_CurrentItemId;
 
-        public GameItemDefinitionEditor(string name, GameItemEditorWindow window) : base(name, window)
+        public GameItemDefinitionEditor(string name) : base(name)
         {
         }
         
@@ -22,10 +22,10 @@ namespace UnityEditor.GameFoundation
         {
             base.RefreshItems();
 
-            if (GameFoundationSettings.database != null
-                && GameFoundationSettings.database.gameItemCatalog != null)
+            if (GameFoundationDatabaseSettings.database != null
+                && GameFoundationDatabaseSettings.database.gameItemCatalog != null)
             {
-                GameFoundationSettings.database.gameItemCatalog.GetGameItemDefinitions(GetItems());
+                GameFoundationDatabaseSettings.database.gameItemCatalog.GetGameItemDefinitions(GetItems());
             }
         }
 
@@ -33,8 +33,8 @@ namespace UnityEditor.GameFoundation
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.database != null
-                && GameFoundationSettings.database.gameItemCatalog != null)
+            if (GameFoundationDatabaseSettings.database != null
+                && GameFoundationDatabaseSettings.database.gameItemCatalog != null)
             {
                 SelectFilteredItem(0); // Select the first Item
             }
@@ -47,13 +47,13 @@ namespace UnityEditor.GameFoundation
 
         protected override void CreateNewItemFinalize()
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
                 Debug.LogError("Could not create new game item definition because the Game Foundation database is null.");
                 return;
             }
 
-            if (GameFoundationSettings.database.gameItemCatalog == null)
+            if (GameFoundationDatabaseSettings.database.gameItemCatalog == null)
             {
                 Debug.LogError("Could not create new game item definition because the game item catalog is null.");
                 return;
@@ -61,9 +61,9 @@ namespace UnityEditor.GameFoundation
 
             GameItemDefinition gameItemDefinition = GameItemDefinition.Create(m_NewItemId, m_NewItemDisplayName);
 
-            CollectionEditorTools.AssetDatabaseAddObject(gameItemDefinition, GameFoundationSettings.database.gameItemCatalog);
+            CollectionEditorTools.AssetDatabaseAddObject(gameItemDefinition, GameFoundationDatabaseSettings.database.gameItemCatalog);
 
-            EditorUtility.SetDirty(GameFoundationSettings.database.gameItemCatalog);
+            EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.gameItemCatalog);
 
             AddItem(gameItemDefinition);
             SelectItem(gameItemDefinition);
@@ -74,18 +74,18 @@ namespace UnityEditor.GameFoundation
 
         protected override void AddItem(GameItemDefinition gameItemDefinition)
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
-                Debug.LogError("Game Item Definition " + gameItemDefinition.displayName + " could not be added because the Game Foundation database is null");
+                Debug.LogError($"Game Item Definition {gameItemDefinition.displayName} could not be added because the Game Foundation database is null");
             }
-            else if (GameFoundationSettings.database.gameItemCatalog == null)
+            else if (GameFoundationDatabaseSettings.database.gameItemCatalog == null)
             {
-                Debug.LogError("Game Item Definition " + gameItemDefinition.displayName + " could not be added because the game item catalog is null");
+                Debug.LogError($"Game Item Definition {gameItemDefinition.displayName} could not be added because the game item catalog is null");
             }
             else
             {
-                GameFoundationSettings.database.gameItemCatalog.AddGameItemDefinition(gameItemDefinition);
-                EditorUtility.SetDirty(GameFoundationSettings.database.gameItemCatalog);
+                GameFoundationDatabaseSettings.database.gameItemCatalog.AddGameItemDefinition(gameItemDefinition);
+                EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.gameItemCatalog);
             }
         }
 
@@ -104,25 +104,28 @@ namespace UnityEditor.GameFoundation
 
             using (new GUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
             {
-                string displayName = gameItemDefinition.displayName;
+                var displayName = gameItemDefinition.displayName;
                 m_ReadableNameIdEditor.DrawReadableNameIdFields(ref m_CurrentItemId, ref displayName);
-                if (gameItemDefinition.displayName != displayName)
+
+                if (gameItemDefinition.displayName == displayName)
                 {
-                    gameItemDefinition.displayName = displayName;
-                    EditorUtility.SetDirty(gameItemDefinition);
+                    return;
                 }
+
+                gameItemDefinition.displayName = displayName;
+                EditorUtility.SetDirty(gameItemDefinition);
             }
         }
 
-        protected override void DrawSidebarListItem(GameItemDefinition gameItemDefinition, int index)
+        protected override void DrawSidebarListItem(GameItemDefinition gameItemDefinition)
         {
-            BeginSidebarItem(gameItemDefinition, index, new Vector2(210f, 30f), new Vector2(5f, 7f));
+            BeginSidebarItem(gameItemDefinition, new Vector2(210f, 30f), new Vector2(5f, 7f));
 
             DrawSidebarItemLabel(gameItemDefinition.displayName, 210, GameFoundationEditorStyles.boldTextStyle);
 
             DrawSidebarItemRemoveButton(gameItemDefinition);
 
-            EndSidebarItem(gameItemDefinition, index);
+            EndSidebarItem();
         }
 
         protected override void SelectItem(GameItemDefinition item)
@@ -138,27 +141,29 @@ namespace UnityEditor.GameFoundation
 
         protected override void OnRemoveItem(GameItemDefinition gameItemDefinition)
         {
-            if (gameItemDefinition != null)
+            if (gameItemDefinition == null)
             {
-                if (GameFoundationSettings.database == null)
+                return;
+            }
+
+            if (GameFoundationDatabaseSettings.database == null)
+            {
+                Debug.LogError($"Game Item Definition {gameItemDefinition.displayName} could not be removed because the Game Foundation database is null");
+            }
+            else if (GameFoundationDatabaseSettings.database.gameItemCatalog == null)
+            {
+                Debug.LogError($"Game Item Definition {gameItemDefinition.displayName} could not be removed because the game item catalog is null");
+            }
+            else
+            {
+                if (GameFoundationDatabaseSettings.database.gameItemCatalog.RemoveGameItemDefinition(gameItemDefinition))
                 {
-                    Debug.LogError("Game Item Definition " + gameItemDefinition.displayName + " could not be removed because the Game Foundation database is null");
-                }
-                else if (GameFoundationSettings.database.gameItemCatalog == null)
-                {
-                    Debug.LogError("Game Item Definition " + gameItemDefinition.displayName + " could not be removed because the game item catalog is null");
+                    CollectionEditorTools.AssetDatabaseRemoveObject(gameItemDefinition);
+                    EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.gameItemCatalog);
                 }
                 else
                 {
-                    if (GameFoundationSettings.database.gameItemCatalog.RemoveGameItemDefinition(gameItemDefinition))
-                    {
-                        CollectionEditorTools.AssetDatabaseRemoveObject(gameItemDefinition);
-                        EditorUtility.SetDirty(GameFoundationSettings.database.gameItemCatalog);
-                    }
-                    else
-                    {
-                        Debug.LogError("Game Item Definition " + gameItemDefinition.displayName + " was not removed from the game item catalog.");
-                    }
+                    Debug.LogError($"Game Item Definition {gameItemDefinition.displayName} was not removed from the game item catalog.");
                 }
             }
         }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using UnityEngine.GameFoundation.DataPersistence;
 
 namespace UnityEngine.GameFoundation
 {
@@ -11,7 +10,10 @@ namespace UnityEngine.GameFoundation
     {
         private static Dictionary<int, GameItem> m_Instances = new Dictionary<int, GameItem>();
 
+        static IGameItemLookupDataLayer s_DataLayer;
+
         private static int m_LastGameItemIdUsed = 0;
+
         private static bool m_IsInitialized = false;
 
         /// <summary>
@@ -21,23 +23,23 @@ namespace UnityEngine.GameFoundation
         {
             get { return m_IsInitialized; }
         }
-        
-        internal static bool Initialize(ISerializableData data = null)
+
+        internal static void Initialize(IGameItemLookupDataLayer dataLayer)
         {
             if (IsInitialized)
             {
                 Debug.LogWarning("GameItemLookup is already initialized and cannot be initialized again.");
-                return false;
+                return;
             }
-            
+
+            s_DataLayer = dataLayer;
+
             m_IsInitialized = true;
-            
-            if (data != null)
+
+            if (s_DataLayer != null)
             {
-                m_IsInitialized = FillFromLookupData(data);
+                m_IsInitialized = FillFromLookupData();
             }
-            
-            return m_IsInitialized;
         }
 
         internal static void Unintialize()
@@ -51,7 +53,7 @@ namespace UnityEngine.GameFoundation
 
             m_IsInitialized = false;
         }
-        
+
         internal static void Reset()
         {
             m_Instances = new Dictionary<int, GameItem>();
@@ -61,36 +63,21 @@ namespace UnityEngine.GameFoundation
 //          m_LastGameItemIdUsed = 0;
         }
 
-        internal static bool FillFromLookupData(ISerializableData data)
+        internal static bool FillFromLookupData()
         {
             Reset();
 
-            if (data == null)
-                return false;
-            
-            var lookupData = (GameFoundationSerializableData) data;
-            if (lookupData.gameItemLookupData == null)
-            {
-                Debug.LogWarning("Persistence Data data doesn't contain Game Item Lookup.");
-                return false;
-            }
-                
-            m_LastGameItemIdUsed = lookupData.gameItemLookupData.lastGameItemIdUsed;
+            var data = s_DataLayer.GetData();
+            m_LastGameItemIdUsed = data.lastGameItemIdUsed;
 
             return true;
         }
 
-        internal static GameItemLookupSerializableData GetSerializableData()
-        {
-            GameItemLookupSerializableData data = new GameItemLookupSerializableData(m_LastGameItemIdUsed);
-            return data;
-        }
-        
         /// <summary>
         /// Registers a specific Hash for specified GameItem so it can be looked up later.
         /// </summary>
-        /// <param name="gameItemIdHash">The GameItem's  Hash  to unregister with GameItemLookup.
-        /// <param name="gameItem">The GameItem to register with GameItemLookup.
+        /// <param name="gameItemIdHash">The GameItem's  Hash  to unregister with GameItemLookup.</param>
+        /// <param name="gameItem">The GameItem to register with GameItemLookup.</param>
         /// <returns>True if GameItem was properly registered ( Hash must not already be registered).</returns>
         /// <exception cref="ArgumentException">Thrown if the given parameters are duplicates.</exception>
         public static bool RegisterInstance(int gameItemIdHash, GameItem gameItem)
@@ -104,7 +91,7 @@ namespace UnityEngine.GameFoundation
             {
                 throw new ArgumentException("Cannot register an instance with a duplicate item hash.");
             }
-            
+
             m_Instances[gameItemIdHash] = gameItem;
             return true;
         }
@@ -112,7 +99,7 @@ namespace UnityEngine.GameFoundation
         /// <summary>
         /// Unregisters a specific Hash from GameItemLookup.
         /// </summary>
-        /// <param name="gameItemIdHash">The GameItem's  Hash  to unregister.
+        /// <param name="gameItemIdHash">The GameItem's  Hash  to unregister.</param>
         /// <returns>True if GameItem was properly unregistered ( Hash must be registered).</returns>
         public static bool UnregisterInstance(int gameItemIdHash)
         {
@@ -120,14 +107,14 @@ namespace UnityEngine.GameFoundation
             {
                 return false;
             }
-            
+
             return m_Instances.Remove(gameItemIdHash);
         }
 
         /// <summary>
         /// Looks up GameItem for specified Hash.
         /// </summary>
-        /// <param name="gameItemIdHash">The GameItem's Hash to look up.
+        /// <param name="gameItemIdHash">The GameItem's Hash to look up.</param>
         /// <returns>GameItem previously registered with specified Hash.</returns>
         public static GameItem GetInstance(int gameItemIdHash)
         {
@@ -135,7 +122,7 @@ namespace UnityEngine.GameFoundation
             {
                 return null;
             }
-            
+
             return m_Instances[gameItemIdHash];
         }
 
@@ -145,7 +132,17 @@ namespace UnityEngine.GameFoundation
         /// <returns>Hash to assign to newly created GameItem.</returns>
         public static int GetNextIdForInstance()
         {
-            ++m_LastGameItemIdUsed;
+            do
+            {
+                ++m_LastGameItemIdUsed;
+            } while (m_LastGameItemIdUsed == 0
+                || m_Instances.ContainsKey(m_LastGameItemIdUsed));
+
+            //Synchronize last game item id used.
+            GameFoundation.GetPromiseHandles(out var deferred, out var completer);
+            s_DataLayer.SetLastGameItemIdUsed(m_LastGameItemIdUsed, completer);
+            GameFoundation.updater.ReleaseOrQueue(deferred);
+
             return m_LastGameItemIdUsed;
         }
     }

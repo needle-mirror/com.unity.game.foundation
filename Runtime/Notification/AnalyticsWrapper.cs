@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿#if UNITY_ANALYTICS
+using System.Collections.Generic;
 using UnityEngine.Analytics;
+#endif
 
 namespace UnityEngine.GameFoundation
 {

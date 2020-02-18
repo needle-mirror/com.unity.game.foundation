@@ -1,20 +1,20 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
     internal class InventoryItemDefinitionEditor : CollectionEditorBase<InventoryItemDefinition>
     {
-        private string m_CurrentItemId = null;
-        private string m_LastSelectedReferenceDefinitionId = null;
-        private string m_LastSelectedReferenceDefinitionName = null;
-        private static GameItemDefinition s_CreatingReferenceDefinition = null;
+        private string m_CurrentItemId;
+        private string m_LastSelectedReferenceDefinitionId;
+        private string m_LastSelectedReferenceDefinitionName;
+        private static GameItemDefinition s_CreatingReferenceDefinition;
 
-        private CategoryPickerEditor m_CategoryPicker;
+        private readonly CategoryPickerEditor m_CategoryPicker;
 
-        public InventoryItemDefinitionEditor(string name, InventoryEditorWindow window) : base(name, window)
+        public InventoryItemDefinitionEditor(string name) : base(name)
         {
             m_CategoryPicker = new CategoryPickerEditor();
         }
@@ -27,10 +27,10 @@ namespace UnityEditor.GameFoundation
 
             m_CategoryFilterEditor.RefreshSidebarCategoryFilterList(m_CategoryPicker.categoryDefinitions);
 
-            if (GameFoundationSettings.database != null
-                && GameFoundationSettings.database.inventoryCatalog != null)
+            if (GameFoundationDatabaseSettings.database != null
+                && GameFoundationDatabaseSettings.database.inventoryCatalog != null)
             {
-                GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions(GetItems());
+                GameFoundationDatabaseSettings.database.inventoryCatalog.GetItemDefinitions(GetItems());
             }
         }
 
@@ -56,22 +56,33 @@ namespace UnityEditor.GameFoundation
         protected override void DrawCreateInputFields()
         {
             ReferenceDefinitionPickerEditor.DrawReferenceDefinitionPicker(
-                CreateReferenceDefinitionMenu(createNewMode: true, s_CreatingReferenceDefinition, new List<GameItemDefinition>(GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions())),
+                CreateReferenceDefinitionMenu(
+                    true,
+                    s_CreatingReferenceDefinition,
+                    new List<GameItemDefinition>(GameFoundationDatabaseSettings.database.inventoryCatalog.GetItemDefinitions())),
                 s_CreatingReferenceDefinition,
-                new GUIContent("Reference Definition", "Optionally start creating a new Inventory Item Definition from a reference to a Game Item Definition. This will link the item definition being created with the chosen GameItemDefinition. This will allow it to inherit details from the GameItemDefinition.")
+                new GUIContent(
+                    "Reference Definition",
+                    "Optional: create a new Inventory Item Definition from a reference to a Game Item Definition. This allows the new item definition to inherit details from the linked GameItemDefinition.")
             );
+
             m_ReadableNameIdEditor.DrawReadableNameIdFields(ref m_NewItemId, ref m_NewItemDisplayName);
+
+            if (m_ClickedCreateButton)
+            {
+                EditorGUI.FocusTextInControl("displayName");
+            }
         }
 
         protected override void CreateNewItemFinalize()
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
                 Debug.LogError("Could not create new item because the Game Foundation database is null.");
                 return;
             }
 
-            if (GameFoundationSettings.database.inventoryCatalog == null)
+            if (GameFoundationDatabaseSettings.database.inventoryCatalog == null)
             {
                 Debug.LogError("Could not create new item because the inventory catalog is null.");
                 return;
@@ -79,14 +90,16 @@ namespace UnityEditor.GameFoundation
 
             InventoryItemDefinition itemDefinition = InventoryItemDefinition.Create(m_NewItemId, m_NewItemDisplayName);
 
-            CollectionEditorTools.AssetDatabaseAddObject(itemDefinition, GameFoundationSettings.database.inventoryCatalog);
+            CollectionEditorTools.AssetDatabaseAddObject(itemDefinition, GameFoundationDatabaseSettings.database.inventoryCatalog);
 
             // If filter is currently set to a category, add that category to the category list of the item currently being created
-            CategoryDefinition currentFilteredCategory = m_CategoryFilterEditor.GetCurrentFilteredCategory(m_CategoryPicker.categoryDefinitions);
+            var currentFilteredCategory = m_CategoryFilterEditor.GetCurrentFilteredCategory(m_CategoryPicker.categoryDefinitions);
+
             if (currentFilteredCategory != null)
             {
-                List<CategoryDefinition> existingItemCategories = new List<CategoryDefinition>();
+                var existingItemCategories = new List<CategoryDefinition>();
                 itemDefinition.GetCategories(existingItemCategories);
+
                 if (existingItemCategories.All(category => category.hash != currentFilteredCategory.hash))
                 {
                     itemDefinition.AddCategory(currentFilteredCategory);
@@ -98,7 +111,7 @@ namespace UnityEditor.GameFoundation
                 itemDefinition.referenceDefinition = s_CreatingReferenceDefinition;
             }
 
-            EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+            EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.inventoryCatalog);
             AddItem(itemDefinition);
             SelectItem(itemDefinition);
             m_CurrentItemId = m_NewItemId;
@@ -108,18 +121,18 @@ namespace UnityEditor.GameFoundation
 
         protected override void AddItem(InventoryItemDefinition inventoryItemDefinition)
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
-                Debug.LogError("Inventory Item Definition " + inventoryItemDefinition.displayName + " could not be added because the Game Foundation database is null");
+                Debug.LogError($"Inventory Item Definition {inventoryItemDefinition.displayName} could not be added because the Game Foundation database is null");
             }
-            else if (GameFoundationSettings.database.inventoryCatalog == null)
+            else if (GameFoundationDatabaseSettings.database.inventoryCatalog == null)
             {
-                Debug.LogError("Inventory Item Definition " + inventoryItemDefinition.displayName + " could not be added because the inventory catalog is null");
+                Debug.LogError($"Inventory Item Definition {inventoryItemDefinition.displayName} could not be added because the inventory catalog is null");
             }
             else
             {
-                GameFoundationSettings.database.inventoryCatalog.AddItemDefinition(inventoryItemDefinition);
-                EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
+                GameFoundationDatabaseSettings.database.inventoryCatalog.AddItemDefinition(inventoryItemDefinition);
+                EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.inventoryCatalog);
             }
         }
 
@@ -141,8 +154,8 @@ namespace UnityEditor.GameFoundation
 
         private void DrawGeneralDetail(InventoryItemDefinition inventoryItemDefinition)
         {
-            if (GameFoundationSettings.database == null
-                || GameFoundationSettings.database.inventoryCatalog == null)
+            if (GameFoundationDatabaseSettings.database == null
+                || GameFoundationDatabaseSettings.database.inventoryCatalog == null)
             {
                 return;
             }
@@ -151,8 +164,9 @@ namespace UnityEditor.GameFoundation
 
             using (new GUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
             {
-                string displayName = inventoryItemDefinition.displayName;
+                var displayName = inventoryItemDefinition.displayName;
                 m_ReadableNameIdEditor.DrawReadableNameIdFields(ref m_CurrentItemId, ref displayName);
+
                 if (inventoryItemDefinition.displayName != displayName)
                 {
                     inventoryItemDefinition.displayName = displayName;
@@ -160,9 +174,15 @@ namespace UnityEditor.GameFoundation
                 }
 
                 ReferenceDefinitionPickerEditor.DrawReferenceDefinitionPicker(
-                    CreateReferenceDefinitionMenu(createNewMode: false, inventoryItemDefinition.referenceDefinition, new List<GameItemDefinition>(GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions()), inventoryItemDefinition),
+                    CreateReferenceDefinitionMenu(
+                        false,
+                        inventoryItemDefinition.referenceDefinition,
+                        new List<GameItemDefinition>(GameFoundationDatabaseSettings.database.inventoryCatalog.GetItemDefinitions()),
+                        inventoryItemDefinition),
                     inventoryItemDefinition.referenceDefinition,
-                    new GUIContent("Reference Definition", "Attaching a Reference Definition links the displayed item definition with the chosen GameItemDefinition. This will allow it to inherit details from the GameItemDefinition.")
+                    new GUIContent(
+                        "Reference Definition",
+                        "Attaches a Reference Definition to a selected GameItemDefinition. This allows the new item definition to inherit details from the linked GameItemDefinition.")
                 );
             }
         }
@@ -171,8 +191,7 @@ namespace UnityEditor.GameFoundation
         {
             EditorGUILayout.Space();
 
-            bool categoryChanged;
-            m_CategoryFilterEditor.DrawCategoryFilter(out categoryChanged);
+            m_CategoryFilterEditor.DrawCategoryFilter(out var categoryChanged);
 
             if (categoryChanged)
             {
@@ -185,15 +204,15 @@ namespace UnityEditor.GameFoundation
             base.DrawSidebarList();
         }
 
-        protected override void DrawSidebarListItem(InventoryItemDefinition item, int index)
+        protected override void DrawSidebarListItem(InventoryItemDefinition item)
         {
-            BeginSidebarItem(item, index, new Vector2(210f, 30f), new Vector2(5f, 7f));
+            BeginSidebarItem(item, new Vector2(210f, 30f), new Vector2(5f, 7f));
 
             DrawSidebarItemLabel(item.displayName, 210, GameFoundationEditorStyles.boldTextStyle);
 
             DrawSidebarItemRemoveButton(item);
 
-            EndSidebarItem(item, index);
+            EndSidebarItem();
         }
 
         protected override void SelectItem(InventoryItemDefinition item)
@@ -211,27 +230,29 @@ namespace UnityEditor.GameFoundation
 
         protected override void OnRemoveItem(InventoryItemDefinition inventoryItemDefinition)
         {
-            if (inventoryItemDefinition != null)
+            if (inventoryItemDefinition == null)
             {
-                if (GameFoundationSettings.database == null)
+                return;
+            }
+
+            if (GameFoundationDatabaseSettings.database == null)
+            {
+                Debug.LogError($"Inventory Item Definition {inventoryItemDefinition.displayName} could not be removed because the Game Foundation database is null");
+            }
+            else if (GameFoundationDatabaseSettings.database.inventoryCatalog == null)
+            {
+                Debug.LogError($"Inventory Item Definition {inventoryItemDefinition.displayName} could not be removed because the inventory catalog is null");
+            }
+            else
+            {
+                if (GameFoundationDatabaseSettings.database.inventoryCatalog.RemoveItemDefinition(inventoryItemDefinition))
                 {
-                    Debug.LogError("Inventory Item Definition " + inventoryItemDefinition.displayName + " could not be removed because the Game Foundation database is null");
-                }
-                else if (GameFoundationSettings.database.inventoryCatalog == null)
-                {
-                    Debug.LogError("Inventory Item Definition " + inventoryItemDefinition.displayName + " could not be removed because the inventory catalog is null");
+                    CollectionEditorTools.AssetDatabaseRemoveObject(inventoryItemDefinition);
+                    EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.inventoryCatalog);
                 }
                 else
                 {
-                    if (GameFoundationSettings.database.inventoryCatalog.RemoveItemDefinition(inventoryItemDefinition))
-                    {
-                        CollectionEditorTools.AssetDatabaseRemoveObject(inventoryItemDefinition);
-                        EditorUtility.SetDirty(GameFoundationSettings.database.inventoryCatalog);
-                    }
-                    else
-                    {
-                        Debug.LogError("Inventory Item Definition " + inventoryItemDefinition.displayName + " was not removed from the inventory catalog.");
-                    }
+                    Debug.LogError($"Inventory Item Definition {inventoryItemDefinition.displayName} was not removed from the inventory catalog.");
                 }
             }
         }
@@ -242,12 +263,12 @@ namespace UnityEditor.GameFoundation
             // NOTE: EditorGUILayout.ObjectField is too broad, it doesn't show what asset an object is nested in
             // NOTE: EditorGUIUtility.ShowObjectPicker with a search filter is also not going to work since you can't filter by specific asset file
 
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
                 throw new System.NullReferenceException("There is no Game Foundation database!");
             }
 
-            if (GameFoundationSettings.database.gameItemCatalog == null)
+            if (GameFoundationDatabaseSettings.database.gameItemCatalog == null)
             {
                 throw new System.NullReferenceException("There is no GameItemDefinition catalog!");
             }
@@ -259,7 +280,7 @@ namespace UnityEditor.GameFoundation
 
             GenericMenu menu = new GenericMenu();
 
-            var gameItemDefinitions = GameFoundationSettings.database.gameItemCatalog.GetGameItemDefinitions();
+            var gameItemDefinitions = GameFoundationDatabaseSettings.database.gameItemCatalog.GetGameItemDefinitions();
 
             List<GameItemDefinition> defsAlreadyReferenced = new List<GameItemDefinition>();
 
@@ -295,7 +316,7 @@ namespace UnityEditor.GameFoundation
                 }
                 else
                 {
-                    bool selected = referenceDefinition ? referenceDefinition.id == rootGameItemDefinition.id : false;
+                    var selected = referenceDefinition && referenceDefinition.id == rootGameItemDefinition.id;
 
                     if (createNewMode)
                     {
@@ -353,7 +374,7 @@ namespace UnityEditor.GameFoundation
             );
         }
 
-        private void AddMenuItemNoneCreateNewMode(GenericMenu menu)
+        private static void AddMenuItemNoneCreateNewMode(GenericMenu menu)
         {
             menu.AddItem(
                 new GUIContent("None"),
@@ -362,7 +383,7 @@ namespace UnityEditor.GameFoundation
             );
         }
 
-        private void AddMenuItemEditExistingMode(GenericMenu menu, GameItemDefinition rootGameItemDefinition, InventoryItemDefinition inventoryItemDefinition, bool selected)
+        private static void AddMenuItemEditExistingMode(GenericMenu menu, GameItemDefinition rootGameItemDefinition, InventoryItemDefinition inventoryItemDefinition, bool selected)
         {
             menu.AddItem(
                 new GUIContent(rootGameItemDefinition.displayName),
@@ -375,7 +396,7 @@ namespace UnityEditor.GameFoundation
             );
         }
 
-        private void AddMenuItemNoneEditExistingMode(GenericMenu menu, InventoryItemDefinition inventoryItemDefinition)
+        private static void AddMenuItemNoneEditExistingMode(GenericMenu menu, InventoryItemDefinition inventoryItemDefinition)
         {
             menu.AddItem(
                 new GUIContent("None"),

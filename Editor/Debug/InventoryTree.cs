@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
+using UnityEngine.GameFoundation.CatalogManagement;
 using UnityEngine.GameFoundation;
 
 namespace UnityEditor.GameFoundation
@@ -35,6 +36,7 @@ namespace UnityEditor.GameFoundation
           set => m_SearchString = value;
         }
 
+        private List<Inventory> m_IncomingInventories = new List<Inventory>();
         private List<Inventory> m_Inventories = new List<Inventory>();
         public List<Inventory> Inventories
         {
@@ -157,6 +159,7 @@ namespace UnityEditor.GameFoundation
             if (GUI.Button(centeredButtonPosition, "X",
                 new GUIStyle(GUI.skin.button) {fixedWidth = 30, alignment = TextAnchor.MiddleCenter}))
             {
+                HandleSelectionRemoved(item);
                 switch ((Depth) item.depth)
                 {
                     case  Depth.Inventory:
@@ -176,12 +179,12 @@ namespace UnityEditor.GameFoundation
                     case Depth.Stat:
                     {
                         InventoryItem inventoryItem = GetGameItem(item) as InventoryItem;
-                        if (item.statType == StatDefinition.StatValueType.Int)
+                        if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Int)
                         {
                             StatManager.RemoveIntValue(inventoryItem, item.itemHash);
                         }
 
-                        if (item.statType == StatDefinition.StatValueType.Float)
+                        if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Float)
                         {
                             StatManager.RemoveFloatValue(inventoryItem, item.itemHash);
                         }
@@ -189,9 +192,7 @@ namespace UnityEditor.GameFoundation
                         break;
                     }
                 }
-
                 CorrectFoldouts(item);
-                HandleSelectionRemoved(item);
                 Update();
             }
         }
@@ -232,13 +233,13 @@ namespace UnityEditor.GameFoundation
                             case Depth.Stat:
                             {
                                 InventoryItem inventoryItem = GetGameItem(item) as InventoryItem;
-                                if (item.statType == StatDefinition.StatValueType.Int &&
+                                if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Int &&
                                     int.TryParse(newValue, out var resultInt))
                                 {
                                     StatManager.SetIntValue(inventoryItem, item.itemHash, resultInt);
                                 }
 
-                                if (item.statType == StatDefinition.StatValueType.Float &&
+                                if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Float &&
                                     float.TryParse(newValue, out var resultFloat))
                                 {
                                     StatManager.SetFloatValue(inventoryItem, item.itemHash, resultFloat);
@@ -376,8 +377,15 @@ namespace UnityEditor.GameFoundation
             int id = -1;
             m_AllTreeViewItems.Clear();
             TreeViewItem root = new InventoryTreeItem(id++,-1,"Root");
-            m_Inventories.Clear();
-            InventoryManager.GetInventories(m_Inventories);
+            
+            InventoryManager.GetInventories(m_IncomingInventories);
+            //Add and remove inventories based on the what the API reports. We do this to preserve order of lists added to ensure the latest inventories always appear towards the bottom.
+            IEnumerable<Inventory> inventoriesToAdd = m_IncomingInventories.Except(m_Inventories);
+            List<Inventory> inventoriesToRemove = m_Inventories.Except(m_IncomingInventories).ToList();
+            m_Inventories.AddRange(inventoriesToAdd);
+            m_Inventories.RemoveAll(inventory => inventoriesToRemove.Contains(inventory));
+            m_IncomingInventories.Clear();
+
             foreach (var inventory in m_Inventories)
             {
                 m_InventoryItems.Clear();
@@ -397,18 +405,18 @@ namespace UnityEditor.GameFoundation
                     m_AllTreeViewItems.Add(inventoryItemNode);
 
                     //Contains information of which statDefinitions are on GameItems
-                    Dictionary<int, List<int>> intStatHashLookup = (Dictionary<int, List<int>>)GetInstanceField(typeof(StatManager.StatDictionary<int>), null, "m_GameItemStatList");
-                    Dictionary<int, List<int>> floatStatHashLookup = (Dictionary<int, List<int>>)GetInstanceField(typeof(StatManager.StatDictionary<float>), null, "m_GameItemStatList");
+                    var intStatHashLookup = (Dictionary<int, List<int>>)GetInstanceField(typeof(StatManager.StatDictionary<int>), null, "m_GameItemStatList");
+                    var floatStatHashLookup = (Dictionary<int, List<int>>)GetInstanceField(typeof(StatManager.StatDictionary<float>), null, "m_GameItemStatList");
 
                     TreeViewItem statsNode;
                     if (intStatHashLookup.ContainsKey(item.gameItemId))
                     {
-                        foreach (int statHash in intStatHashLookup[item.gameItemId])
+                        foreach (var statHash in intStatHashLookup[item.gameItemId])
                         {
                             if (StatManager.HasIntValue(item, statHash))
                             {
-                                StatDefinition statDefinition = StatManager.catalog.GetStatDefinition(statHash);
-                                inventoryItemNode.AddChild(statsNode = new InventoryTreeItem(id++,2,statDefinition.displayName) { itemHash = statDefinition.idHash, statValue = StatManager.GetIntValue(item,statDefinition.id), statType = StatDefinition.StatValueType.Int});
+                                UnityEngine.GameFoundation.StatDefinition statDefinition = StatManager.catalog.GetStatDefinition(statHash);
+                                inventoryItemNode.AddChild(statsNode = new InventoryTreeItem(id++,2,statDefinition.displayName) { itemHash = statDefinition.idHash, statValue = StatManager.GetIntValue(item,statDefinition.id), statType = UnityEngine.GameFoundation.StatDefinition.StatValueType.Int});
                                 statsNode.icon = m_ItemIcons[(int)Depth.Stat];
                                 m_AllTreeViewItems.Add(statsNode);
                             }
@@ -420,8 +428,8 @@ namespace UnityEditor.GameFoundation
                         {
                             if (StatManager.HasFloatValue(item, statHash))
                             {
-                                StatDefinition statDefinition = StatManager.catalog.GetStatDefinition(statHash);
-                                inventoryItemNode.AddChild(statsNode = new InventoryTreeItem(id++,2,statDefinition.displayName) { itemHash = statDefinition.idHash, statValue = StatManager.GetFloatValue(item,statDefinition.id), statType = StatDefinition.StatValueType.Float});
+                                UnityEngine.GameFoundation.StatDefinition statDefinition = StatManager.catalog.GetStatDefinition(statHash);
+                                inventoryItemNode.AddChild(statsNode = new InventoryTreeItem(id++,2,statDefinition.displayName) { itemHash = statDefinition.idHash, statValue = StatManager.GetFloatValue(item,statDefinition.id), statType = UnityEngine.GameFoundation.StatDefinition.StatValueType.Float});
                                 statsNode.icon = m_ItemIcons[(int)Depth.Stat];
                                 m_AllTreeViewItems.Add(statsNode);
                             }
@@ -445,9 +453,9 @@ namespace UnityEditor.GameFoundation
                 case Depth.Inventory:
                     return InventoryManager.GetInventory(inventoryTreeItem.itemHash).displayName;
                 case Depth.InventoryItem:
-                    return GameFoundationSettings.database.inventoryCatalog.GetItemDefinition(inventoryTreeItem.itemHash).displayName;
+                    return GameFoundationDatabaseSettings.database.inventoryCatalog.GetItemDefinition(inventoryTreeItem.itemHash).displayName;
                 case Depth.Stat:
-                    return GameFoundationSettings.database.statCatalog.GetStatDefinition(inventoryTreeItem.itemHash).displayName;
+                    return GameFoundationDatabaseSettings.database.statCatalog.GetStatDefinition(inventoryTreeItem.itemHash).displayName;
                 default:
                     throw new ArgumentException("Cannot get real display name of this InventoryTreeItem, bad depth parameter.");
             }

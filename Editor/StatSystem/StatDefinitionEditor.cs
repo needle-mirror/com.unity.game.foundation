@@ -1,8 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
-using UnityEditorInternal.Profiling.Memory.Experimental;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
@@ -11,16 +10,17 @@ namespace UnityEditor.GameFoundation
     /// </summary>
     internal class StatDefinitionEditor : CollectionEditorBase<StatDefinition>
     {
-        private string m_CurrentItemId = null;
-        private int m_SelectedTypePopupIdx = 0;
-        private string[] m_TypeNamesForPopup = System.Enum.GetNames( typeof( StatDefinition.StatValueType ) );
+        private string m_CurrentItemId;
+        private int m_SelectedTypePopupIdx;
+        private readonly string[] m_TypeNamesForPopup = System.Enum.GetNames( typeof( StatDefinition.StatValueType ) );
         private StatDefinition.StatValueType m_NewItemValueType;
-        private static GUIContent s_ValueTypeLabel = new GUIContent("Value Type", "The numerical data type that values for this stat will be stored as.");
+        private static readonly GUIContent s_ValueTypeLabel = new GUIContent("Value Type", "Values for this stat will be stored as this numerical data type.");
+
 
         /// <summary>
         /// Constructor for the StatDefinitionEditor class.
         /// </summary>
-        public StatDefinitionEditor(string name, StatEditorWindow window) : base(name, window)
+        public StatDefinitionEditor(string name) : base(name)
         {
         }
         
@@ -33,10 +33,10 @@ namespace UnityEditor.GameFoundation
         {
             base.RefreshItems();
 
-            if (GameFoundationSettings.database != null
-                && GameFoundationSettings.database.statCatalog != null)
+            if (GameFoundationDatabaseSettings.database != null
+                && GameFoundationDatabaseSettings.database.statCatalog != null)
             {
-                GameFoundationSettings.database.statCatalog.GetStatDefinitions(GetItems());
+                GameFoundationDatabaseSettings.database.statCatalog.GetStatDefinitions(GetItems());
             }
         }
 
@@ -47,8 +47,8 @@ namespace UnityEditor.GameFoundation
         {
             base.OnWillEnter();
 
-            if (GameFoundationSettings.database != null
-                && GameFoundationSettings.database.statCatalog != null)
+            if (GameFoundationDatabaseSettings.database != null
+                && GameFoundationDatabaseSettings.database.statCatalog != null)
             {
                 SelectFilteredItem(0); // Select the first Item
             }
@@ -69,60 +69,63 @@ namespace UnityEditor.GameFoundation
 
         protected override void DrawWarningMessage()
         {
-            EditorGUILayout.HelpBox("Once the Create button is clicked Id and Value Type cannot be changed.", MessageType.Warning);
+            EditorGUILayout.HelpBox("Once the Create button is clicked, the Id and Value Type cannot be changed.", MessageType.Warning);
         }
 
-        protected void DrawValueTypePopup()
+        private void DrawValueTypePopup()
         {
             using (new GUILayout.HorizontalScope())
             {
                 EditorGUILayout.LabelField(s_ValueTypeLabel, GUILayout.Width(145));
-                int newFilterIdx = EditorGUILayout.Popup(m_SelectedTypePopupIdx, m_TypeNamesForPopup);
-                if (newFilterIdx != m_SelectedTypePopupIdx)
+                var newFilterIdx = EditorGUILayout.Popup(m_SelectedTypePopupIdx, m_TypeNamesForPopup);
+
+                if (newFilterIdx == m_SelectedTypePopupIdx)
                 {
-                    m_SelectedTypePopupIdx = newFilterIdx;
-                    System.Enum.TryParse(m_TypeNamesForPopup[m_SelectedTypePopupIdx], out m_NewItemValueType);
+                    return;
                 }
+
+                m_SelectedTypePopupIdx = newFilterIdx;
+                System.Enum.TryParse(m_TypeNamesForPopup[m_SelectedTypePopupIdx], out m_NewItemValueType);
             }
         }
 
         protected override void CreateNewItemFinalize()
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
                 Debug.LogError("Could not create new stat definition because the Game Foundation database is null.");
                 return;
             }
 
-            if (GameFoundationSettings.database.statCatalog == null)
+            if (GameFoundationDatabaseSettings.database.statCatalog == null)
             {
                 Debug.LogError("Could not create new stat definition because the stat catalog is null.");
                 return;
             }
 
-            StatDefinition itemDefinition = new StatDefinition(m_NewItemId, m_NewItemDisplayName, m_NewItemValueType);
+            var itemDefinition = new StatDefinition(m_NewItemId, m_NewItemDisplayName, m_NewItemValueType);
 
             AddItem(itemDefinition);
             SelectItem(itemDefinition);
             RefreshItems();
-            List<StatDefinition> statDefinitions = GetItems();
+            var statDefinitions = GetItems();
             DrawDetail(itemDefinition, statDefinitions.FindIndex(x => x.Equals(m_SelectedItem)), statDefinitions.Count);
         }
 
         protected override void AddItem(StatDefinition statDefinition)
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
-                Debug.LogError("Stat Definition " + statDefinition.displayName + " could not be added because the Game Foundation database is null");
+                Debug.LogError($"Stat Definition {statDefinition.displayName} could not be added because the Game Foundation database is null");
             }
-            else if (GameFoundationSettings.database.statCatalog == null)
+            else if (GameFoundationDatabaseSettings.database.statCatalog == null)
             {
-                Debug.LogError("Stat Definition " + statDefinition.displayName + " could not be added because the stat catalog is null");
+                Debug.LogError($"Stat Definition {statDefinition.displayName} could not be added because the stat catalog is null");
             }
             else
             {
-                GameFoundationSettings.database.statCatalog.AddStatDefinition(statDefinition);
-                EditorUtility.SetDirty(GameFoundationSettings.database.statCatalog);
+                GameFoundationDatabaseSettings.database.statCatalog.AddStatDefinition(statDefinition);
+                EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.statCatalog);
             }
         }
 
@@ -132,13 +135,15 @@ namespace UnityEditor.GameFoundation
 
             using (new GUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
             {
-                string displayName = item.displayName;
+                var displayName = item.displayName;
                 m_ReadableNameIdEditor.DrawReadableNameIdFields(ref m_CurrentItemId, ref displayName);
+
                 if (item.displayName != displayName)
                 {
                     item.displayName = displayName;
-                    EditorUtility.SetDirty(GameFoundationSettings.database.statCatalog);
+                    EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.statCatalog);
                 }
+
                 using (new EditorGUILayout.HorizontalScope())
                 {
                     EditorGUILayout.LabelField(s_ValueTypeLabel, GUILayout.Width(145));
@@ -147,15 +152,15 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        protected override void DrawSidebarListItem(StatDefinition item, int index)
+        protected override void DrawSidebarListItem(StatDefinition item)
         {
-            BeginSidebarItem(item, index, new Vector2(220f, 30f), new Vector2(5f, 7f));
+            BeginSidebarItem(item, new Vector2(220f, 30f), new Vector2(5f, 7f));
 
             DrawSidebarItemLabel(item.displayName, 220, GameFoundationEditorStyles.boldTextStyle);
 
             DrawSidebarItemRemoveButton(item);
 
-            EndSidebarItem(item, index);
+            EndSidebarItem();
         }
 
         protected override void SelectItem(StatDefinition item)
@@ -172,26 +177,28 @@ namespace UnityEditor.GameFoundation
 
         protected override void OnRemoveItem(StatDefinition statDefinition)
         {
-            if (statDefinition != null)
+            if (statDefinition == null)
             {
-                if (GameFoundationSettings.database == null)
+                return;
+            }
+
+            if (GameFoundationDatabaseSettings.database == null)
+            {
+                Debug.LogError($"Stat Definition {statDefinition.displayName} could not be removed because the Game Foundation database is null");
+            }
+            else if (GameFoundationDatabaseSettings.database.statCatalog == null)
+            {
+                Debug.LogError($"Stat Definition {statDefinition.displayName} could not be removed because the stat catalog is null");
+            }
+            else
+            {
+                if (GameFoundationDatabaseSettings.database.statCatalog.RemoveStatDefinition(statDefinition))
                 {
-                    Debug.LogError("Stat Definition " + statDefinition.displayName + " could not be removed because the Game Foundation database is null");
-                }
-                else if (GameFoundationSettings.database.statCatalog == null)
-                {
-                    Debug.LogError("Stat Definition " + statDefinition.displayName + " could not be removed because the stat catalog is null");
+                    EditorUtility.SetDirty(GameFoundationDatabaseSettings.database.statCatalog);
                 }
                 else
                 {
-                    if (GameFoundationSettings.database.statCatalog.RemoveStatDefinition(statDefinition))
-                    {
-                        EditorUtility.SetDirty(GameFoundationSettings.database.statCatalog);
-                    }
-                    else
-                    {
-                        Debug.LogError("Stat Definition " + statDefinition.displayName + " was not removed from the stat catalog.");
-                    }
+                    Debug.LogError($"Stat Definition {statDefinition.displayName} was not removed from the stat catalog.");
                 }
             }
         }

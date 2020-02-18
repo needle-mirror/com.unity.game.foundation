@@ -28,6 +28,14 @@ apiRules:
       # Base classes (completely)
       uidRegex: ^Unity.*GameFoundation\.Base.*
   - exclude:
+      # Editor definitions and catalogs (for now)
+      uidRegex: ^UnityEngine\.GameFoundation\.CatalogManagement*
+      type: Namespace
+  - exclude:
       # Tests
       uidRegex: Tests$
+      type: Namespace
+  - exclude:
+      # Additional tests (where namespace doesn't end in Tests so doesn't match above filter)
+      uidRegex: ^UnityEngine\.GameFoundationTests\..*
       type: Namespace

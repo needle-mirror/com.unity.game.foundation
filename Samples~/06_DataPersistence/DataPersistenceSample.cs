@@ -1,4 +1,7 @@
-﻿using UnityEngine.GameFoundation.DataPersistence;
+﻿using System.Collections;
+using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DataPersistence;
+using UnityEngine.GameFoundation.Promise;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -14,16 +17,21 @@ namespace UnityEngine.GameFoundation.Sample
         /// Reference to the panel to display when the wrong database is in use.
         /// </summary>
         public GameObject wrongDatabasePanel;
-        
+
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
         /// </summary>
         public Text mainText;
-        
+
         /// <summary>
         /// We will need a reference to show inventory count
         /// </summary>
         public Text inventoryCountText;
+
+        /// <summary>
+        /// We need to keep a reference to the persistence data layer if we want to save data.
+        /// </summary>
+        PersistenceDataLayer m_DataLayer;
 
         /// <summary>
         /// Standard starting point for Unity scripts.
@@ -37,17 +45,27 @@ namespace UnityEngine.GameFoundation.Sample
                 wrongDatabasePanel.SetActive(true);
                 return;
             }
-            
-            // Initialize must always be called before working with any game foundation code.
-            // If local persistence is passed in as a parameter, it will automatically load on startup.
-            GameFoundation.Initialize(new LocalPersistence(new JsonDataSerializer()));
 
+            // - Initialize must always be called before working with any game foundation code.
+            // - GameFoundation requires an IDataAccessLayer object that will provide and persist
+            //   the data required for the various services (Inventory, Stats, ...).
+            // - For this sample we will persist GameFoundation's data using a PersistenceDataLayer.
+            //   We create it with a LocalPersistence setup to save/load these data in a JSON file
+            //   named "DataPersistenceSample" stored on the device.
+            m_DataLayer = new PersistenceDataLayer(
+                new LocalPersistence("DataPersistenceSample", new JsonDataSerializer()));
+
+            GameFoundation.Initialize(m_DataLayer, OnGameFoundationInitialized, Debug.LogError);
+        }
+
+        void OnGameFoundationInitialized()
+        {
             // Here we bind our UI refresh method to callbacks on the inventory manager.
             // These callbacks will automatically be invoked anytime an inventory is added, or removed.
             // This prevents us from having to manually invoke RefreshUI every time we perform one of these actions.
             InventoryManager.onInventoryAdded += RefreshUI;
             InventoryManager.onInventoryRemoved += RefreshUI;
-            
+
             RefreshUI();
         }
 
@@ -58,7 +76,7 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI(Inventory inventoryParam = null)
         {
             var inventories = InventoryManager.GetInventories();
-            
+
             // Show the total count of inventories
             inventoryCountText.text = "Total Inventories: " + inventories.Length;
 
@@ -69,7 +87,7 @@ namespace UnityEngine.GameFoundation.Sample
             {
                 // Display an empty line between inventories
                 mainText.text += "\n";
-                
+
                 // Display the main inventory's display name
                 mainText.text += "Inventory - " + inventory.displayName + "\n";
 
@@ -97,7 +115,7 @@ namespace UnityEngine.GameFoundation.Sample
             string inventoryDefinition = "blank";
             string id = InventoryManager.GetNewInventoryId();
             string displayName = "Blank";
-            
+
             InventoryManager.CreateInventory(inventoryDefinition, id, displayName);
         }
 
@@ -111,7 +129,7 @@ namespace UnityEngine.GameFoundation.Sample
             string inventoryDefinition = "fruitSalad";
             string id = InventoryManager.GetNewInventoryId();
             string displayName = "Fruit Salad";
-            
+
             InventoryManager.CreateInventory(inventoryDefinition, id, displayName);
         }
 
@@ -123,34 +141,66 @@ namespace UnityEngine.GameFoundation.Sample
             // Grab all inventories and select the last one
             Inventory[] inventories = InventoryManager.GetInventories();
             Inventory toRemove = inventories[inventories.Length - 1];
-            
+
             // Remove it using RemoveInventory
             InventoryManager.RemoveInventory(toRemove);
         }
 
         /// <summary>
-        /// This will invoke the game foundation save method.
-        /// It's as simple as a single method call. The parameter passed in will create a local JSON file on your machine.
+        /// This will save game foundation's data as a JSON file on your machine.
         /// This data will persist between play sessions.
         /// This sample only showcases inventories, but this method saves their items, and stats too. 
         /// </summary>
         public void Save()
         {
-            GameFoundation.Save(new LocalPersistence(new JsonDataSerializer()));
-            
-            Debug.Log("Saved!");
+            // Deferred is a struct that helps you track the progress of an asynchronous operation of Game Foundation.
+            Deferred saveOperation = m_DataLayer.Save();
+
+            // Check if the operation is already done.
+            if (saveOperation.isDone)
+            {
+                LogSaveOperationCompletion(saveOperation);
+            }
+            else
+            {
+                StartCoroutine(WaitForSaveCompletion(saveOperation));
+            }
+        }
+
+        static IEnumerator WaitForSaveCompletion(Deferred saveOperation)
+        {
+            // Wait for the operation to complete.
+            yield return saveOperation.Wait();
+
+            LogSaveOperationCompletion(saveOperation);
+        }
+
+        static void LogSaveOperationCompletion(Deferred saveOperation)
+        {
+            // Check if the operation was successful.
+            if (saveOperation.isFulfilled)
+            {
+                Debug.Log("Saved!");
+            }
+            else
+            {
+                Debug.LogError($"Save failed! Error: {saveOperation.error}");
+            }
         }
 
         /// <summary>
-        /// This will invoke the game foundation load method.
-        /// Once you have saved, you can load with a method call that is just as simple.
+        /// This will uninitialize game foundation and re-initialize it with data from the save file.
         /// This will set the current state of inventories and stats to be what's within the save file.
         /// </summary>
         public void Load()
         {
-            GameFoundation.Load(new LocalPersistence(new JsonDataSerializer()));
-            
-            Debug.Log("Loaded!");
+            // Don't forget to stop listening to events before uninitializing.
+            InventoryManager.onInventoryAdded -= RefreshUI;
+            InventoryManager.onInventoryRemoved -= RefreshUI;
+
+            GameFoundation.Uninitialize();
+
+            GameFoundation.Initialize(m_DataLayer, OnGameFoundationInitialized, Debug.LogError);
         }
     }
 }

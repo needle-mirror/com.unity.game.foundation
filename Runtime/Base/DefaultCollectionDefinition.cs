@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace UnityEngine.GameFoundation
 {
@@ -10,85 +10,60 @@ namespace UnityEngine.GameFoundation
     /// system may, for example, bypass the presets, or calculate new values 
     /// on the fly with modifiers).
     /// </summary>
-    [System.Serializable]
     public class DefaultCollectionDefinition
     {
-        /// <summary>
-        /// Constructor for setting up the id, display name, and the hash.
-        /// </summary>
-        /// <param name="id">The id this will use.</param>
-        /// <param name="displayName">The display name this will use.</param>
-        /// <param name="baseCollectionDefinitionHash">The hash this will use.</param>
-        /// <exception cref="ArgumentException">Thrown if the given id is invalid.</exception>
-        public DefaultCollectionDefinition(string id, string displayName, int baseCollectionDefinitionHash)
-        {
-            Tools.ThrowIfPlayMode("Cannot create a DefaultCollectionDefinition while in play mode.");
-
-            if (!Tools.IsValidId(id))
-            {
-                throw new System.ArgumentException("DefaultCollectionDefinition can only be alphanumeric with optional dashes or underscores.");
-            }
-            
-            m_DisplayName = displayName;
-            m_Id = id;
-            m_Hash = Tools.StringToHash(m_Id);
-            m_CollectionDefinitionHash = baseCollectionDefinitionHash;
-        }
-
-        [SerializeField] 
-        private string m_Id;
-
         /// <summary>
         /// The string id of this DefaultCollectionDefinition.
         /// </summary>
         /// <returns>The string Id of this DefaultCollectionDefinition.</returns>
-        public string id
-        {
-            get { return m_Id; }
-        }
-
-        [SerializeField] 
-        private int m_Hash;
+        public string id { get; }
 
         /// <summary>
         /// The Hash of this DefaultCollectionDefinition's Id.
         /// </summary>
         /// <returns>The Hash of this DefaultCollectionDefinition's Id.</returns>
-        public int hash
-        {
-            get { return m_Hash; }
-        }
-
-        [SerializeField] 
-        private string m_DisplayName;
+        public int hash { get; }
 
         /// <summary>
         /// The name of this DefaultCollectionDefinition for the user to display.
         /// </summary>
         /// <returns>The name of this DefaultCollectionDefinition for the user to display.</returns>
-        public string displayName
-        {
-            get { return m_DisplayName; }
-            set { SetDisplayName(value); }
-        }
-
-        [SerializeField]
-        private int m_CollectionDefinitionHash;
+        public string displayName { get; }
 
         /// <summary>
         /// CollectionDefinition used for this DefaultCollectionDefinition.
         /// </summary>
         /// <returns>CollectionDefinition used for this DefaultCollectionDefinition.</returns>
-        public int collectionDefinitionHash
-        {
-            get { return m_CollectionDefinitionHash; }
-        }
+        public int collectionDefinitionHash { get; }
 
-        private void SetDisplayName(string name)
+        /// <summary>
+        /// Constructor for setting up the id, display name, and the hash.
+        /// </summary>
+        /// <param name="id">The id this will use.</param>
+        /// <param name="displayName">The display name this will use.</param>
+        /// <param name="baseCollectionDefinitionHash">The hash of the collectionDefinition referenced by this defaultCollectionDefinition.</param>
+        /// <exception cref="ArgumentException">Thrown if given id or display name is null or empty or if the id is invalid.  Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        internal DefaultCollectionDefinition(string id, string displayName, int baseCollectionDefinitionHash)
         {
-            Tools.ThrowIfPlayMode("Cannot set the display name of a DefaultCollectionDefinition while in play mode.");
+            if (string.IsNullOrEmpty(id))
+            {
+                throw new ArgumentException("DefaultCollectionDefinition cannot have null or empty id.");
+            }
 
-            m_DisplayName = name;
+            if (!Tools.IsValidId(id))
+            {
+                throw new ArgumentException("DefaultCollectionDefinition id must be alphanumeric. Dashes (-) and underscores (_) allowed.");
+            }
+
+            if (string.IsNullOrEmpty(displayName))
+            {
+                throw new ArgumentException("DefaultCollectionDefinition cannot have null or empty displayName.");
+            }
+
+            this.displayName = displayName;
+            this.id = id;
+            hash = Tools.StringToHash(this.id);
+            collectionDefinitionHash = baseCollectionDefinitionHash;
         }
     }
 }

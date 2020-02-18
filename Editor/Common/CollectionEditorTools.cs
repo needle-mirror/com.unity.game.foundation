@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {

@@ -23,17 +23,15 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <param name="inventoryDefinition">The InventoryDefinition this Inventory is based off of.</param>
         /// <param name="inventoryId">The Id this Inventory will use.</param>
-        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId = null, string displayName = null) 
-            : this(inventoryDefinition, inventoryId, displayName, 0)
-        {
-        }
-        
-        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId, string displayName, int gameItemId) 
+        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId = null, string displayName = null)
+            : this(inventoryDefinition, inventoryId, displayName, 0) { }
+
+        internal Inventory(InventoryDefinition inventoryDefinition, string inventoryId, string displayName, int gameItemId)
             : base(inventoryDefinition, inventoryId, displayName, gameItemId)
         {
             if (!Tools.IsValidId(id))
             {
-                throw new System.ArgumentException("Inventory Id can only be alphanumeric with optional dashes or underscores.");
+                throw new System.ArgumentException("Inventory Id must be alphanumeric. Dashes (-) and underscores (_) allowed.");
             }
         }
 
@@ -64,7 +62,10 @@ namespace UnityEngine.GameFoundation
         /// <param name="quantity">The new value for quantity for this InventoryItem.</param>
         public void SetQuantity(InventoryItem item, int quantity)
         {
-            SetIntValue(item.hash, quantity);
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+
+            SetQuantity(item.hash, quantity);
         }
 
         /// <summary>
@@ -79,7 +80,7 @@ namespace UnityEngine.GameFoundation
             {
                 throw new ArgumentNullException(nameof(inventoryItemDefinitionId), "Given InventoryItemDefinition Id is null or empty.");
             }
-            
+
             return GetQuantity(Tools.StringToHash(inventoryItemDefinitionId));
         }
 
@@ -112,7 +113,7 @@ namespace UnityEngine.GameFoundation
             {
                 throw new ArgumentNullException(nameof(inventoryItem), "Given InventoryItem is null.");
             }
-            
+
             return GetQuantity(inventoryItem.hash);
         }
 
@@ -133,19 +134,19 @@ namespace UnityEngine.GameFoundation
         /// Items added to the wallet Inventory must contain an attached CurrencyDetailDefinition.
         /// </summary>
         /// <param name="itemDefinitionHash">The Hash of the InventoryItemDefinition to set.</param>
-        /// <param name="quantity">The new quantity for the specified InventoryItemDefinition.</param>
         /// <returns>The new or existing instance of the InventoryItem.</returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public override InventoryItem AddItem(int itemDefinitionHash, int quantity = 1)
+        public override InventoryItem AddItem(int itemDefinitionHash)
         {
             if (hash.Equals(InventoryManager.walletInventoryHash))
             {
                 if (GetItemDefinition(itemDefinitionHash)?.GetDetailDefinition<CurrencyDetailDefinition>() == null)
                 {
-                    throw new InvalidOperationException("ItemDefinition must have a CurrencyDetailDefinition DetailDefinition. Adding a non-currency item to the wallet Inventory is invalid.");
+                    throw new InvalidOperationException("ItemDefinition must have a CurrencyDetailDefinition in its DetailDefinition. Adding a non-currency item to the wallet Inventory is invalid.");
                 }
             }
-            return base.AddItem(itemDefinitionHash, quantity);
+
+            return base.AddItem(itemDefinitionHash);
         }
 
         /// <summary>

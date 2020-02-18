@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 
 namespace UnityEngine.GameFoundation
 {
@@ -6,64 +6,17 @@ namespace UnityEngine.GameFoundation
     /// Definitions for StatDefinitions.
     /// The Stat Catalog serves as a way to find references to Definitions, as needed.
     /// </summary>
-    public class StatCatalog : ScriptableObject
+    public class StatCatalog
     {
-        internal static event System.EventHandler<StatDefinition> OnWillRemoveStatDefinition;
-
-        [SerializeField]
-        internal List<StatDefinition> m_StatDefinitions = new List<StatDefinition>();
-
+        internal readonly List<StatDefinition> m_StatDefinitions;
+        
         /// <summary>
-        /// Returns an array of all stat definitions in this catalog.
+        /// Constructor to build a StatCatalog object.
         /// </summary>
-        /// <returns>An array of all stat definitions in this catalog.</returns>
-        public StatDefinition[] GetStatDefinitions()
+        /// <param name="statDefinitions">The list of StatDefinitions that will be available in this catalog for runtime instance instantiation. If null value is passed in an empty list will be created.</param>
+        internal StatCatalog(List<StatDefinition> statDefinitions)
         {
-            if (m_StatDefinitions == null)
-                return null;
-
-            return m_StatDefinitions.ToArray();
-        }
-
-        /// <summary>
-        /// Fills the given list with all stat definitions in this catalog.
-        /// Note: this returns the current state of all stat definitions.  To 
-        /// ensure that there are no invalid or duplicate entries, the list will 
-        /// always be cleared and 'recycled' (i.e. updated) with current data.
-        /// </summary>
-        /// <param name="statDefinitions">The list to clear and fill with updated data.</param>
-        public void GetStatDefinitions(List<StatDefinition> statDefinitions)
-        {
-            if (statDefinitions == null)
-            {
-                return;
-            }
-
-            statDefinitions.Clear();
-
-            if (m_StatDefinitions == null)
-            {
-                return;
-            }
-            
-            statDefinitions.AddRange(m_StatDefinitions);
-        }
-
-        internal StatCatalog()
-        {
-        }
-
-        /// <summary>
-        /// Creates a new StatCatalog.
-        /// </summary>
-        /// <returns>Reference to the newly made StatCatalog.</returns>
-        public static StatCatalog Create()
-        {
-            Tools.ThrowIfPlayMode("Cannot create a StatCatalog while in play mode.");
-
-            var statCatalog = ScriptableObject.CreateInstance<StatCatalog>();
-
-            return statCatalog;
+            m_StatDefinitions = statDefinitions ?? new List<StatDefinition>();
         }
 
         /// <summary>
@@ -99,6 +52,39 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
+        /// Returns an array of all stat definitions in this catalog.
+        /// </summary>
+        /// <returns>An array of all stat definitions in this catalog.</returns>
+        public StatDefinition[] GetStatDefinitions()
+        {
+            return m_StatDefinitions?.ToArray();
+        }
+
+        /// <summary>
+        /// Fills the given list with all stat definitions in this catalog.
+        /// Note: this returns the current state of all stat definitions.  To 
+        /// ensure that there are no invalid or duplicate entries, the list will 
+        /// always be cleared and 'recycled' (i.e. updated) with current data.
+        /// </summary>
+        /// <param name="statDefinitions">The list to clear and fill with updated data.</param>
+        public void GetStatDefinitions(List<StatDefinition> statDefinitions)
+        {
+            if (statDefinitions == null)
+            {
+                return;
+            }
+
+            statDefinitions.Clear();
+
+            if (m_StatDefinitions == null)
+            {
+                return;
+            }
+            
+            statDefinitions.AddRange(m_StatDefinitions);
+        }
+
+        /// <summary>
         /// Determine if specified Stat definition Hash is unique in the Stat catalog.
         /// </summary>
         /// <param name="statDefinitionHash">The StatDefinition Hash to check.</param>
@@ -114,49 +100,6 @@ namespace UnityEngine.GameFoundation
             }
 
             return true;
-        }
-
-
-        /// <summary>
-        /// Adds the given StatDefintion to this Catalog.
-        /// </summary>
-        /// <param name="statDefinition">The StatDefinition to add.</param>
-        /// <returns>Whether or not the adding was successful.</returns>
-        public bool AddStatDefinition(StatDefinition statDefinition)
-        {
-            Tools.ThrowIfPlayMode("Cannot add a StatDefinition to a Catalog while in play mode.");
-
-            if (statDefinition == null)
-                return false;
-
-            if (m_StatDefinitions.Contains(statDefinition))
-            {
-                Debug.LogWarning("The object is already registered within this Stat Catalog. (id: " + statDefinition.id + ", hash: " + statDefinition.idHash + ")");
-                return false;
-            }
-
-            if (GetStatDefinition(statDefinition.idHash) != null)
-            {
-                Debug.LogWarning("The hash for this object is already registered within this Stat Catalog. (id: " + statDefinition.id + ", hash: " + statDefinition.idHash + ")");
-                return false;
-            }
-
-            m_StatDefinitions.Add(statDefinition);
-            return true;
-        }
-
-        /// <summary>
-        /// Removes the given StatDefinition from this Catalog.
-        /// </summary>
-        /// <param name="statDefinition">The StatDefinition to remove.</param>
-        /// <returns>Whether or not the removal was successful.</returns>
-        public bool RemoveStatDefinition(StatDefinition statDefinition)
-        {
-            Tools.ThrowIfPlayMode("Cannot remove a StatDefinition from a Catalog while in play mode.");
-
-            OnWillRemoveStatDefinition?.Invoke(this, statDefinition);
-
-            return m_StatDefinitions.Remove(statDefinition);
         }
     }
 }

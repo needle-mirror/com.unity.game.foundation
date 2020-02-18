@@ -1,6 +1,6 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.Internal;
 
 namespace UnityEngine.GameFoundation
 {
@@ -32,17 +32,15 @@ namespace UnityEngine.GameFoundation
             if (string.IsNullOrEmpty(id))
             {
                 m_Id = Guid.NewGuid().ToString();
-                m_Hash = Tools.StringToHash(m_Id);
             }
             else
             {
                 if (!Tools.IsValidId(id))
                 {
-                    throw new System.ArgumentException("GameItem can only be alphanumeric with optional dashes or underscores.");
+                    throw new System.ArgumentException("GameItem must be alphanumeric. Dashes (-) and underscores (_) allowed.");
                 }
                 
                 m_Id = id;
-                m_Hash = Tools.StringToHash(m_Id);
             }
 
             // save display name.  note: could be null, in which case we'll always return definition's display name
@@ -115,33 +113,38 @@ namespace UnityEngine.GameFoundation
             while (definitionOn != null)
             {
                 var details = definitionOn.GetDetailDefinitions();
-                if (details != null)
+                if (details == null) continue;
+                
+                foreach (var detailDefinition in details)
                 {
-                    foreach (var detailDefinition in details)
+                    if (!(detailDefinition is StatDetailDefinition statDetailDefinition)
+                        || statDetailDefinition.statDefaultValues == null)
                     {
-                        var statDetailDefinition = detailDefinition as StatDetailDefinition;
-                        if (statDetailDefinition != null)
+                        continue;
+                    }
+
+                    foreach (var kv in statDetailDefinition.statDefaultValues)
+                    {
+                        switch (kv.Value.type)
                         {
-                            if (statDetailDefinition.statDefaultIntValues != null)
-                            {
-                                foreach (var kv in statDetailDefinition.statDefaultIntValues)
+                            case StatDefinition.StatValueType.Int:
+                                if (!StatManager.TryGetIntValue(this, kv.Key, out _))
                                 {
-                                    if (!StatManager.TryGetIntValue(this, kv.Key, out int dummy))
-                                    {
-                                        StatManager.SetIntValue(this, kv.Key, kv.Value);
-                                    }
+                                    StatManager.SetIntValue(this, kv.Key, kv.Value);
                                 }
-                            }
-                            if (statDetailDefinition.statDefaultFloatValues != null)
-                            {
-                                foreach (var kv in statDetailDefinition.statDefaultFloatValues)
+
+                                break;
+
+                            case StatDefinition.StatValueType.Float:
+                                if (!StatManager.TryGetFloatValue(this, kv.Key, out _))
                                 {
-                                    if (!StatManager.TryGetFloatValue(this, kv.Key, out float dummy))
-                                    {
-                                        StatManager.SetFloatValue(this, kv.Key, kv.Value);
-                                    }
+                                    StatManager.SetFloatValue(this, kv.Key, kv.Value);
                                 }
-                            }
+
+                                break;
+
+                            default:
+                                throw new ArgumentOutOfRangeException();
                         }
                     }
                 }
@@ -150,25 +153,48 @@ namespace UnityEngine.GameFoundation
             }
         }
 
-        // remove all references to this game item--called when inventories are reset or items removed from them
-        // remove all stats and removes it from the GameItemLookup directory.
-        protected internal virtual void Discard()
+        /// <summary>
+        /// Determine if GameItem has been discarded (removed from inventory or inventory manager).
+        /// </summary>
+        /// <returns>True if the GameItem has been removed from Inventory or InventoryManager.</returns>
+        public bool discarded
         {
-            if (!m_Discarded)
+            get
             {
-                // remove all stats for specified this game item
-                StatManager.OnGameItemDiscarded(this);
-
-                // remove game item lookup for this game item
-                GameItemLookup.UnregisterInstance(m_GameItemId);
-
-                // remember the item was discarded so we don't do it again
-                m_Discarded = true;
+                return m_Discarded;
             }
         }
 
         /// <summary>
-        // in finalizer, remove gameItem from gameItem instance lookup
+        /// Remove all references to this game item.
+        /// </summary>
+        internal void Discard()
+        {
+            if (m_Discarded)
+                return;
+
+            CustomDiscard();
+
+            // remove all stats for this game item
+            StatManager.OnGameItemDiscarded(this);
+
+            if (GameItemLookup.IsInitialized)
+            {
+                // remove game item lookup for this game item
+                GameItemLookup.UnregisterInstance(m_GameItemId);
+            }
+
+            // remember the item was discarded so we don't do it again
+            m_Discarded = true;
+        }
+
+        /// <summary>
+        /// Override this method if you need to execute a specific action at discard time.
+        /// </summary>
+        protected virtual void CustomDiscard() { }
+
+        /// <summary>
+        /// in finalizer, remove gameItem from gameItem instance lookup
         /// </summary>
         ~GameItem()
         {
@@ -196,7 +222,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>The name of this GameItem for the user to display.</returns>
         public string displayName
         {
-            get { return m_DisplayName != null ? m_DisplayName : m_Definition?.displayName; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_DisplayName != null ? m_DisplayName : m_Definition?.displayName;
+            }
             internal set { m_DisplayName = value; }
         }
 
@@ -209,10 +239,13 @@ namespace UnityEngine.GameFoundation
         /// <returns>The Id string for this GameItem.</returns>
         public string id
         {
-            get { return m_Id; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Id;
+            }
         }
 
-        [SerializeField] 
         private int m_Hash;
 
         /// <summary>
@@ -221,7 +254,17 @@ namespace UnityEngine.GameFoundation
         /// <returns>The Hash of this GameItem's Id.</returns>
         public int hash
         {
-            get { return m_Hash; }
+            get
+            {
+                LogWarningIfDisposed();
+
+                if (m_Hash == 0 && !string.IsNullOrEmpty(m_Id))
+                {
+                    m_Hash = Tools.StringToHash(m_Id);
+                }
+
+                return m_Hash;
+            }
         }
 
         [SerializeField]
@@ -233,7 +276,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>The GameItemDefinition for this GameItem.</returns>
         public GameItemDefinition definition
         {
-            get { return m_Definition; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Definition;
+            }
         }
 
         [SerializeField]
@@ -245,7 +292,11 @@ namespace UnityEngine.GameFoundation
         /// <returns>An array of all CategoryDefinitions assigned to this GameItem.</returns>
         public CategoryDefinition[] categories
         {
-            get { return m_Categories; }
+            get
+            {
+                LogWarningIfDisposed();
+                return m_Categories;
+            }
         }
 
         [SerializeField] 
@@ -444,6 +495,15 @@ namespace UnityEngine.GameFoundation
             return true;
         }
 
+        [ExcludeFromDocs]
+        protected void LogWarningIfDisposed()
+        {
+            if (m_Discarded)
+            {
+                Debug.LogWarning($"Item already disposed of for id: {m_Id}.  Be sure to release all references to GameItems, Inventories and InventoryItems when they are removed or manager is reset.");
+            }
+        }
+    
         #region StatsHelpers
 
         /// <summary>
@@ -469,6 +529,7 @@ namespace UnityEngine.GameFoundation
         /// <exception cref="KeyNotFoundException">Thrown if an Int Stat with parameter hash is not found.</exception>
         public int GetStatInt(int statDefinitionHash)
         {
+            LogWarningIfDisposed();
             return StatManager.GetIntValue(this, statDefinitionHash);
         }
 
@@ -495,11 +556,12 @@ namespace UnityEngine.GameFoundation
         /// <exception cref="KeyNotFoundException">Thrown if an Float Stat with parameter hash is not found.</exception>
         public float GetStatFloat(int statDefinitionHash)
         {
+            LogWarningIfDisposed();
             return StatManager.GetFloatValue(this, statDefinitionHash);;
         }
         
         /// <summary>
-        /// Sets the Int Stat with corresponding stateDefinitionId to value.
+        /// Sets the Int Stat with corresponding statDefinitionId to value.
         /// </summary>
         /// <param name="statDefinitionId">Int Stat statDefinitionId to set</param>
         /// <param name="value">value to set stat to</param>
@@ -523,11 +585,12 @@ namespace UnityEngine.GameFoundation
         /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type</exception>
         public void SetStatInt(int statDefinitionHash, int value)
         {
+            LogWarningIfDisposed();
             StatManager.SetIntValue(this, statDefinitionHash, value);
         }
         
         /// <summary>
-        /// Sets the Float Stat with corresponding stateDefinitionId to value.
+        /// Sets the Float Stat with corresponding statDefinitionId to value.
         /// </summary>
         /// <param name="statDefinitionId">Float Stat statDefinitionId to set</param>
         /// <param name="value">value to set stat to</param>
@@ -551,7 +614,72 @@ namespace UnityEngine.GameFoundation
         /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type</exception>
         public void SetStatFloat(int statDefinitionHash, float value)
         {
+            LogWarningIfDisposed();
             StatManager.SetFloatValue(this, statDefinitionHash, value);
+        }
+        
+        /// <summary>
+        /// Adjusts the int Stat with corresponding statDefinitionId by specified amount.
+        /// </summary>
+        /// <param name="statDefinitionId">Stat statDefinitionId to adjust.</param>
+        /// <param name="change">Change in value to the Stat.</param>
+        /// <returns>The new value of Stat on this GameItem.</returns>
+        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
+        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
+        /// <exception cref="ArgumentNullException">The parameter is null or empty.</exception>
+        public int AdjustStatInt(string statDefinitionId, int change)
+        {
+            if (string.IsNullOrEmpty(statDefinitionId))
+            {
+                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty.");
+            }
+            
+            return StatManager.AdjustIntValue(this, Tools.StringToHash(statDefinitionId), change);
+        }
+        
+        /// <summary>
+        /// Adjusts the int Stat with corresponding statDefinitionHash by specified amount.
+        /// </summary>
+        /// <param name="statDefinitionHash">Stat statDefinitionHash to adjust.</param>
+        /// <param name="change">Change in value to the Stat.</param>
+        /// <returns>The new value of Stat on this GameItem.</returns>
+        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
+        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
+        public int AdjustStatInt(int statDefinitionHash, int change)
+        {
+            return StatManager.AdjustIntValue(this, statDefinitionHash, change);
+        }
+        
+        /// <summary>
+        /// Adjusts the float Stat with corresponding statDefinitionId by specified amount.
+        /// </summary>
+        /// <param name="statDefinitionId">Stat statDefinitionId to adjust.</param>
+        /// <param name="change">Change in value to the Stat.</param>
+        /// <returns>The new value of Stat on this GameItem.</returns>
+        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
+        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
+        /// <exception cref="ArgumentNullException">The stat parameter is null or empty.</exception>
+        public float AdjustStatFloat(string statDefinitionId, float change)
+        {
+            if (string.IsNullOrEmpty(statDefinitionId))
+            {
+                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty.");
+            }
+            
+            return AdjustStatFloat(Tools.StringToHash(statDefinitionId), change);
+        }
+        
+        /// <summary>
+        /// Sets the float Stat with corresponding statDefinitionHash by specified amount.
+        /// </summary>
+        /// <param name="statDefinitionHash">Stat statDefinitionHash to adjust.</param>
+        /// <param name="change">Change in value to the Stat.</param>
+        /// <returns>The new value of Stat on this GameItem.</returns>
+        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
+        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
+        public float AdjustStatFloat(int statDefinitionHash, float change)
+        {
+            return StatManager.AdjustFloatValue(this, statDefinitionHash, change);
         }
         #endregion
     }

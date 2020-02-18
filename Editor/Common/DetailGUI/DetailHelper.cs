@@ -1,9 +1,8 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
@@ -12,13 +11,10 @@ namespace UnityEditor.GameFoundation
     /// </summary>
     internal static class DetailHelper
     {
-        private static Dictionary<string, Type> m_DefaultDetailDefinitionInfo;
-        private static Dictionary<string, Type> m_CustomDetailDefinitionInfo;
-
         /// <summary>
         /// Used mostly as part of a workaround in custom editors where targets might not yet be populated due to a bug in Unity
         /// </summary>
-        public static bool IsNullOrEmpty(this UnityEngine.Object[] targets)
+        public static bool IsNullOrEmpty(this Object[] targets)
         {
             return (targets == null || targets.Length <= 0 || targets[0] == null);
         }
@@ -26,59 +22,54 @@ namespace UnityEditor.GameFoundation
         /// <summary>
         /// A list of all classes that inherit from BaseDetailDefinition, that come with Game Foundation. Call RefreshTypeDict() to make sure it's up to date. 
         /// </summary>
-        public static Dictionary<string, Type> defaultDetailDefinitionInfo
-        {
-            get { return m_DefaultDetailDefinitionInfo; }
-        }
+        public static Dictionary<string, System.Type> defaultDetailDefinitionInfo { get; private set; }
 
         /// <summary>
         /// A list of all classes that inherit from BaseDetailDefinition, that were made by the user. Call RefreshTypeDict() to make sure it's up to date. 
         /// </summary>
-        public static Dictionary<string, Type> customDetailDefinitionInfo
-        {
-            get { return m_CustomDetailDefinitionInfo; }
-        }
+        public static Dictionary<string, System.Type> customDetailDefinitionInfo { get; private set; }
 
         /// <summary>
         /// Refreshes (or creates) a static list of all classes that inherit from BaseDetailDefinition.
         /// </summary>
         public static void RefreshTypeDict()
         {
-            if (m_DefaultDetailDefinitionInfo == null)
+            if (defaultDetailDefinitionInfo == null)
             {
-                m_DefaultDetailDefinitionInfo = new Dictionary<string, Type>();
+                defaultDetailDefinitionInfo = new Dictionary<string, System.Type>();
             }
             else
             {
-                m_DefaultDetailDefinitionInfo.Clear();
+                defaultDetailDefinitionInfo.Clear();
             }
 
-            if (m_CustomDetailDefinitionInfo == null)
+            if (customDetailDefinitionInfo == null)
             {
-                m_CustomDetailDefinitionInfo = new Dictionary<string, Type>();
+                customDetailDefinitionInfo = new Dictionary<string, System.Type>();
             }
             else
             {
-                m_CustomDetailDefinitionInfo.Clear();
+                customDetailDefinitionInfo.Clear();
             }
-            
+
             var baseType = typeof(BaseDetailDefinition);
             var baseAssembly = baseType.Assembly;
-            
-            Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
             Assembly userAssembly = null;
-            foreach (Assembly assembly in assemblies)
+
+            foreach (var assembly in assemblies)
             {
-                if (assembly.GetName().ToString().Contains("Assembly-CSharp,"))
+                if (!assembly.GetName().ToString().Contains("Assembly-CSharp,"))
                 {
-                    userAssembly = assembly;
-                    break;
+                    continue;
                 }
+                userAssembly = assembly;
+                break;
             }
-            
-            List<Type> defaultTypes = new List<Type>();
-            List<Type> customTypes = new List<Type>();
-            
+
+            var defaultTypes = new List<System.Type>();
+            var customTypes = new List<System.Type>();
+
             defaultTypes.AddRange(baseAssembly
                 .GetTypes()
                 .Where(t => t.IsClass
@@ -95,22 +86,24 @@ namespace UnityEditor.GameFoundation
                                 && baseType.IsAssignableFrom(t)
                     ));
             }
-            
-            foreach (Type t in defaultTypes)
+
+            foreach (var t in defaultTypes)
             {
-                BaseDetailDefinition inst = (BaseDetailDefinition)ScriptableObject.CreateInstance(t.ToString());
+                var inst = (BaseDetailDefinition)ScriptableObject.CreateInstance(t.ToString());
+
                 if (inst != null)
                 {
-                    m_DefaultDetailDefinitionInfo.Add(inst.DisplayName(), t);
+                    defaultDetailDefinitionInfo.Add(inst.DisplayName(), t);
                 }
             }
-            
-            foreach (Type t in customTypes)
+
+            foreach (var t in customTypes)
             {
-                BaseDetailDefinition inst = (BaseDetailDefinition)ScriptableObject.CreateInstance(t.ToString());
+                var inst = (BaseDetailDefinition)ScriptableObject.CreateInstance(t.ToString());
+
                 if (inst != null)
                 {
-                    m_CustomDetailDefinitionInfo.Add(inst.DisplayName(), t);
+                    customDetailDefinitionInfo.Add(inst.DisplayName(), t);
                 }
             }
         }

@@ -6,54 +6,41 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// Serializable data structure that contains the state of an inventory item.
     /// </summary>
     [Serializable]
-    public class InventoryItemSerializableData
+    public struct InventoryItemSerializableData
     {
-        [SerializeField] string m_DefinitionId = null;
-        [SerializeField] int m_Quantity = 0;
-        [SerializeField] int m_GameItemLookupId;
+        /// <summary>
+        /// The Id of the inventory the item belongs to.
+        /// </summary>
+        public string inventoryId;
 
         /// <summary>
         /// The definition Id of the inventory item
         /// </summary>
-        public string definitionId
-        {
-            get { return m_DefinitionId; }
-        }
+        public string definitionId;
 
         /// <summary>
         /// The quantity of the inventory item in the inventory.
         /// </summary>
-        public int quantity
-        {
-            get { return m_Quantity; }
-        }
+        public int quantity;
 
         /// <summary>
         /// The GameItemId of the item use by GameItemLookup
         /// </summary>
-        public int gameItemLookupId
-        {
-            get { return m_GameItemLookupId; }
-        }
-        
+        public int gameItemId;
+
         /// <summary>
         /// Basic constructor that takes in the inventory item definition Id of the item and the quantity it have in this inventory.
         /// </summary>
+        /// <param name="inventoryId">The Id of the inventory this item belongs to</param>
         /// <param name="definitionId">The definition Id of the inventory item</param>
         /// <param name="quantity">The quantity of this item contained in the inventory</param>
-        /// <param name="gameItemLookupId">The GameItemId of the item use by GameItemLookup</param>
-        public InventoryItemSerializableData(string definitionId, int quantity, int gameItemLookupId)
+        /// <param name="gameItemId">The GameItemId of the item use by GameItemLookup</param>
+        public InventoryItemSerializableData(string inventoryId, string definitionId, int quantity, int gameItemId)
         {
-            m_DefinitionId = definitionId;
-            m_Quantity = quantity;
-            m_GameItemLookupId = gameItemLookupId;
-        }
-
-        /// <summary>
-        /// Default constructor for serialization purpose.
-        /// </summary>
-        public InventoryItemSerializableData()
-        {
+            this.inventoryId = inventoryId;
+            this.definitionId = definitionId;
+            this.quantity = quantity;
+            this.gameItemId = gameItemId;
         }
     }
 }

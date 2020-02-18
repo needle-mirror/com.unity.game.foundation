@@ -1,4 +1,7 @@
-﻿namespace UnityEngine.GameFoundation
+using System;
+using System.Collections.Generic;
+
+namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Describes preset values and rules for an Inventory. During runtime, it may
@@ -10,66 +13,23 @@
     public class InventoryDefinition : BaseCollectionDefinition<InventoryDefinition, Inventory, InventoryItemDefinition, InventoryItem>
     {
         /// <summary>
-        /// This creates a new InventoryDefinition.
+        /// Constructor to build an InventoryDefinition object.
         /// </summary>
-        /// <param name="id">The Id of this InventoryDefinition.</param>
-        /// <param name="displayName">The name this InventoryDefinition will have.</param>
-        /// <returns>Reference to the InventoryDefinition that was created.</returns>
-        public new static InventoryDefinition Create(string id, string displayName)
+        /// <param name="id">The string id value for this InventoryDefinition. Throws error if null, empty or invalid.</param>
+        /// <param name="displayName">The readable string display name value for this InventoryDefinition. Throws error if null or empty.</param>
+        /// <param name="referenceDefinition">The reference GameItemDefinition for this InventoryDefinition. Null is an allowed value.</param>
+        /// <param name="categories">The list of CategoryDefinition hashes that are the categories applied to this InventoryDefinition. If null value is passed in an empty list will be created.</param>
+        /// <param name="detailDefinitions">The dictionary of Type, BaseDetailDefinition pairs that are the detail definitions applied to this InventoryDefinition. If null value is passed in an empty dictionary will be created.</param>
+        /// <param name="defaultItems">The list of DefaultItemDefinitions that are the item definitions that will be automatically instantiated and added to a runtime instance of this inventory at its instantiation. If null value is passed in an empty list will be created.</param>
+        /// <exception cref="System.ArgumentException">Throws if id or displayName are null or empty or if the id is not valid. Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        internal InventoryDefinition(string id, string displayName, GameItemDefinition referenceDefinition = null, List<int> categories = null, Dictionary<Type, BaseDetailDefinition> detailDefinitions = null, List<DefaultItemDefinition> defaultItems = null)
+            : base(id, displayName, referenceDefinition, categories, detailDefinitions, defaultItems)
         {
-            Tools.ThrowIfPlayMode("Cannot create an InventoryDefinition in play mode.");
-
-            if (!Tools.IsValidId(id))
-            {
-                throw new System.ArgumentException("InventoryDefinition Id can only be alphanumeric with optional dashes or underscores.");
-            }
-
-            var inventoryDefinition = ScriptableObject.CreateInstance<InventoryDefinition>();
-            inventoryDefinition.Initialize(id, displayName);
-            inventoryDefinition.name = $"{id}_Inventory";
-
-            return inventoryDefinition;
         }
 
         internal override Inventory CreateCollection(string collectionId, string displayName = null, int gameItemId = 0)
         {
             return new Inventory(this, collectionId, displayName, gameItemId);
-        }
-
-        /// <summary>
-        /// Adds the given default item to this InventoryDefinition. 
-        /// Note: this thows if item without a CurrencyDetailDefinition is added to the wallet.
-        /// </summary>
-        /// <param name="itemDefinition">The default InventoryItemDefinition to add.</param>
-        /// <param name="quantity">Quantity of items to add (defaults to 0).</param>
-        /// <returns>Whether or not the adding was successful.</returns>
-        public override bool AddDefaultItem(InventoryItemDefinition itemDefinition, int quantity = 0)
-        {
-            if (!IsWalletCompatible(itemDefinition))
-            {
-                return false;
-            }
-
-            return base.AddDefaultItem(itemDefinition, quantity);
-        }
-
-        /// <summary>
-        /// Adds the given default item to this InventoryDefinition. 
-        /// Note: this thows if item without a CurrencyDetailDefinition is added to the wallet.
-        /// </summary>
-        /// <param name="defaultItem">The DefaultItem to add.</param>
-        /// <returns>Whether or not the DefaultItem was added successfully.</returns>
-        public override bool AddDefaultItem(DefaultItem defaultItem)
-        {
-            InventoryItemDefinition defaultItemDefinition =
-                GameFoundationSettings.database.inventoryCatalog.GetItemDefinition(defaultItem.definitionHash);
-
-            if (!IsWalletCompatible(defaultItemDefinition))
-            {
-                return false;
-            }
-
-            return base.AddDefaultItem(defaultItem);
         }
 
         /// <summary>
@@ -89,7 +49,7 @@
 
                 if (itemDefinition.GetDetailDefinition<CurrencyDetailDefinition>() == null)
                 {
-                    Debug.LogError("It is not possible to add an item to the wallet that does NOT have a CurrencyDetailDefinition attached.");
+                    Debug.LogError("It is not possible to add an item to the wallet that does not have a CurrencyDetailDefinition attached.");
                     return false;
                 }
             }
@@ -103,7 +63,7 @@
         /// <returns>Summary string for this InventoryDefinition.</returns>
         public override string ToString()
         {
-            return $"InventoryDefinition(Id: '{id}' DisplayName: '{displayName}'";
+            return $"InventoryDefinition(Id: '{id}' DisplayName: '{displayName}')";
         }
     }
 }

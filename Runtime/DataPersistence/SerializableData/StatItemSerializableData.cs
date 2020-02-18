@@ -6,101 +6,36 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// Serializable data structure that contains the state of a StatItem.
     /// </summary>
     [Serializable]
-    public class StatItemSerializableData
+    public struct StatItemSerializableData
     {
-        [SerializeField] int m_GameItemId;
-        [SerializeField] string m_DefinitionId;
-        
-        [SerializeField] int m_IntValue;
-        [SerializeField] int m_DefaultIntValue;
-        
-        [SerializeField] float m_FloatValue;
-        [SerializeField] float m_DefaultFloatValue;
-
         /// <summary>
         /// The GameItem hash id of the stat.
         /// </summary>
-        public int gameItemId
-        {
-            get { return m_GameItemId; }
-        }
+        public int gameItemId;
 
         /// <summary>
         /// The definition id of the stat.
         /// </summary>
-        public string definitionId
-        {
-            get { return m_DefinitionId; }
-        }
+        public string definitionId;
 
         /// <summary>
         /// The int value of the stat when StatDictionary type is an int.
         /// </summary>
-        public int intValue
-        {
-            get { return m_IntValue; }
-        }
+        public int intValue;
 
         /// <summary>
         /// The default int value of the stat when StatDictionary type is an int.
         /// </summary>
-        public int defaultIntValue
-        {
-            get { return m_DefaultIntValue; }
-        }
-        
-        /// <summary>
-        /// The float value of the stat when StatDictionary type is a float.
-        /// </summary>
-        public float floatValue
-        {
-            get { return m_FloatValue; }
-        }
+        public int defaultIntValue;
 
         /// <summary>
         /// The float value of the stat when StatDictionary type is a float.
         /// </summary>
-        public float defaultFloatValue
-        {
-            get { return m_DefaultFloatValue; }
-        }
+        public float floatValue;
 
         /// <summary>
-        /// Basic constructor that take in the type of the value of the stat, the GameItem hash id of the stat, the definition id of the stat, the current value and the default value of the stat.
+        /// The float value of the stat when StatDictionary type is a float.
         /// </summary>
-        /// <param name="type">The stat type to use.</param>
-        /// <param name="gameItemId">The id of the game item.</param>
-        /// <param name="definitionId">The id of the definition.</param>
-        /// <param name="value">The value we are serializing.</param>
-        /// <param name="defaultValue">The default value to use if needed.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown if the given type is not valid.</exception>
-        public StatItemSerializableData(StatDictionarySerializableData.StatType type, int gameItemId, string definitionId, object value, object defaultValue)
-        {
-            m_GameItemId = gameItemId;
-            m_DefinitionId = definitionId;
-
-            switch (type)
-            {
-                case StatDictionarySerializableData.StatType.Int:
-                    m_IntValue = (int) value;
-                    m_DefaultIntValue = (int) defaultValue;
-                    break;
-                
-                case StatDictionarySerializableData.StatType.Float:
-                    m_FloatValue = (float) value;
-                    m_DefaultFloatValue = (float) defaultValue;
-                    break;
-                
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(type), type, null);
-            }
-        }
-        
-        /// <summary>
-        /// Default constructor for serialization purpose.
-        /// </summary>
-        public StatItemSerializableData()
-        {
-        }
+        public float defaultFloatValue;
     }
 }

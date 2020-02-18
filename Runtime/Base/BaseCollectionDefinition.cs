@@ -1,6 +1,5 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
-using UnityEditor;
 
 namespace UnityEngine.GameFoundation
 {
@@ -22,34 +21,33 @@ namespace UnityEngine.GameFoundation
         where T4 : BaseItem<T1, T2, T3, T4>
     {
         /// <summary>
-        /// Default constructor.
-        /// </summary>
-        protected BaseCollectionDefinition()
-        {
-        }
-
-        [SerializeField]
-        private List<DefaultItem> m_DefaultItems = new List<DefaultItem>();
-
-        /// <summary>
         /// Items that are added when the collection is created
         /// </summary>
-        protected List<DefaultItem> defaultItems
+        protected List<DefaultItemDefinition> defaultItems { get; }
+
+        /// <summary>
+        /// Constructor to build a BaseCollectionDefinition object.
+        /// </summary>
+        /// <param name="id">The string id value for the collection definition. Throws error if null, empty or invalid.</param>
+        /// <param name="displayName">The readable string display name value for the collection definition. Throws error if null or empty.</param>
+        /// <param name="referenceDefinition">The reference GameItemDefinition for this collection definition. Null is an allowed value.</param>
+        /// <param name="categories">The list of CategoryDefinition hashes that are the categories applied to this collection definition. If null value is passed in an empty list will be created.</param>
+        /// <param name="detailDefinitions">The dictionary of Type, BaseDetailDefinition pairs that are the detail definitions applied to this collection definition. If null value is passed in an empty dictionary will be created.</param>
+        /// <param name="defaultItems">The list of DefaultItemDefinitions that are the item definitions that will be automatically instantiated and added to a runtime instance of this collection at its instantiation. If null value is passed in an empty list will be created.</param>
+        /// <exception cref="System.ArgumentException">Throws if id or displayName are null or empty or if the id is not valid. Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        internal BaseCollectionDefinition(string id, string displayName, GameItemDefinition referenceDefinition = null, List<int> categories = null, Dictionary<Type, BaseDetailDefinition> detailDefinitions = null, List<DefaultItemDefinition> defaultItems = null)
+            : base(id, displayName, referenceDefinition, categories, detailDefinitions)
         {
-            get => m_DefaultItems;
-            set => m_DefaultItems = value;
+            this.defaultItems = defaultItems ?? new List<DefaultItemDefinition>();
         }
 
         /// <summary>
         /// Returns an array of the default items in this collection definition.
         /// </summary>
         /// <returns>An array of the default items in this collection definition.</returns>
-        public DefaultItem[] GetDefaultItems()
+        public DefaultItemDefinition[] GetDefaultItems()
         {
-            if (m_DefaultItems == null)
-                return null;
-            
-            return m_DefaultItems.ToArray();
+            return defaultItems?.ToArray();
         }
 
         /// <summary>
@@ -59,7 +57,7 @@ namespace UnityEngine.GameFoundation
         /// always be cleared and 'recycled' (i.e. updated) with current data from the definition.
         /// </summary>
         /// <param name="defaultItems">The list to clear and write all default items into.</param>
-        public void GetDefaultItems(List<DefaultItem> defaultItems)
+        public void GetDefaultItems(List<DefaultItemDefinition> defaultItems)
         {
             if (defaultItems == null)
             {
@@ -68,109 +66,12 @@ namespace UnityEngine.GameFoundation
 
             defaultItems.Clear();
 
-            if (m_DefaultItems == null)
+            if (this.defaultItems == null)
             {
                 return;
             }
             
-            defaultItems.AddRange(m_DefaultItems);
-        }
-
-        /// <summary>
-        /// Adds the given DefaultItem to this CollectionDefinition.
-        /// </summary>
-        /// <param name="defaultItem">The DefaultItem to add.</param>
-        /// <param name="quantity">Quantity of Items to add (defaults to 0 which creates the Item with zero quantity).</param>
-        /// <returns>Whether or not the adding was successful.</returns>
-        public virtual bool AddDefaultItem(T3 defaultItem, int quantity = 0)
-        {
-            if (defaultItem == null)
-                return false;
-            
-            return AddDefaultItem(new DefaultItem(defaultItem.hash, quantity));
-        }
-
-        /// <summary>
-        /// Adds the given DefaultItem to this CollectionDefinition.
-        /// </summary>
-        /// <param name="defaultItem">The DefaultItem to add.</param>
-        /// <returns>Whether or not the adding was successful.</returns>
-        public virtual bool AddDefaultItem(DefaultItem defaultItem)
-        {
-            Tools.ThrowIfPlayMode("Cannot add a defaultItem to a CollectionDefinition while in play mode.");
-            
-            if (m_DefaultItems.Contains(defaultItem))
-            {
-                return false;
-            }
-
-            m_DefaultItems.Add(defaultItem);
-
-            return true;
-        }
-
-        /// <summary>
-        /// Sets the default quantity of the Item specified.
-        /// </summary>
-        /// <param name="defaultItem">The DefaultItem we are changing quantity of.</param>
-        /// <param name="quantity">The quantity to change to.</param>
-        /// <returns>Bool of whether changing quantity was successful.</returns>
-        public bool SetDefaultItemQuantity(DefaultItem defaultItem, int quantity)
-        {
-            Tools.ThrowIfPlayMode("Cannot set DefaultItem quantity while in play mode.");
-
-            int index = m_DefaultItems.IndexOf(defaultItem);
-            if (index < 0 || index >= m_DefaultItems.Count)
-            {
-                return false;
-            }
-
-            defaultItem.quantity = quantity;
-            m_DefaultItems[index] = defaultItem;
-
-            return true;
-        }
-
-        /// <summary>
-        /// Removes the specified DefaultItem from this CollectionDefinition's list of DefaultItems.
-        /// </summary>
-        /// <param name="defaultItem">The DefaultItem to remove.</param>
-        /// <returns>Whether or not the removal was successful.</returns>
-        public bool RemoveDefaultItem(DefaultItem defaultItem)
-        {
-            Tools.ThrowIfPlayMode("Cannot remove a DefaultItem from a CollectionDefinition while in play mode.");
-
-            return m_DefaultItems.Remove(defaultItem);
-        }
-
-        /// <summary>
-        /// Swaps the locations of the DefaultItems in the defaultItems list.
-        /// </summary>
-        /// <param name="defaultItem1">The first DefaultItem to swap.</param>
-        /// <param name="defaultItem2">The second DefaultItem to swap.</param>
-        /// <returns> Returns a bool value specifying whether the swap was successful. 
-        /// Swap will fail if either item is null, not in the defaultItems list or if both items are the same.</returns>
-        public bool SwapDefaultItemsListOrder(DefaultItem defaultItem1, DefaultItem defaultItem2)
-        {
-            Tools.ThrowIfPlayMode("Cannot swap DefaultItems order while in play mode.");
-
-            if (defaultItem1 == null || defaultItem2 == null)
-            {
-                return false;
-            }
-
-            int index1 = m_DefaultItems.IndexOf(defaultItem1);
-            int index2 = m_DefaultItems.IndexOf(defaultItem2);
-
-            if (index1 < 0 || index2 < 0 || index1 == index2)
-            {
-                return false;
-            }
-
-            m_DefaultItems[index1] = defaultItem2;
-            m_DefaultItems[index2] = defaultItem1;
-
-            return true;
+            defaultItems.AddRange(this.defaultItems);
         }
 
         /// <summary>

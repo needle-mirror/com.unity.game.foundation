@@ -5,4 +5,5 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("Unity.Game.Foundation.Editor")]
 [assembly: InternalsVisibleTo("Unity.Game.Foundation.EditorTests")]
 [assembly: InternalsVisibleTo("Unity.Game.Foundation.RuntimeTests")]
-[assembly: AssemblyVersion("0.2.0.3")]
+[assembly: InternalsVisibleTo("Unity.GameFoundation.ChilliConnect")]
+[assembly: AssemblyVersion("0.3.0.1")]

@@ -1,4 +1,4 @@
-﻿namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// CurrencyDetailDefinition.  Attach to a GameItemDefinition to store the currency information.
@@ -6,22 +6,6 @@
     /// <inheritdoc/>
     public class CurrencyDetailDefinition : BaseDetailDefinition
     {
-        /// <summary>
-        /// Returns 'friendly' display name for this CurrencyDetailDefinition.
-        /// </summary>
-        /// <returns>The 'friendly' display name for this CurrencyDetailDefinition.</returns>
-        public override string DisplayName() { return "Currency Detail"; }
-
-        /// <summary>
-        /// Returns string message which explains the purpose of this CurrencyDetailDefinition,
-        /// for the purpose of displaying as a tooltip in editor.
-        /// </summary>
-        /// <returns>The string tooltip message of this CurrencyDetailDefinition.</returns>
-        public override string TooltipMessage()
-        {
-            return "The currency detail can be attached to GameItemDefinitions and InventoryItemDefinitions to attach special currency conditions to the item, and allow specification of what type of currency they are. This allows them to be added to the wallet inventory and tracked as currency when the analytics detail is also attached.";
-        }
-
         /// <summary>
         /// This better enables identifying and tracking different types of currency in your game.
         /// </summary>
@@ -69,30 +53,29 @@
             Other,
         }
 
-        [SerializeField]
-        CurrencyType m_CurrencyType;
-
         /// <summary>
         /// Currency type for this CurrencyDetailDefinition.
         /// </summary>
         /// <returns>Currency type for this CurrencyDetailDefinition.</returns>
-        public CurrencyType currencyType
-        {
-            get { return m_CurrencyType; }
-            internal set { m_CurrencyType = value; }
-        }
-
-        [SerializeField]
-        CurrencySubType m_CurrencySubType;
+        public CurrencyType currencyType { get; }
 
         /// <summary>
         /// Currency sub-type for this CurrencyDetailDefinition.
         /// </summary>
         /// <returns>Currency sub-type for this CurrencyDetailDefinition.</returns>
-        public CurrencySubType currencySubType
+        public CurrencySubType currencySubType { get; }
+
+        /// <summary>
+        /// Constructor to build a CurrencyDetailDefinition object.
+        /// </summary>
+        /// <param name="currencyType">The CurrencyType of this detail.</param>
+        /// <param name="currencySubType">The CurrencySubType of this detail. Default value is CurrencySubType.None.</param>
+        /// <param name="owner">The GameItemDefinition that is attached to this DetailDefinition.</param>
+        internal CurrencyDetailDefinition(CurrencyType currencyType, CurrencySubType currencySubType = CurrencySubType.None, GameItemDefinition owner = null)
+            : base(owner)
         {
-            get { return m_CurrencySubType; }
-            internal set { m_CurrencySubType = value; }
+            this.currencyType = currencyType;
+            this.currencySubType = currencySubType;
         }
     }
 }

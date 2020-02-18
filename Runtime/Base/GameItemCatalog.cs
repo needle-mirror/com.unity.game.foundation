@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 
 namespace UnityEngine.GameFoundation
@@ -6,233 +5,27 @@ namespace UnityEngine.GameFoundation
     /// <summary>
     /// A Catalog for all GameItemDefinitions.
     /// </summary>
-    public class GameItemCatalog : ScriptableObject
+    public class GameItemCatalog
     {
-        internal static event System.EventHandler<GameItemDefinition> OnWillRemoveGameItemDefinition;
-
-        [SerializeField]
-        private List<CategoryDefinition> m_Categories = new List<CategoryDefinition>();
-
         /// <summary>
         /// A dictionary of all CategoryDefinitions.
         /// </summary>
-        protected internal List<CategoryDefinition> categories
-        {
-            get => m_Categories;
-            set => m_Categories = value;
-        }
-        
-        [SerializeField]
-        private List<GameItemDefinition> m_Definitions = new List<GameItemDefinition>();
+        protected internal List<CategoryDefinition> categories { get; }
 
         /// <summary>
         /// A dictionary of all GameItemDefinitions.
         /// </summary>
-        protected internal List<GameItemDefinition> definitions
-        {
-            get => m_Definitions;
-            set => m_Definitions = value;
-        }
+        protected internal List<GameItemDefinition> definitions { get; }
 
         /// <summary>
-        /// Returns the categories in this catalog in an array.
+        /// Constructor to build a GameItemCatalog object.
         /// </summary>
-        /// <returns>The categories in this catalog in an array.</returns>
-        public CategoryDefinition[] GetCategories()
+        /// <param name="gameItemDefinitions">The list of GameItemDefinitions that will be available in this catalog for runtime instance instantiation. If null value is passed in an empty list will be created.</param>
+        /// <param name="categoryDefinitions">The list of CategoryDefinitions that are the possible categories which could be applied to items in this catalog. If null value is passed in an empty list will be created.</param>
+        internal GameItemCatalog(List<GameItemDefinition> gameItemDefinitions, List<CategoryDefinition> categoryDefinitions)
         {
-            if (m_Categories == null)
-            {
-                return null;
-            }
-            
-            return m_Categories.ToArray();
-        }
-
-        /// <summary>
-        /// Fills the given list with all categories found in this catalog.
-        /// Note: this returns the current state of categories.  To ensure that there
-        /// are no invalid or duplicate entries, the 'categories' list will always be 
-        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
-        /// </summary>
-        /// <param name="categories">The list to clear and fill with all categories.</param>
-        public void GetCategories(List<CategoryDefinition> categories)
-        {
-            if (categories == null)
-            {
-                return;
-            }
-
-            categories.Clear();
-
-            if (m_Categories == null)
-            {
-                return;
-            }
-            
-            categories.AddRange(m_Categories);
-        }
-
-        /// <summary>
-        /// Adds the given Category to this GameItemCatalog.
-        /// </summary>
-        /// <param name="category">The Category to add.</param>
-        /// <returns>Whether or not the adding was successful.</returns>
-        /// <exception cref="ArgumentException">Thrown if the given category is a duplicate.</exception>
-        public bool AddCategory(CategoryDefinition category)
-        {
-            Tools.ThrowIfPlayMode("Cannot add a Category to a GameItemCatalog while in play mode.");
-
-            if (category == null)
-            {
-                return false;
-            }
-            
-            if (GetCategory(category.hash) != null)
-            {
-                throw new ArgumentException("The object is already registered within this Catalog. (id: " + category.id + ", hash: " + category.hash + ")");
-            }
-
-            m_Categories.Add(category);
-            return true;
-        }
-
-        /// <summary>
-        /// Removes the given Category from this GameItemCatalog.
-        /// </summary>
-        /// <param name="category">The Category to remove</param>
-        /// <returns>Whether or not the removal was successful.</returns>
-        public bool RemoveCategory(CategoryDefinition category)
-        {
-            Tools.ThrowIfPlayMode("Cannot remove a Category from a GameItemCatalog while in play mode.");
-            
-            return m_Categories.Remove(category);
-        }
-
-        /// <summary>
-        /// Returns an array of all game item definitions in this catalog.
-        /// </summary>
-        /// <returns>An array of all game item definitions in this catalog.</returns>
-        public GameItemDefinition[] GetGameItemDefinitions()
-        {
-            if (m_Definitions == null)
-            {
-                return null;
-            }
-            
-            return m_Definitions.ToArray();
-        }
-
-        /// <summary>
-        /// Fills the given array with all game item definitions in this catalog.
-        /// Note: this returns the current state of game item definitions.  To ensure that there
-        /// are no invalid or duplicate entries, the 'gameItemDefinitions' list will always be 
-        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
-        /// </summary>
-        /// <param name="gameItemDefinitions">The list to clear and fill with all game item definitions.</param>
-        public void GetGameItemDefinitions(List<GameItemDefinition> gameItemDefinitions)
-        {
-            if (gameItemDefinitions == null)
-            {
-                return;
-            }
-
-            gameItemDefinitions.Clear();
-
-            if (m_Definitions == null)
-            {
-                return;
-            }
-            
-            gameItemDefinitions.AddRange(m_Definitions);
-        }
-
-        /// <summary>
-        /// Adds the given GameItemDefinition to this GameItemCatalog.
-        /// </summary>
-        /// <param name="gameItemDefinition">The GameItemDefinition to add.</param>
-        /// <returns>Whether or not the GameItemDefinition was successfully added.</returns>
-        /// <exception cref="ArgumentException">Thrown if the given game item definition is a duplicate.</exception>
-        public bool AddGameItemDefinition(GameItemDefinition gameItemDefinition)
-        {
-            Tools.ThrowIfPlayMode("Cannot add a GameItemDefinition to a GameItemCatalog while in play mode.");
-
-            if (gameItemDefinition == null)
-            {
-                return false;
-            }
-
-            if (GetGameItemDefinition(gameItemDefinition.hash) != null)
-            {
-                throw new ArgumentException("The object is already registered within this Catalog. (id: " + gameItemDefinition.id + ", hash: " + gameItemDefinition.hash + ")");
-            }
-            
-            m_Definitions.Add(gameItemDefinition);
-            return true;
-        }
-
-        /// <summary>
-        /// Removes the given GameItemDefinition from this GameItemCatalog.
-        /// </summary>
-        /// <param name="gameItemDefinition">The GameItemDefinition to remove.</param>
-        /// <returns>Whether or not the GameItemDefinition was successfully removed.</returns>
-        public bool RemoveGameItemDefinition(GameItemDefinition gameItemDefinition)
-        {
-            Tools.ThrowIfPlayMode("Cannot remove a GameItemDefinition from a GameItemCatalog while in play mode.");
-
-            if (gameItemDefinition == null)
-            {
-                return false;
-            }
-
-            if (!m_Definitions.Contains(gameItemDefinition))
-            {
-                return false;
-            }
-
-            // this tells the GameItemDefinition to clean itself up (remove its child assets from the catalog asset, etc.)
-            // this is different from telling all event subscribers to clean up whatever they want to clean up
-            gameItemDefinition.OnRemove();
-
-            // Now tell all event subscribers that the delete is happening to this definition.
-            // The listening objects can do whatever they want with this information.
-            // For example, if an InventoryItemDefinition has this GameItemDefinition set as its ReferenceDefinition,
-            // then the InventoryItemDefinition listens to this event
-            // and knows when to set its ReferenceDefinition field to null.
-            OnWillRemoveGameItemDefinition?.Invoke(this, gameItemDefinition);
-
-            return m_Definitions.Remove(gameItemDefinition);
-        }
-
-        /// <summary>
-        /// Return specified GameItemDefinition by GameItemDefinition id string.
-        /// </summary>
-        /// <param name="gameItemDefinitionId">The GameItemDefinition Id string to find.</param>
-        /// <returns>Specified GameItemDefinition in this GameItemCatalog.</returns>
-        public GameItemDefinition GetGameItemDefinition(string gameItemDefinitionId)
-        {
-            if (string.IsNullOrEmpty(gameItemDefinitionId))
-            {
-                return null;
-            }
-            
-            return GetGameItemDefinition(Tools.StringToHash(gameItemDefinitionId));
-        }
-
-        /// <summary>
-        /// Return specified GameItemDefinition by Hash.
-        /// </summary>
-        /// <param name="gameItemDefinitionHash">The Hash of the GameItemDefinition to find.</param>
-        /// <returns>Specified GameItemDefinition.</returns>
-        public GameItemDefinition GetGameItemDefinition(int gameItemDefinitionHash)
-        {
-            foreach(var definition in m_Definitions)
-            {
-                if (definition.hash == gameItemDefinitionHash)
-                {
-                    return definition;
-                }
-            }
-            return null;
+            definitions = gameItemDefinitions ?? new List<GameItemDefinition>();
+            categories = categoryDefinitions ?? new List<CategoryDefinition>();
         }
 
         /// <summary>
@@ -257,7 +50,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>The requested CategoryDefinition, or null if not found.</returns>
         public CategoryDefinition GetCategory(int categoryHash)
         {
-            foreach (CategoryDefinition definition in m_Categories)
+            foreach (CategoryDefinition definition in categories)
             {
                 if (definition.hash == categoryHash)
                 {
@@ -266,6 +59,104 @@ namespace UnityEngine.GameFoundation
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Returns the categories in this catalog in an array.
+        /// </summary>
+        /// <returns>The categories in this catalog in an array.</returns>
+        public CategoryDefinition[] GetCategories()
+        {
+            return categories?.ToArray();
+        }
+
+        /// <summary>
+        /// Fills the given list with all categories found in this catalog.
+        /// Note: this returns the current state of categories.  To ensure that there
+        /// are no invalid or duplicate entries, the 'categories' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
+        /// </summary>
+        /// <param name="categories">The list to clear and fill with all categories.</param>
+        public void GetCategories(List<CategoryDefinition> categories)
+        {
+            if (categories == null)
+            {
+                return;
+            }
+
+            categories.Clear();
+
+            if (this.categories == null)
+            {
+                return;
+            }
+            
+            categories.AddRange(this.categories);
+        }
+
+        /// <summary>
+        /// Return specified GameItemDefinition by GameItemDefinition id string.
+        /// </summary>
+        /// <param name="gameItemDefinitionId">The GameItemDefinition Id string to find.</param>
+        /// <returns>Specified GameItemDefinition in this GameItemCatalog.</returns>
+        public GameItemDefinition GetGameItemDefinition(string gameItemDefinitionId)
+        {
+            if (string.IsNullOrEmpty(gameItemDefinitionId))
+            {
+                return null;
+            }
+            
+            return GetGameItemDefinition(Tools.StringToHash(gameItemDefinitionId));
+        }
+
+        /// <summary>
+        /// Return specified GameItemDefinition by Hash.
+        /// </summary>
+        /// <param name="gameItemDefinitionHash">The Hash of the GameItemDefinition to find.</param>
+        /// <returns>Specified GameItemDefinition.</returns>
+        public GameItemDefinition GetGameItemDefinition(int gameItemDefinitionHash)
+        {
+            foreach(var definition in definitions)
+            {
+                if (definition.hash == gameItemDefinitionHash)
+                {
+                    return definition;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Returns an array of all game item definitions in this catalog.
+        /// </summary>
+        /// <returns>An array of all game item definitions in this catalog.</returns>
+        public GameItemDefinition[] GetGameItemDefinitions()
+        {
+            return definitions?.ToArray();
+        }
+
+        /// <summary>
+        /// Fills the given array with all game item definitions in this catalog.
+        /// Note: this returns the current state of game item definitions.  To ensure that there
+        /// are no invalid or duplicate entries, the 'gameItemDefinitions' list will always be 
+        /// cleared and 'recycled' (i.e. updated) with current data from the catalog.
+        /// </summary>
+        /// <param name="gameItemDefinitions">The list to clear and fill with all game item definitions.</param>
+        public void GetGameItemDefinitions(List<GameItemDefinition> gameItemDefinitions)
+        {
+            if (gameItemDefinitions == null)
+            {
+                return;
+            }
+
+            gameItemDefinitions.Clear();
+
+            if (definitions == null)
+            {
+                return;
+            }
+            
+            gameItemDefinitions.AddRange(definitions);
         }
 
         /// <summary>
@@ -318,7 +209,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>An array of GameItemDefinitions that contain the requested Category.</returns>
         public GameItemDefinition[] GetDefinitionsByCategory(int categoryHash)
         {
-            if (m_Definitions == null)
+            if (definitions == null)
             {
                 return null;
             }
@@ -346,12 +237,12 @@ namespace UnityEngine.GameFoundation
 
             gameItemDefinitions.Clear();
 
-            if (m_Definitions == null)
+            if (definitions == null)
             {
                 return;
             }
 
-            foreach (var definition in m_Definitions)
+            foreach (var definition in definitions)
             {
                 foreach (var category in definition.GetCategories())
                 {
@@ -364,31 +255,18 @@ namespace UnityEngine.GameFoundation
         }
 
         /// <summary>
-        /// Check if the given Hash is not yet included in this GameItemCatalog's list of GameItemDefinitions and is available for use.
+        /// Check if the given string's hash is not yet included in this GameItemCatalog's list of GameItemDefinitions and is available for use.
         /// </summary>
-        /// <param name="gameItemDefinitionId">The Hash to search for in this Catalog's GameItemDefinitions list.</param>
-        /// <returns>True/False whether or not Hash is available for use.</returns>
+        /// <param name="gameItemDefinitionId">The string to be hashed and searched for in this Catalog's list of GameItemDefinition hashes.</param>
+        /// <returns>True/False whether or not hash of given string is available for use.</returns>
         public bool IsDefinitionHashUnique(string gameItemDefinitionId)
         {
             if (string.IsNullOrEmpty(gameItemDefinitionId))
             {
                 return false;
             }
-            
+
             return GetGameItemDefinition(Tools.StringToHash(gameItemDefinitionId)) == null;
-        }
-
-        /// <summary>
-        /// Simple factory method for creating an empty GameItemCatalog.
-        /// </summary>
-        /// <returns>The newly created GameItemCatalog.</returns>
-        public static GameItemCatalog Create()
-        {
-            Tools.ThrowIfPlayMode("Cannot create a GameItem Catalog while in play mode.");
-            
-            var catalog = ScriptableObject.CreateInstance<GameItemCatalog>();
-
-            return catalog;
         }
     }
 }

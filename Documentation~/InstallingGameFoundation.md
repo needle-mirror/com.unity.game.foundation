@@ -34,7 +34,10 @@ public class MyGameManager : MonoBehaviour
 {
     void Awake()
     {
-        GameFoundation.Initialize();
+        // this data layer will not save any data, it is usually used for examples or tests
+        IDataAccessLayer dataLayer = new MemoryDataLayer(GameFoundationSerializableData.Empty);
+
+        GameFoundation.Initialize(dataLayer);
     }
 }
 ```
@@ -51,7 +54,10 @@ public class MyGameManager : MonoBehaviour
 {
     void Awake()
     {
-        GameFoundation.Initialize();
+        // this data layer will not save any data, it is usually used for examples or tests
+        IDataAccessLayer dataLayer = new MemoryDataLayer(GameFoundationSerializableData.Empty);
+
+        GameFoundation.Initialize(dataLayer);
 
         foreach (Inventory inventory in InventoryManager.GetInventories())
         {

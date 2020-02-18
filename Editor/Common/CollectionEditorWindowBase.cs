@@ -5,16 +5,16 @@ using UnityEngine.GameFoundation;
 namespace UnityEditor.GameFoundation
 {
     /// <summary>
-    /// Abstract class which sets up an editor window with tabs toolbar.
+    /// Abstract class which sets up an editor window with a tab bar at the top.
     /// </summary>
     internal abstract class CollectionEditorWindowBase : EditorWindow
     {
-        protected int m_OldToolbarIndex { get; set; }
-        protected int m_ToolbarIndex { get; set; }
+        private int m_TabBarIndex { get; set; }
+        private int m_OldTabBarIndex { get; set; }
 
-        protected abstract List<ICollectionEditor> m_Editors { get; }
+        protected List<ICollectionEditor> m_Editors { get; } = new List<ICollectionEditor>();
 
-        protected string[] editorNames
+        private string[] editorNames
         {
             get
             {
@@ -32,15 +32,10 @@ namespace UnityEditor.GameFoundation
         {
             minSize = new Vector2(850f, 400f);
 
-            m_ToolbarIndex = 0;
-            m_OldToolbarIndex = -1;
+            m_TabBarIndex = 0;
+            m_OldTabBarIndex = -1;
 
             CreateEditors();
-
-            if (Resources.Load<GameFoundationSettings>("GameFoundationSettings") == null)
-            {
-                Debug.LogWarning("No Game Foundation settings file has been found. Game Foundation code will automatically create one. Settings file is critical to Game Foundation, if you wish to remove it you will need to remove the entire Game Foundation package.");
-            }
         }
 
         protected virtual void OnFocus()
@@ -50,79 +45,68 @@ namespace UnityEditor.GameFoundation
                 collectionEditor.ValidateSelection();
             }
 
-            if (m_Editors != null && m_Editors.Count > 0 && m_ToolbarIndex < m_Editors.Count)
+            if (m_Editors != null && m_Editors.Count > 0 && m_TabBarIndex < m_Editors.Count)
             {
-                m_Editors[m_ToolbarIndex].RefreshItems();
+                m_Editors[m_TabBarIndex].RefreshItems();
             }
-        }
 
-        /// <summary>
-        /// Abstract method where editors for the implementing system's tabs should be added to the window.
-        /// </summary>
-        public abstract void CreateEditors();
-
-        protected virtual void DrawToolbar()
-        {
-            EditorGUILayout.BeginHorizontal();
-
-            m_ToolbarIndex = GUILayout.Toolbar(m_ToolbarIndex, editorNames, GameFoundationEditorStyles.topToolbarStyle);
-
-            EditorGUILayout.EndHorizontal();
+            // Trigger creating the settings file if it's been deleted or doesn't exist
+            GameFoundationSettings.CreateGameFoundationSettingsIfNecessary();
         }
 
         private void OnGUI()
         {
-            DrawCollectionEditor();
-        }
+            // TAB BAR
 
-        protected void DrawCollectionEditor()
-        {
-            DrawDefaultState();
-        }
-
-        /// <summary>
-        /// Draw the entire UI for this type of collection editor window.
-        /// </summary>
-        public virtual void DrawDefaultState()
-        {
             if (m_Editors.Count > 1)
             {
-                DrawToolbar();
+                using (new EditorGUILayout.HorizontalScope())
+                {
+                    m_TabBarIndex = GUILayout.Toolbar(m_TabBarIndex, editorNames, GameFoundationEditorStyles.topToolbarStyle);
+                }
+            }
+
+            if (m_TabBarIndex < 0 || m_TabBarIndex >= m_Editors.Count || m_Editors.Count == 0)
+            {
+                m_TabBarIndex = 0;
             }
 
             EditorGUILayout.Space();
 
-            if (m_ToolbarIndex < 0 || m_ToolbarIndex >= m_Editors.Count || m_Editors.Count == 0)
-            {
-                m_ToolbarIndex = 0;
-                CreateEditors();
-            }
-
-            // Enter and Exit
-            if (m_ToolbarIndex != m_OldToolbarIndex)
+            if (m_TabBarIndex != m_OldTabBarIndex)
             {
                 // if trying to switch tabs while in the middle of creating a new item, show a confirmation dialog
-                if (m_OldToolbarIndex >= 0
-                    && m_Editors[m_OldToolbarIndex].isCreating
+                if (m_OldTabBarIndex >= 0
+                    && m_Editors[m_OldTabBarIndex].isCreating
                     && !CollectionEditorTools.ConfirmDiscardingNewItem())
                 {
                     // clicked "Stay" - prevent switching tabs - change the index back
-                    m_ToolbarIndex = m_OldToolbarIndex;
+                    m_TabBarIndex = m_OldTabBarIndex;
                     return;
                 }
 
-                if (m_OldToolbarIndex >= 0 && m_OldToolbarIndex < m_Editors.Count)
+                if (m_OldTabBarIndex >= 0 && m_OldTabBarIndex < m_Editors.Count)
                 {
-                    m_Editors[m_OldToolbarIndex].OnWillExit();
+                    m_Editors[m_OldTabBarIndex].OnWillExit();
                 }
 
-                m_Editors[m_ToolbarIndex].OnWillEnter();
+                m_Editors[m_TabBarIndex].OnWillEnter();
 
-                m_OldToolbarIndex = m_ToolbarIndex;
+                m_OldTabBarIndex = m_TabBarIndex;
             }
 
-            // Update
-            m_Editors[m_ToolbarIndex].Update();
+            m_Editors[m_TabBarIndex].Draw();
+
+            // if you click anywhere that isn't a GUI control, then clear the focus
+            if (GUI.Button(new Rect(0f, 0f, position.width, position.height), "", GUIStyle.none))
+            {
+                GUI.FocusControl(null);
+            }
         }
+        
+        /// <summary>
+        /// Abstract method where editors for the implementing system's tabs should be added to the window.
+        /// </summary>
+        protected abstract void CreateEditors();
     }
 }

@@ -7,15 +7,11 @@ namespace UnityEngine.GameFoundation
     public class AnalyticsDetailDefinition : BaseDetailDefinition
     {
         /// <summary>
-        /// Returns 'friendly' display name for this AnalyticsDetailDefinition.
+        /// Constructor to build an AnalyticsDetailDefinition object.
         /// </summary>
-        /// <returns>The 'friendly' display name for this AnalyticsDetailDefinition.</returns>
-        public override string DisplayName() { return "Analytics Detail"; }
-
-        /// <summary>
-        /// Returns string message which explains the purpose of this AnalyticsDetailDefinition, for the purpose of displaying as a tooltip in editor.
-        /// </summary>
-        /// <returns>The string tooltip message of this AnalyticsDetailDefinition.</returns>
-        public override string TooltipMessage() { return "This enables automatic analytics tracking of the objects created using the definition it is attached to. For items it will track created, destroyed, and modified actions, for inventories it will track created and destroyed actions."; }
+        /// <param name="owner">The GameItemDefinition that is attached to this DetailDefinition.</param>
+        internal AnalyticsDetailDefinition(GameItemDefinition owner = null) : base(owner)
+        {
+        }
     }
 }

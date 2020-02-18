@@ -1,9 +1,9 @@
 {
   "name": "com.unity.game.foundation",
   "displayName": "Game Foundation",
-  "version": "0.2.0-preview.3",
+  "version": "0.3.0-preview.5",
   "unity": "2018.3",
-  "description": "Game Foundation core package.\n\nThis package contains the following components: \n▪ Inventory System \n▪ Virtual Currency Wallet \n▪ Stats System\n▪ Core Systems \n\nNote: Preview release, public API subject to change.",
+  "description": "Game Foundation core package.\n\nThis package contains the following components: \n▪ Inventory System \n▪ Virtual Currency Wallet \n▪ Stats System \n▪ Transaction System  \n▪ Core Systems \n\nNote: CatalogManager now holds the reference to the catalogs at Runtime. Any runtime code that was previously written as \nGameFoundationSettings.database.xCatalog should now be written as CatalogManager.xCatalog. \nGameFoundation's Initialization changed to take an IDataAccessLayer as an argument instead of a persistence object. \n\nNote: Preview release, public API subject to change.",
   "keywords": [
     "unity",
     "Game Foundation",
@@ -16,14 +16,6 @@
   ],
   "dependencies": {
     "com.unity.analytics": "3.3.2"
-  },
-  "relatedPackages": {
-    "com.unity.game.foundation.tests": "0.2.0-preview.3"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git@github.cds.internal.unity3d.com:unity/game-foundation.git",
-    "revision": "62a187cc9cffb794b81ca1706991774e7b68e08c"
   },
   "samples": [
     {
@@ -60,6 +52,20 @@
       "displayName": "06 Data Persistence",
       "description": "This sample showcases how to use data persistence to save and load your data.",
       "path": "Samples~/06_DataPersistence"
+    },
+    {
+      "displayName": "07 Transactions",
+      "description": "This sample showcases how to use the Transaction System.",
+      "path": "Samples~/07_Transactions"
     }
-  ]
+  ],
+  "relatedPackages": {
+    "com.unity.game.foundation.tests": "0.3.0-preview.5"
+  },
+  "repository": {
+    "footprint": "2cb82a9ef8ecfba1c2071071090a80a6bd89ec71",
+    "type": "git",
+    "url": "https://github.cds.internal.unity3d.com/unity/game-foundation.git",
+    "revision": "541bab044049e8db4e7094d3dbb882e0bf8bc4a3"
+  }
 }

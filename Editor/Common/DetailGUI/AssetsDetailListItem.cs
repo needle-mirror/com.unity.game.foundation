@@ -2,14 +2,14 @@
 {
     internal struct AssetsDetailListItem
     {
-        public int indexInOriginalList;
-        public SerializedProperty keyProperty;
-        public SerializedProperty valueProperty;
+        public readonly int indexInOriginalList;
+        public readonly SerializedProperty nameProperty;
+        public readonly SerializedProperty valueProperty;
 
-        public AssetsDetailListItem(int indexInOriginalList, SerializedProperty keyProperty, SerializedProperty valueProperty)
+        public AssetsDetailListItem(int indexInOriginalList, SerializedProperty nameProperty, SerializedProperty valueProperty)
         {
             this.indexInOriginalList = indexInOriginalList;
-            this.keyProperty = keyProperty;
+            this.nameProperty = nameProperty;
             this.valueProperty = valueProperty;
         }
     }

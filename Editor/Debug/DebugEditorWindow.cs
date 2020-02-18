@@ -11,9 +11,9 @@ namespace UnityEditor.GameFoundation
         private InventoryTree m_TreeView;
         private SearchField m_SearchField;
 
-        private static int m_AddInventoryOptionsIndex = 0;
-        private static int m_AddItemOptionsIndex = 0;
-        private static int m_AddStatOptionsIndex = 0;
+        private static int m_AddInventoryOptionsIndex;
+        private static int m_AddItemOptionsIndex;
+        private static int m_AddStatOptionsIndex;
 
         private string[] m_AddInventoryOptions = {"Select"};
         private string[] m_AddItemOptions = {"Select"};
@@ -38,9 +38,7 @@ namespace UnityEditor.GameFoundation
 
             m_SearchField = new SearchField();
 
-            m_CollectionDefinitions = GameFoundationSettings.database.inventoryCatalog.GetCollectionDefinitions();
-            m_StatDefinitions = GameFoundationSettings.database.statCatalog.GetStatDefinitions();
-            m_InventoryItemDefinitions = GameFoundationSettings.database.inventoryCatalog.GetItemDefinitions();
+            GetCatalogDefinitions();
         }
 
         //TODO: Change to event driven updates. Don't fetch inventory info every frame.
@@ -50,6 +48,11 @@ namespace UnityEditor.GameFoundation
             {
                 if (UnityEngine.GameFoundation.GameFoundation.IsInitialized)
                 {
+                    if (m_CollectionDefinitions == null || m_StatDefinitions == null || m_InventoryItemDefinitions == null)
+                    {
+                        GetCatalogDefinitions();
+                    }
+
                     DrawInventoryCount();
                     DrawSearchBar();
                     DrawTree();
@@ -65,6 +68,13 @@ namespace UnityEditor.GameFoundation
             {
                 EditorGUILayout.HelpBox("Enter Play Mode to start Debugging.", MessageType.Info);
             }
+        }
+
+        private void GetCatalogDefinitions()
+        {
+            m_CollectionDefinitions = CatalogManager.inventoryCatalog?.GetCollectionDefinitions();
+            m_StatDefinitions = CatalogManager.statCatalog?.GetStatDefinitions();
+            m_InventoryItemDefinitions = CatalogManager.inventoryCatalog?.GetItemDefinitions();
         }
 
         private void DrawSearchBar()
@@ -167,7 +177,7 @@ namespace UnityEditor.GameFoundation
                 idToAdd = m_AddItemOptions[m_AddItemOptionsIndex];
                 InventoryManager
                 .GetInventory(((InventoryTreeItem) m_TreeView.FindItem(selected[0])).itemHash)
-                .AddItem(idToAdd, 1);
+                .AddItem(idToAdd);
 
                 //Expand inventory to see change.
                 m_TreeView.SetExpanded(selected[0],true);
@@ -188,7 +198,8 @@ namespace UnityEditor.GameFoundation
                 idToAdd = m_AddStatOptions[m_AddStatOptionsIndex];
                 
                 StatDefinition statDefinition =
-                    GameFoundationSettings.database.statCatalog.GetStatDefinition(idToAdd);
+                    CatalogManager.statCatalog.GetStatDefinition(idToAdd);
+
                 InventoryItem inventoryItem =
                     m_TreeView.GetGameItem((InventoryTreeItem) m_TreeView.FindItem(selected[0])) as
                         InventoryItem;

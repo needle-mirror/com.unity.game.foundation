@@ -1,4 +1,5 @@
-﻿using UnityEngine.UI;
+﻿using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
 {
@@ -13,7 +14,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// Reference to the panel to display when the wrong database is in use.
         /// </summary>
         public GameObject wrongDatabasePanel;
-        
+
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
         /// </summary>
@@ -36,9 +37,13 @@ namespace UnityEngine.GameFoundation.Sample
                 wrongDatabasePanel.SetActive(true);
                 return;
             }
-            
-            // Initialize must always be called before working with any game foundation code.
-            GameFoundation.Initialize();
+
+            // - Initialize must always be called before working with any game foundation code.
+            // - GameFoundation requires an IDataAccessLayer object that will provide and persist
+            //   the data required for the various services (Inventory, Stats, ...).
+            // - For this sample we don't need to persist any data so we use the MemoryDataLayer
+            //   that will store GameFoundation's data only for the play session.
+            GameFoundation.Initialize(new MemoryDataLayer());
 
             // Here we bind our UI refresh method to callbacks on the inventory manager.
             // These callbacks will automatically be invoked anytime an inventory is added, or removed.
@@ -46,7 +51,7 @@ namespace UnityEngine.GameFoundation.Sample
             // If you want to have saving be done automatically, binding a Save method to these callbacks is a great way to accomplish this.
             InventoryManager.onInventoryAdded += RefreshUI;
             InventoryManager.onInventoryRemoved += RefreshUI;
-            
+
             RefreshUI();
         }
 
@@ -57,7 +62,7 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI(Inventory inventoryParam = null)
         {
             var inventories = InventoryManager.GetInventories();
-            
+
             // Show the total count of inventories
             inventoryCountText.text = "Total Inventories: " + inventories.Length;
 
@@ -68,7 +73,7 @@ namespace UnityEngine.GameFoundation.Sample
             {
                 // Display an empty line between inventories
                 mainText.text += "\n";
-                
+
                 // Display the main inventory's display name
                 mainText.text += "Inventory - " + inventory.displayName + "\n";
 
@@ -80,7 +85,7 @@ namespace UnityEngine.GameFoundation.Sample
 
                     // Every inventory item has an associated quantity. This represents how many units of this item there are within the inventory.
                     int quantity = inventoryItem.quantity;
-                    
+
                     mainText.text += itemName + ": " + quantity + "\n";
                 }
             }
@@ -96,7 +101,7 @@ namespace UnityEngine.GameFoundation.Sample
             string inventoryDefinition = "blank";
             string id = InventoryManager.GetNewInventoryId();
             string displayName = "Blank";
-            
+
             InventoryManager.CreateInventory(inventoryDefinition, id, displayName);
         }
 
@@ -110,7 +115,7 @@ namespace UnityEngine.GameFoundation.Sample
             string inventoryDefinition = "fruitSalad";
             string id = InventoryManager.GetNewInventoryId();
             string displayName = "Fruit Salad";
-            
+
             InventoryManager.CreateInventory(inventoryDefinition, id, displayName);
         }
 
@@ -122,7 +127,7 @@ namespace UnityEngine.GameFoundation.Sample
             // Grab all inventories and select the last one
             Inventory[] inventories = InventoryManager.GetInventories();
             Inventory toRemove = inventories[inventories.Length - 1];
-            
+
             // Remove it using RemoveInventory
             InventoryManager.RemoveInventory(toRemove);
         }

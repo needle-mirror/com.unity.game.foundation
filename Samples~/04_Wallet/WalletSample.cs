@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using UnityEngine.GameFoundation.DataAccessLayers;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -14,7 +15,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// Reference to the panel to display when the wrong database is in use.
         /// </summary>
         public GameObject wrongDatabasePanel;
-        
+
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
         /// </summary>
@@ -37,7 +38,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// Used to determine how many coins an apple will cost.
         /// </summary>
         private int m_ApplePrice;
-        
+
         /// <summary>
         /// Standard starting point for Unity scripts.
         /// </summary>
@@ -51,9 +52,13 @@ namespace UnityEngine.GameFoundation.Sample
                 return;
             }
 
-            // Initialize must always be called before working with any game foundation code.
-            GameFoundation.Initialize();
-            
+            // - Initialize must always be called before working with any game foundation code.
+            // - GameFoundation requires an IDataAccessLayer object that will provide and persist
+            //   the data required for the various services (Inventory, Stats, ...).
+            // - For this sample we don't need to persist any data so we use the MemoryDataLayer
+            //   that will store GameFoundation's data only for the play session.
+            GameFoundation.Initialize(new MemoryDataLayer());
+
             // Grab a reference to the main, wallet, and store inventories.
             m_Main = Inventory.main;
             m_Wallet = InventoryManager.wallet;
@@ -78,13 +83,13 @@ namespace UnityEngine.GameFoundation.Sample
         {
             // Show the current price of an apple
             mainText.text = "Apple Price: " + m_ApplePrice + "\n\n";
-            
+
             // We only care about displaying the wallet, the main inventory, and the store.
             List<Inventory> inventories = new List<Inventory>();
             inventories.Add(m_Wallet);
             inventories.Add(m_Main);
             inventories.Add(m_Store);
-            
+
             // Loop through the inventories we want to display
             foreach (Inventory inventory in inventories)
             {
@@ -102,7 +107,7 @@ namespace UnityEngine.GameFoundation.Sample
 
                     mainText.text += itemName + ": " + quantity + "\n";
                 }
-                
+
                 // Display a separator between inventories
                 mainText.text += "\n";
             }
@@ -112,14 +117,15 @@ namespace UnityEngine.GameFoundation.Sample
         /// This method does a price check to make sure there are enough coins in the wallet to buy an apple.
         /// If so, it will add an apple to the main inventory, remove one to the store, and deduct the value from the wallet.
         /// It will also refresh to the apple price to keep things interesting.
+        /// Because we never use RemoveItem in this sample, we don't have to worry about safety checking everything.
         /// </summary>
         public void BuyApple()
         {
             var coin = m_Wallet.GetItem("coin");
-            if (coin != null && coin.quantity >= m_ApplePrice)
+            if (coin.quantity >= m_ApplePrice)
             {
-                m_Main.AddItem("apple", 1);
-                m_Store.RemoveItem("apple", 1);
+                m_Main.GetItem("apple").quantity++;
+                m_Store.GetItem("apple").quantity--;
                 coin.quantity -= m_ApplePrice;
                 RefreshBuySelllButtons();
             }
@@ -129,17 +135,16 @@ namespace UnityEngine.GameFoundation.Sample
         /// This method makes sure there is at least 1 apple to sell.
         /// If so, it will remove an apple from the main inventory, add one to the store, and add the value to the wallet.
         /// It will also refresh to the apple price to keep things interesting.
+        /// Because we never use RemoveItem in this sample, we don't have to worry about safety checking everything.
         /// </summary>
         public void SellApple()
         {
-            // It's' important to verify an inventory contains a type of item before trying to get its quantity.
             var apple = m_Main.GetItem("apple");
-            if (apple != null && apple.quantity >= 1)
+            if (apple.quantity >= 1)
             {
-                // Lowering an items quantity this way instead of using the RemoveItem method will allow a quantity to reach 0 instead of being automatically removed.
                 apple.quantity--;
-                m_Store.AddItem("apple", 1);
-                m_Wallet.AddItem("coin", m_ApplePrice);
+                m_Store.GetItem("apple").quantity++;
+                m_Wallet.GetItem("coin").quantity += m_ApplePrice;
                 RefreshBuySelllButtons();
             }
         }

@@ -1,4 +1,5 @@
-﻿using UnityEngine.UI;
+﻿using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
 {
@@ -8,7 +9,7 @@ namespace UnityEngine.GameFoundation.Sample
     public class CategoriesSample : MonoBehaviour
     {
         private bool m_WrongDatabase;
-        
+
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
         /// </summary>
@@ -40,17 +41,21 @@ namespace UnityEngine.GameFoundation.Sample
                 wrongDatabasePanel.SetActive(true);
                 return;
             }
-            
-            // Initialize must always be called before working with any game foundation code.
-            GameFoundation.Initialize();
+
+            // - Initialize must always be called before working with any game foundation code.
+            // - GameFoundation requires an IDataAccessLayer object that will provide and persist
+            //   the data required for the various services (Inventory, Stats, ...).
+            // - For this sample we don't need to persist any data so we use the MemoryDataLayer
+            //   that will store GameFoundation's data only for the play session.
+            GameFoundation.Initialize(new MemoryDataLayer());
 
             // Grab a reference to the shopping cart
             m_ShoppingCart = InventoryManager.GetInventory("shoppingCart");
-            
+
             FruitCategory();
             RefreshUI();
         }
-        
+
         /// <summary>
         /// This will fill out the main text box with information about the main inventory.
         /// </summary>
@@ -82,23 +87,23 @@ namespace UnityEngine.GameFoundation.Sample
         public void FruitCategory()
         {
             m_CurrentCategory = "fruit";
-            
+
             UnselectAllButtons();
             buttons[0].interactable = false;
-            
+
             RefreshUI();
         }
-        
+
         /// <summary>
         /// Set the current category to be blank.
         /// </summary>
         public void FoodCategory()
         {
             m_CurrentCategory = "food";
-            
+
             UnselectAllButtons();
             buttons[1].interactable = false;
-            
+
             RefreshUI();
         }
 
@@ -108,10 +113,10 @@ namespace UnityEngine.GameFoundation.Sample
         public void VegetableCategory()
         {
             m_CurrentCategory = "vegetable";
-            
+
             UnselectAllButtons();
             buttons[2].interactable = false;
-            
+
             RefreshUI();
         }
 

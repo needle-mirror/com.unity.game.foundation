@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.0-preview.5] - 2020-02-19
+
+### Added
+
+* Data Access Layer
+* Transaction System
+* Transaction System Sample Scene
+* Purchasable Detail
+
+### Changed
+
+* GameFoundation's Initialization changed to take an IDataAccessLayer as an argument instead of a persistence object.
+* GameFoundationSettings ScriptableObject is now split into GameFoundationDatabaseSettings, which holds the reference to the database for the editor, and GameFoundationSettings, which continues to hold the other settings, like analytics flags.
+* CatalogManager now holds the reference to the catalogs at Runtime. Any runtime code that was previously written as GameFoundationSettings.database.xCatalog should now be written as CatalogManager.xCatalog.
+* Persistence and Serializer interfaces changed to handle only GameFoundation's data.
+
 ## [0.2.0-preview.3] - 2019-12-11
 
 ### Added

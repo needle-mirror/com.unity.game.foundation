@@ -26,48 +26,5 @@ namespace UnityEngine.GameFoundation
         {
             return id != null && Regex.IsMatch(id, @"^[\w-_]+$");
         }
-        
-        /// <summary>
-        /// Helper method for making sure the application is not in play mode.
-        /// This will mainly be used to make sure users aren't modifying definitions in play mode.
-        /// </summary>
-        /// <param name="errorMessage">The error message to display if we are in play mode.</param>
-        /// <exception cref="System.Exception">Thrown when in play mode with the given error message.</exception>
-        public static void ThrowIfPlayMode(string errorMessage)
-        {
-            if (Application.isPlaying)
-            {
-                throw new System.Exception(errorMessage);
-            }
-        }
-
-        public static void DeleteRuntimeData()
-        {
-            string gameFoundationPersistencePath = $"{Application.persistentDataPath}/" + GameFoundation.k_GameFoundationPersistenceId;
-            string gameFoundationPersistenceBackupPath = $"{Application.persistentDataPath}/" + GameFoundation.k_GameFoundationPersistenceId + "_backup";
-
-            bool isFileDeleted = false;
-            
-            if (File.Exists(gameFoundationPersistencePath))
-            {
-                File.Delete(gameFoundationPersistencePath);
-                isFileDeleted = true;
-            }
-            
-            if (File.Exists(gameFoundationPersistenceBackupPath))
-            {
-                File.Delete(gameFoundationPersistenceBackupPath);
-                isFileDeleted = true;
-            }
-
-            if (isFileDeleted)
-            {
-                Debug.Log("Local persistence data is deleted.");
-            }
-            else
-            {
-                Debug.Log("There is no data to delete.");
-            }
-        }
     }
 }

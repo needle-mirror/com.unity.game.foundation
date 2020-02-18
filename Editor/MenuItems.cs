@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.GameFoundation.CatalogManagement;
 using UnityEngine.GameFoundation;
 
 namespace UnityEditor.GameFoundation
@@ -33,12 +34,21 @@ namespace UnityEditor.GameFoundation
         }
 
         /// <summary>
-        /// Set GameFoundationSettings asset file.
+        /// Selects the GameFoundationSettings asset file.
         /// </summary>
-        [MenuItem("Window/Game Foundation/Settings", false, 2011)]
+        [MenuItem("Window/Game Foundation/Settings/Runtime Settings", false, 2011)]
         public static void SelectGameFoundationSettingsAssetFile()
         {
             Selection.SetActiveObjectWithContext(GameFoundationSettings.singleton, null);
+        }
+        
+        /// <summary>
+        /// Selects the GameFoundationDatabaseSettings asset file.
+        /// </summary>
+        [MenuItem("Window/Game Foundation/Settings/Database Settings", false, 2012)]
+        public static void SelectGameFoundationDatabaseSettingsAssetFile()
+        {
+            Selection.SetActiveObjectWithContext(GameFoundationDatabaseSettings.singleton, null);
         }
         
         [MenuItem("Window/Game Foundation/Tools/Debugger", false, 2013)]
@@ -47,15 +57,6 @@ namespace UnityEditor.GameFoundation
             DebugEditorWindow.ShowWindow();
         }
         
-        [MenuItem("Window/Game Foundation/Tools/Delete Local Persistence Data", false, 2014)]
-        public static void DeleteRuntimeData()
-        {
-            if (EditorUtility.DisplayDialog("Are you sure?", "Do you want to delete Game Foundation\'s runtime data?", "Yes", "No"))
-            {
-                UnityEngine.GameFoundation.Tools.DeleteRuntimeData();
-            }
-        }
-
         [MenuItem("Window/Game Foundation/Help/Documentation", false, 2016)]
         public static void OpenHelpURL()
         {

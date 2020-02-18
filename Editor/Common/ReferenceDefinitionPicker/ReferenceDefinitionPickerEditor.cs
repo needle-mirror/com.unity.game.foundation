@@ -1,6 +1,5 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
-using UnityEngine.GameFoundation;
+﻿using UnityEngine;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
@@ -23,7 +22,7 @@ namespace UnityEditor.GameFoundation
                 }
                 else
                 {
-                    string referenceDefinitionDisplayName = referenceDefinition.id;
+                    var referenceDefinitionDisplayName = referenceDefinition.id;
 
                     if (!string.IsNullOrEmpty(referenceDefinition.displayName))
                     {
@@ -34,6 +33,7 @@ namespace UnityEditor.GameFoundation
                 }
 
                 GUI.SetNextControlName("ReferenceDefinitionChooseButton");
+
                 if (GUILayout.Button("Choose", EditorStyles.miniButton, GUILayout.Width(50f)))
                 {
                     GUI.FocusControl("ReferenceDefinitionChooseButton");

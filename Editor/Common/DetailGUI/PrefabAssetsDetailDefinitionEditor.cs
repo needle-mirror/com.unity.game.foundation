@@ -1,17 +1,17 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
     [CustomEditor(typeof(PrefabAssetsDetailDefinition))]
     internal class PrefabAssetsDetailDefinitionEditor : BaseDetailDefinitionEditor
     {
-        private SerializedProperty m_Keys_SerializedProperty;
+        private SerializedProperty m_Names_SerializedProperty;
         private SerializedProperty m_Values_SerializedProperty;
 
         private PrefabAssetsDetailDefinition m_TargetDefinition;
-        private List<AssetsDetailListItem> m_ListItems = new List<AssetsDetailListItem>();
+        private readonly List<AssetsDetailListItem> m_ListItems = new List<AssetsDetailListItem>();
 
         private void OnEnable()
         {
@@ -30,7 +30,7 @@ namespace UnityEditor.GameFoundation
                 return;
             }
 
-            m_Keys_SerializedProperty = serializedObject.FindProperty("m_Keys");
+            m_Names_SerializedProperty = serializedObject.FindProperty("m_Names");
             m_Values_SerializedProperty = serializedObject.FindProperty("m_Values");
 
             RefreshCache();
@@ -53,17 +53,17 @@ namespace UnityEditor.GameFoundation
                 return;
             }
 
-            if (m_Keys_SerializedProperty.arraySize != m_Values_SerializedProperty.arraySize)
+            if (m_Names_SerializedProperty.arraySize != m_Values_SerializedProperty.arraySize)
             {
                 return;
             }
 
-            for (int i = 0; i < m_Keys_SerializedProperty.arraySize; i++)
+            for (var i = 0; i < m_Names_SerializedProperty.arraySize; i++)
             {
                 m_ListItems.Add(
                     new AssetsDetailListItem(
                         i,
-                        m_Keys_SerializedProperty.GetArrayElementAtIndex(i),
+                        m_Names_SerializedProperty.GetArrayElementAtIndex(i),
                         m_Values_SerializedProperty.GetArrayElementAtIndex(i)));
             }
         }
@@ -84,24 +84,24 @@ namespace UnityEditor.GameFoundation
             {
                 using (new GUILayout.HorizontalScope(GameFoundationEditorStyles.tableViewToolbarStyle))
                 {
-                    GUILayout.Label("Key", GameFoundationEditorStyles.tableViewToolbarTextStyle);
+                    GUILayout.Label("Name", GameFoundationEditorStyles.tableViewToolbarTextStyle);
                     GUILayout.Label("Prefab", GameFoundationEditorStyles.tableViewToolbarTextStyle);
                     GUILayout.Space(40f); // "x" column
                 }
 
                 if (m_ListItems.Count > 0)
                 {
-                    int indexToDelete = -1;
+                    var indexToDelete = -1;
 
-                    for (int i = m_ListItems.Count - 1; i >= 0; i--)
+                    for (var i = m_ListItems.Count - 1; i >= 0; i--)
                     {
                         // draw row
 
                         using (new GUILayout.HorizontalScope())
                         {
                             // delayed text field will make for less annoying validation
-                            m_ListItems[i].keyProperty.stringValue =
-                                EditorGUILayout.DelayedTextField(m_ListItems[i].keyProperty.stringValue);
+                            m_ListItems[i].nameProperty.stringValue =
+                                EditorGUILayout.DelayedTextField(m_ListItems[i].nameProperty.stringValue);
 
                             EditorGUILayout.PropertyField(m_ListItems[i].valueProperty, GUIContent.none);
 
@@ -119,7 +119,7 @@ namespace UnityEditor.GameFoundation
                     // do any actual deletion outside the rendering loop to prevent sync issues
                     if (indexToDelete >= 0)
                     {
-                        m_Keys_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
+                        m_Names_SerializedProperty.DeleteArrayElementAtIndex(indexToDelete);
 
                         // when array elements are object references,
                         // if it's not null, you need an extra delete call to make it null first,
@@ -140,56 +140,27 @@ namespace UnityEditor.GameFoundation
 
                 if (GUILayout.Button("+"))
                 {
-                    m_Keys_SerializedProperty.InsertArrayElementAtIndex(0);
-                    SerializedProperty newKeySerializedProperty = m_Keys_SerializedProperty.GetArrayElementAtIndex(0);
-                    newKeySerializedProperty.stringValue = m_TargetDefinition.GetNextValidKey();
+                    m_Names_SerializedProperty.InsertArrayElementAtIndex(0);
+                    var newNameSerializedProperty = m_Names_SerializedProperty.GetArrayElementAtIndex(0);
+                    newNameSerializedProperty.stringValue = PrefabAssetsDetailDefinition.k_NewPrefabName;
 
                     m_Values_SerializedProperty.InsertArrayElementAtIndex(0);
-                    SerializedProperty newValueSerializedProperty = m_Values_SerializedProperty.GetArrayElementAtIndex(0);
+                    var newValueSerializedProperty = m_Values_SerializedProperty.GetArrayElementAtIndex(0);
                     newValueSerializedProperty.objectReferenceValue = null;
                 }
 
                 if (changeCheck.changed)
                 {
-                    // validate all keys here, and cancel the changes if there is a duplicate key
-                    // this can't be done by the target object,
-                    // because the target object doesn't know about the new changes yet
-
-                    bool detectedEmptyKey = false;
-                    bool detectedDuplicateKey = false;
-                    List<string> validatedKeys = new List<string>();
-
-                    for (int i = 0; i < m_Keys_SerializedProperty.arraySize; i++)
+                    for (var i = 0; i < m_Names_SerializedProperty.arraySize; i++)
                     {
-                        string key = m_Keys_SerializedProperty.GetArrayElementAtIndex(i).stringValue;
-
-                        if (string.IsNullOrEmpty(key))
+                        if (string.IsNullOrEmpty(m_Names_SerializedProperty.GetArrayElementAtIndex(i).stringValue))
                         {
-                            detectedEmptyKey = true;
-                            break;
+                            m_Names_SerializedProperty.GetArrayElementAtIndex(i).stringValue
+                                = PrefabAssetsDetailDefinition.k_NewPrefabName;
                         }
-
-                        if (validatedKeys.Contains(key))
-                        {
-                            detectedDuplicateKey = true;
-                            break;
-                        }
-
-                        validatedKeys.Add(key);
                     }
 
-                    if (detectedEmptyKey)
-                    {
-                        EditorUtility.DisplayDialog("Empty Key", "Empty keys are not allowed. Please enter a different key.", "OK");
-                    }
-                    else if (detectedDuplicateKey)
-                    {
-                        EditorUtility.DisplayDialog("Non-Unique Key", "The key you entered is already in use in this list. Please enter a different key.", "OK");
-                    }
-                    else
-                    {
-                        serializedObject.ApplyModifiedProperties();
-                    }
+                    serializedObject.ApplyModifiedProperties();
 
                     RefreshCache();
                 }

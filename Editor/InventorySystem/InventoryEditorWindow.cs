@@ -1,6 +1,3 @@
-﻿using System.Collections.Generic;
-using UnityEngine.GameFoundation;
-
 namespace UnityEditor.GameFoundation
 {
     /// <summary>
@@ -8,17 +5,6 @@ namespace UnityEditor.GameFoundation
     /// </summary>
     internal class InventoryEditorWindow : CollectionEditorWindowBase
     {
-
-        private InventoryCatalog m_SelectedAssetToLoad;
-        private InventoryCatalog m_NewSelectedAssetToLoad;
-
-        private static List<ICollectionEditor> m_InventoryEditors = new List<ICollectionEditor>();
-
-        protected override List<ICollectionEditor> m_Editors
-        {
-            get { return m_InventoryEditors; }
-        }
-
         /// <summary>
         /// Opens the Inventories window (and creates one if one doesn't exist already).
         /// </summary>
@@ -30,13 +16,13 @@ namespace UnityEditor.GameFoundation
         /// <summary>
         /// Adds the editors for the inventory system as tabs in the window.
         /// </summary>
-        public override void CreateEditors()
+        protected override void CreateEditors()
         {
-            m_InventoryEditors.Clear();
+            m_Editors.Clear();
 
-            m_InventoryEditors.Add(new InventoryItemDefinitionEditor("Inventory Items", this));
-            m_InventoryEditors.Add(new InventoryDefinitionEditor("Inventories", this));
-            m_InventoryEditors.Add(new CategoryDefinitionEditor("Categories", this));
+            m_Editors.Add(new InventoryItemDefinitionEditor("Inventory Items"));
+            m_Editors.Add(new InventoryDefinitionEditor("Inventories"));
+            m_Editors.Add(new CategoryDefinitionEditor("Categories"));
         }
     }
 }

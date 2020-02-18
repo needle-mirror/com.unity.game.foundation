@@ -1,5 +1,7 @@
 ﻿using System;
-using UnityEngine.GameFoundation.DataPersistence;
+using System.Collections;
+using UnityEngine.GameFoundation.CatalogManagement;
+using UnityEngine.GameFoundation.Promise;
 
 namespace UnityEngine.GameFoundation
 {
@@ -18,8 +20,6 @@ namespace UnityEngine.GameFoundation
 
         public static string currentVersion { get; private set; }
 
-        internal const string k_GameFoundationPersistenceId = "gamefoundation_persistence";
-
         private static InitializationStatus m_InitializationStatus = InitializationStatus.NotInitialized;
 
         /// <summary>
@@ -30,179 +30,165 @@ namespace UnityEngine.GameFoundation
         {
             get { return m_InitializationStatus == InitializationStatus.Initialized; }
         }
-        
+
+        static PromiseGenerator s_PromiseGenerator;
+
+        static IDataAccessLayer s_DataLayer;
+
+        /// <summary>
+        /// A dummy MonoBehaviour to run updates functions and coroutines.
+        /// Used since <see cref="GameFoundation"/> and its services are static.
+        /// </summary>
+        internal static GameFoundationUpdater updater;
+
         /// <summary>
         /// Initialize the GameFoundation . It need a persistence object to be passed as argument to set the default persistence layer
         /// If the initialization fails, onInitializeFailed will be called with an exception.
         /// </summary>
-        /// <param name="dataPersistence">The persistence layer of the Game Foundation. Required and cached for future execution</param>
+        /// <param name="dataLayer">The data provider for the inventory manager.</param>
         /// <param name="onInitializeCompleted">Called when the initialization process is completed with success</param>
         /// <param name="onInitializeFailed">Called when the initialization process failed</param>
         public static void Initialize(
-            IDataPersistence dataPersistence = null, 
-            Action onInitializeCompleted = null, 
-            Action onInitializeFailed = null)
+            IDataAccessLayer dataLayer,
+            Action onInitializeCompleted = null,
+            Action<Exception> onInitializeFailed = null)
         {
             if (m_InitializationStatus == InitializationStatus.Initializing ||
                 m_InitializationStatus == InitializationStatus.Initialized)
             {
-                Debug.LogWarning("GameFoundation is already initialized and cannot be initialized again.");
-                onInitializeFailed?.Invoke();
-                
+                const string message = "GameFoundation is already initialized and cannot be initialized again.";
+                Debug.LogWarning(message);
+                onInitializeFailed?.Invoke(new Exception(message));
+
                 return;
             }
 
+            if (dataLayer == null)
+            {
+                const string errorMessage = "GameFoundation requires a valid data layer to be initialized.";
+                onInitializeFailed?.Invoke(new NullReferenceException(errorMessage));
+
+                return;
+            }
+
+            updater = new GameObject(nameof(GameFoundationUpdater))
+                .AddComponent<GameFoundationUpdater>();
+
+            s_PromiseGenerator = new PromiseGenerator();
+
+            s_DataLayer = dataLayer;
+
             m_InitializationStatus = InitializationStatus.Initializing;
-            
-            if (dataPersistence != null)
-            {
-                LoadData(dataPersistence,
-                    data =>
-                    {
-                        InitializeSystems(data, onInitializeCompleted, onInitializeFailed);
-                    },
-                    error =>
-                    {
-                        InitializeSystems(null, onInitializeCompleted, onInitializeFailed);
-                    });
-            }
-            else
-            {
-                InitializeSystems(null, onInitializeCompleted, onInitializeFailed);
-            }
 
-            currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
-            Debug.Log($"Successfully initialized Game Foundation version {currentVersion}");
-        }
-
-        static void InitializeSystems(ISerializableData data, Action onInitializeCompleted = null, Action onInitializeFailed = null)
-        {
-            bool isInitialized = true;
-            
             try
             {
-                NotificationSystem.temporaryDisable = true;
-                isInitialized = GameItemLookup.Initialize(data) &&
-                                StatManager.Initialize(data) &&
-                                InventoryManager.Initialize(data);
+                EditorCatalogProvider.InitializeCatalogs();
+            }
+            catch (Exception e)
+            {
+                var customException = new Exception("GameFoundation failed to initialize runtime catalogs from editor catalogs", e);
+                Debug.LogException(customException);
+                m_InitializationStatus = InitializationStatus.Failed;
+                onInitializeFailed?.Invoke(customException);
 
-                if (isInitialized)
+                return;
+            }
+
+            var routine = InitializeRoutine(onInitializeCompleted, onInitializeFailed);
+
+#if !UNITY_EDITOR
+            updater.StartCoroutine(routine);
+#else
+
+            //Schedule initialization when playing
+            if (Application.isPlaying)
+            {
+                updater.StartCoroutine(routine);
+            }
+
+            //Force initialization in editor (can happen for editor tests)
+            else
+            {
+                void PlayCoroutine(IEnumerator coroutine)
                 {
-                    AnalyticsWrapper.Initialize();
+                    bool hasNext;
+                    do
+                    {
+                        if (coroutine.Current is IEnumerator subRoutine)
+                        {
+                            PlayCoroutine(subRoutine);
+                        }
+
+                        hasNext = coroutine.MoveNext();
+                    } while (hasNext);
                 }
 
-                NotificationSystem.temporaryDisable = false;
+                PlayCoroutine(routine);
             }
-            catch
+#endif
+        }
+
+        /// <summary>
+        /// Initializes Game Foundation
+        /// </summary>
+        /// <param name="onInitializeCompleted">Called if the initialization is a success</param>
+        /// <param name="onInitializeFailed">Called if the initialization is a failure</param>
+        static IEnumerator InitializeRoutine(Action onInitializeCompleted, Action<Exception> onInitializeFailed)
+        {
+            s_PromiseGenerator.GetPromiseHandles(out var dalInitDeferred, out var dalInitCompleter);
+
+            s_DataLayer.Initialize(dalInitCompleter);
+
+            if (!dalInitDeferred.isDone)
             {
-                isInitialized = false;
+                yield return dalInitDeferred.Wait();
             }
 
-            if (isInitialized)
+            var isFulfilled = dalInitDeferred.isFulfilled;
+            var error = dalInitDeferred.error;
+            dalInitDeferred.Release();
+
+            if (isFulfilled)
             {
+                NotificationSystem.temporaryDisable = true;
+
+                try
+                {
+                    //The order in which managers are initialized is important since they are codependent.
+                    //Be cautious if you want to change it.
+                    //The current order is: GameItemLookup -> StatManager -> InventoryManager;
+                    GameItemLookup.Initialize(s_DataLayer);
+                    StatManager.Initialize(s_DataLayer);
+                    InventoryManager.Initialize(s_DataLayer);
+
+                    AnalyticsWrapper.Initialize();
+                }
+                finally
+                {
+                    NotificationSystem.temporaryDisable = false;
+                }
+
                 m_InitializationStatus = InitializationStatus.Initialized;
+
+                currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+                Debug.Log($"Successfully initialized Game Foundation version {currentVersion}");
+
                 onInitializeCompleted?.Invoke();
             }
             else
             {
                 Uninitialize();
-                
-                Debug.LogWarning("GameFoundation can't be initialized.");
-                
+
+                Debug.LogWarning("GameFoundation can't be initialized: " + error);
+
                 m_InitializationStatus = InitializationStatus.Failed;
-                onInitializeFailed?.Invoke();
+
+                onInitializeFailed?.Invoke(error);
             }
         }
-        
-        /// <summary>
-        /// Asynchronously loads data from the persistence layer and populates managed systems with it
-        /// </summary>
-        /// <param name="dataPersistence">The persistence layer used to execute the process</param>
-        /// <param name="onLoadCompleted">Called when the loading process is completed with success</param>
-        /// <param name="onLoadFailed">Called when the loading process failed</param>
-        public static void Load(
-            IDataPersistence dataPersistence, 
-            Action onLoadCompleted = null, 
-            Action<Exception> onLoadFailed = null)
-        {
-            if (dataPersistence == null)
-            {
-                const string kExceptionMessage = "A valid DataPersistence is required to load GameFoundation.";
-                onLoadFailed?.Invoke(new ArgumentException(kExceptionMessage));
-                Debug.LogWarning(kExceptionMessage);
 
-                return;
-            }
-
-            LoadData(dataPersistence,
-                data =>
-                {
-                    try
-                    {
-                        FillAllSystems(data);
-                        onLoadCompleted?.Invoke();
-                    }
-                    catch (Exception e)
-                    {
-                        onLoadFailed?.Invoke(e);
-                    }
-                    
-                }, onLoadFailed);
-        }
-        
-        /// <summary>
-        /// Asynchronously saves data through the persistence layer.
-        /// </summary>
-        /// <param name="dataPersistence">The persistence layer used to execute the process</param>
-        /// <param name="onSaveCompleted">Called when the saving process is completed with success</param>
-        /// <param name="onSaveFailed">Called when the saving process failed</param>
-        public static void Save(
-            IDataPersistence dataPersistence, 
-            Action onSaveCompleted = null, 
-            Action<Exception> onSaveFailed = null)
-        {
-            if (dataPersistence == null)
-            {
-                const string kExceptionMessage = "A valid DataPersistence is required to save GameFoundation.";
-                onSaveFailed?.Invoke(new ArgumentException(kExceptionMessage));
-                Debug.LogWarning(kExceptionMessage);
-
-                return;
-            }
-            
-            if (!InventoryManager.IsInitialized)
-            {
-                const string kExceptionMessage = "Cannot save GameFoundation. InventoryManager is not initialized.";
-                onSaveFailed?.Invoke(new NullReferenceException(kExceptionMessage));
-                Debug.LogWarning(kExceptionMessage);
-
-                return;
-            }
-            
-            if (!StatManager.IsInitialized)
-            {
-                const string kExceptionMessage = "Cannot save GameFoundation. StatManager is not initialized.";
-                onSaveFailed?.Invoke(new NullReferenceException(kExceptionMessage));
-                Debug.LogWarning(kExceptionMessage);
-
-                return;
-            }
-
-            StatManagerSerializableData statManagerData = StatManager.GetSerializableData();
-            InventoryManagerSerializableData inventoryManagerData = InventoryManager.GetSerializableData();
-            GameItemLookupSerializableData lookupData = GameItemLookup.GetSerializableData();
-            
-            GameFoundationSerializableData gameFoundationData = new GameFoundationSerializableData(
-                BaseDataPersistence.k_SaveVersion, 
-                statManagerData,
-                inventoryManagerData,
-                lookupData);
-            
-            dataPersistence.Save(k_GameFoundationPersistenceId, gameFoundationData, onSaveCompleted, onSaveFailed);
-        }
-
-        internal static void Uninitialize()
+        public static void Uninitialize()
         {
             m_InitializationStatus = InitializationStatus.NotInitialized;
 
@@ -211,45 +197,45 @@ namespace UnityEngine.GameFoundation
             GameItemLookup.Unintialize();
             StatManager.Uninitialize();
             AnalyticsWrapper.Uninitialize();
-        }
 
-        private static void LoadData
-        (
-            IDataPersistence dataPersistence,
-            Action<ISerializableData> onLoadCompleted = null,
-            Action<Exception> onLoadFailed = null)
-        {
-            if (dataPersistence == null)
+            if (updater != null)
             {
-                const string kExceptionMessage = "A valid DataPersistence is required to load data.";
-                onLoadFailed?.Invoke(new ArgumentException(kExceptionMessage));
-                Debug.LogWarning(kExceptionMessage);
-                
-                return;
-            }
-            
-            dataPersistence.Load<GameFoundationSerializableData>(k_GameFoundationPersistenceId,
-                data =>
+#if !UNITY_EDITOR
+                Object.Destroy(updater.gameObject);
+#else
+                if (Application.isPlaying)
                 {
-                    try
-                    {
-                        onLoadCompleted?.Invoke(data);
-                    }
-                    catch (Exception e)
-                    {
-                        onLoadFailed?.Invoke(e);
-                    }
-                },
-                error => { onLoadFailed?.Invoke(error); });
+                    Object.Destroy(updater.gameObject);
+                }
+                else
+                {
+                    Object.DestroyImmediate(updater.gameObject);
+                }
+#endif
+
+                updater = null;
+            }
         }
 
-        private static void FillAllSystems(ISerializableData data)
+        /// <summary>
+        /// Provides a couple deferred/completer with no associated result.
+        /// </summary>
+        /// <param name="deferred">A reference to the future value</param>
+        /// <param name="completer">A target container for the future value</param>
+        internal static void GetPromiseHandles(out Deferred deferred, out Completer completer)
         {
-            NotificationSystem.temporaryDisable = true;
-            GameItemLookup.FillFromLookupData(data);
-            InventoryManager.FillFromInventoriesData(data);
-            StatManager.FillFromStatsData(data);
-            NotificationSystem.temporaryDisable = false;
+            s_PromiseGenerator.GetPromiseHandles(out deferred, out completer);
+        }
+
+        /// <summary>
+        /// Provides a couple deferred/completer with an associated result.
+        /// </summary>
+        /// <typeparam name="TResult">The type of the expected result</typeparam>
+        /// <param name="deferred">A reference to the future value</param>
+        /// <param name="completer">A target container for the future value</param>
+        internal static void GetPromiseHandles<TResult>(out Deferred<TResult> deferred, out Completer<TResult> completer)
+        {
+            s_PromiseGenerator.GetPromiseHandles(out deferred, out completer);
         }
     }
 }

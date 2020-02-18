@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -11,11 +10,12 @@ namespace UnityEditor.GameFoundation
     /// </summary>
     internal class ReadableNameIdEditor
     {
-        private bool m_AutomaticIdGenerationMode = true;
-        private bool m_IdEditingAllowedMode = true;
-        private HashSet<string> m_OldIds = new HashSet<string>();
-        private static GUIContent s_DisplayNameLabel = new GUIContent("Display Name", "This is the readable name of the definition being created. Can be used for logging and displaying to users.");
-        private static GUIContent s_IdLabel = new GUIContent("Id", "This is the code-friendly identifier of the definition being created. Valid Ids are alphanumeric with optional dashes or underscores. Can be used for looking up and referencing definitions in code.");
+        private bool m_AutomaticIdGenerationMode;
+        private readonly bool m_IdEditingAllowedMode;
+        private readonly HashSet<string> m_OldIds;
+
+        private static readonly GUIContent s_DisplayNameLabel = new GUIContent("Display Name", "This definition's name, as displayed in the UI and logs. Must be alphanumeric, with at least one letter. Spaces, special characters, and underscores are allowed.");
+        private static readonly GUIContent s_IdLabel = new GUIContent("Id", "This definition's identifier within the application. May be visible in the UI as well as code and logs. Must be alphanumeric, with at least one letter.  Dashes (-) and underscores (_) allowed.");
 
         public ReadableNameIdEditor(bool createNewMode, HashSet<string> oldIds)
         {
@@ -56,11 +56,11 @@ namespace UnityEditor.GameFoundation
 
                     if (HasRegisteredId(itemId))
                     {
-                        EditorGUILayout.HelpBox("The current Id will conflict with existing Ids.", MessageType.Error);
+                        EditorGUILayout.HelpBox("The current Id conflicts with existing Ids.", MessageType.Error);
                     }
                     else if (!string.IsNullOrWhiteSpace(itemId) && !CollectionEditorTools.IsValidId(itemId))
                     {
-                        EditorGUILayout.HelpBox("The current Id is not valid. Ensure it is alphanumeric with optional - and _ characters", MessageType.Error);
+                        EditorGUILayout.HelpBox("The current Id is not valid. A valid Id is alphanumeric, with at least one letter. Dashes (-) and underscores (_) allowed.", MessageType.Error);
                     }
                 }
                 else
@@ -78,27 +78,32 @@ namespace UnityEditor.GameFoundation
         /// Determines if the proposed Id will conflict with those registered in the system that this ReadableNameIdEditor object exists in.
         /// </summary>
         /// <param name="itemId">Id to check</param>
-        /// <returns>Whether this Id is prolematic</returns>
+        /// <returns>Whether this Id is problematic</returns>
         public bool HasRegisteredId(string itemId)
         {
             return m_OldIds.Contains(itemId);
         }
-        
+
         private void ConvertIdIfNecessary(ref string itemId, ref string displayName)
         {
-            Event e = Event.current;
-            bool desiredEvent = e.Equals(Event.KeyboardEvent("tab")) || e.type.Equals(EventType.MouseDown);
-            bool desiredControlFocus = GUI.GetNameOfFocusedControl() == "displayName" || GUI.GetNameOfFocusedControl() == "id";
+            var e = Event.current;
+            var desiredEvent = e.Equals(Event.KeyboardEvent("tab")) || e.type.Equals(EventType.MouseDown);
+            var desiredControlFocus = GUI.GetNameOfFocusedControl() == "displayName" || GUI.GetNameOfFocusedControl() == "id";
 
-            if (desiredEvent && desiredControlFocus && !String.IsNullOrEmpty(displayName) && (m_AutomaticIdGenerationMode || String.IsNullOrEmpty(itemId)))
+            if (!desiredEvent
+                || !desiredControlFocus
+                || string.IsNullOrEmpty(displayName)
+                || (!m_AutomaticIdGenerationMode && !string.IsNullOrEmpty(itemId)))
             {
-                if (String.IsNullOrEmpty(itemId))
-                {
-                    m_AutomaticIdGenerationMode = true;
-                }
-
-                itemId = CollectionEditorTools.CraftUniqueId(displayName, m_OldIds);
+                return;
             }
+
+            if (string.IsNullOrEmpty(itemId))
+            {
+                m_AutomaticIdGenerationMode = true;
+            }
+
+            itemId = CollectionEditorTools.CraftUniqueId(displayName, m_OldIds);
         }
     }
 }

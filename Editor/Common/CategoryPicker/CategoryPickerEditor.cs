@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UnityEditor.IMGUI.Controls;
-using UnityEngine.GameFoundation;
+using UnityEngine.GameFoundation.CatalogManagement;
 
 namespace UnityEditor.GameFoundation
 {
@@ -13,7 +13,7 @@ namespace UnityEditor.GameFoundation
     {
         private class CategoryRow
         {
-            public List<CategoryDefinition> categories;
+            public readonly List<CategoryDefinition> categories;
 
             public CategoryRow()
             {
@@ -22,38 +22,37 @@ namespace UnityEditor.GameFoundation
         }
 
         private CategoryDefinition[] m_CategoryDefinitions;
-        public CategoryDefinition[] categoryDefinitions
-        {
-            get { return m_CategoryDefinitions; }
-        }
+        public CategoryDefinition[] categoryDefinitions => m_CategoryDefinitions;
 
         private List<CategoryRow> m_WrappableCategoryRows = new List<CategoryRow>();
         private List<CategoryDefinition> m_CategorySearchResults = new List<CategoryDefinition>();
         private List<CategoryDefinition> m_AssignedCategories;
 
-        private Rect m_CategoryItemsRect = new Rect();
+        private Rect m_CategoryItemsRect;
         private string m_CategorySearchString = string.Empty;
         private string m_CategorySearchStringPrevious = string.Empty;
-        private SearchField m_CategorySearchField = new SearchField();
+        private readonly SearchField m_CategorySearchField = new SearchField();
 
         private Rect m_SuggestRect;
         private Vector2 m_CategorySearchSuggestScrollPosition = Vector2.zero;
         private int m_CategorySuggestSelectedIndex = -1;
-        private bool m_UsedScrollWheelInSuggestBox = false;
+        private bool m_UsedScrollWheelInSuggestBox;
 
-        private CategoryFilterEditor m_CategoryFilterEditor = new CategoryFilterEditor();
+        private readonly CategoryFilterEditor m_CategoryFilterEditor = new CategoryFilterEditor();
 
-        private static GUIContent s_CategoryLabel = new GUIContent("Categories", "Assign existing categories or create new ones. Categories can be used to filter items in the editor, or to get groups of items in code.");
+        private static readonly GUIContent s_CategoryLabel = new GUIContent(
+            "Categories",
+            "Assign existing categories or create new ones. Use categories to filter/group items in the editor and code.");
 
         /// <summary>
         /// Re-cache the collection of categories from the inventory catalog.
         /// </summary>
         public void RefreshCategories()
         {
-            if (GameFoundationSettings.database != null
-                && GameFoundationSettings.database.inventoryCatalog != null)
+            if (GameFoundationDatabaseSettings.database != null
+                && GameFoundationDatabaseSettings.database.inventoryCatalog != null)
             {
-                m_CategoryDefinitions = GameFoundationSettings.database.inventoryCatalog.GetCategories();
+                m_CategoryDefinitions = GameFoundationDatabaseSettings.database.inventoryCatalog.GetCategories();
             }
             else
             {
@@ -147,15 +146,23 @@ namespace UnityEditor.GameFoundation
                             if (!string.IsNullOrEmpty(m_CategorySearchString) && m_CategorySearchResults.Count <= 0)
                             {
                                 // Disable Category Add Button if the category they are trying to add is not a valid id
-                                bool addButtonDisabled = !CollectionEditorTools.IsValidId(CollectionEditorTools.CraftUniqueId(m_CategorySearchString,new HashSet<string>(m_CategoryDefinitions.Select(category => category.id))));
-                                
-                                EditorGUI.BeginDisabledGroup(addButtonDisabled);
-                                if (GUILayout.Button(new GUIContent("Add", addButtonDisabled ? "Input cannot contain only numerical values" : string.Empty), GUILayout.Width(CategoryPickerStyles.categoryAddButtonWidth)))
+                                var addButtonDisabled = !CollectionEditorTools.IsValidId(
+                                    CollectionEditorTools.CraftUniqueId(
+                                        m_CategorySearchString,
+                                        new HashSet<string>(m_CategoryDefinitions.Select(category => category.id))));
+
+                                using (new EditorGUI.DisabledGroupScope(addButtonDisabled))
                                 {
-                                    // same as if user presses Enter or Return
-                                    CreateAndAssignCategoryFromSearchField(gameItemDefinition);
+                                    var tooltip = addButtonDisabled
+                                        ? "No existing categories matched. If creating a new category, the input must contain at least one letter."
+                                        : string.Empty;
+
+                                    if (GUILayout.Button(new GUIContent("Add", tooltip), GUILayout.Width(CategoryPickerStyles.categoryAddButtonWidth)))
+                                    {
+                                        // same as if user presses Enter or Return
+                                        CreateAndAssignCategoryFromSearchField(gameItemDefinition);
+                                    }
                                 }
-                                EditorGUI.EndDisabledGroup();
                             }
                         }
 
@@ -173,7 +180,7 @@ namespace UnityEditor.GameFoundation
                             m_CategoryItemsRect.x += 12f;
                             m_CategoryItemsRect.y += 18f;
 
-                            RecalculateCategoryBoxHeight(gameItemDefinition);
+                            RecalculateCategoryBoxHeight();
                         }
 
                         // don't modify a collection while iterating through it
@@ -188,31 +195,34 @@ namespace UnityEditor.GameFoundation
                             // for/while inside GUILayout horizontal and vertical scopes will
                             // generate errors between Layout and Repaint events (chicken/egg problem)
 
-                            for (int categoryRowIndex = 0; categoryRowIndex < m_WrappableCategoryRows.Count; categoryRowIndex++)
+                            for (var categoryRowIndex = 0; categoryRowIndex < m_WrappableCategoryRows.Count; categoryRowIndex++)
                             {
-                                CategoryRow row = m_WrappableCategoryRows[categoryRowIndex];
+                                var row = m_WrappableCategoryRows[categoryRowIndex];
 
-                                float rowHeight = CategoryPickerStyles.categoryListItemStyle.CalcHeight(new GUIContent("lorem ipsum"), 1000f);
+                                var rowHeight = CategoryPickerStyles.categoryListItemStyle.CalcHeight(new GUIContent("lorem ipsum"), 1000f);
 
-                                Rect rowRect = new Rect(m_CategoryItemsRect);
-                                rowRect.height = rowHeight;
+                                var rowRect = new Rect(m_CategoryItemsRect) {height = rowHeight};
                                 rowRect.y += categoryRowIndex * rowHeight;
                                 rowRect.y += categoryRowIndex * CategoryPickerStyles.categoryItemMargin;
 
-                                float curX = 0f;
+                                var curX = 0f;
 
-                                foreach (CategoryDefinition category in row.categories)
+                                foreach (var category in row.categories)
                                 {
-                                    Vector2 categoryNameContentSize = CategoryPickerStyles.categoryListItemStyle.CalcSize(new GUIContent(category.displayName));
+                                    var categoryNameContentSize = CategoryPickerStyles.categoryListItemStyle.CalcSize(new GUIContent(category.displayName));
 
-                                    Rect itemRect = new Rect(rowRect);
+                                    var itemRect = new Rect(rowRect);
                                     itemRect.x += curX;
                                     itemRect.width = categoryNameContentSize.x + CategoryPickerStyles.categoryListItemStyle.padding.horizontal;
 
-                                    Rect categoryDeleteButtonRect = new Rect(itemRect);
+                                    var categoryDeleteButtonRect = new Rect(itemRect)
+                                    {
+                                        x = itemRect.x + itemRect.width - CategoryPickerStyles.categoryRemoveButtonSpaceWidth,
+                                        width = CategoryPickerStyles.categoryRemoveButtonSpaceWidth
+                                    };
+
                                     // adjust the X rect over to the right side
-                                    categoryDeleteButtonRect.x = itemRect.x + itemRect.width - CategoryPickerStyles.categoryRemoveButtonSpaceWidth;
-                                    categoryDeleteButtonRect.width = CategoryPickerStyles.categoryRemoveButtonSpaceWidth;
+
                                     // nudge it a bit to look better
                                     categoryDeleteButtonRect.x -= 2;
                                     categoryDeleteButtonRect.y += 4;
@@ -229,11 +239,13 @@ namespace UnityEditor.GameFoundation
                             }
                         }
 
-                        if (categoryToRemove != null)
+                        if (categoryToRemove == null)
                         {
-                            gameItemDefinition.RemoveCategory(categoryToRemove);
-                            RefreshAssignedCategories(gameItemDefinition);
+                            return;
                         }
+
+                        gameItemDefinition.RemoveCategory(categoryToRemove);
+                        RefreshAssignedCategories(gameItemDefinition);
                     }
                 }
             }
@@ -255,11 +267,11 @@ namespace UnityEditor.GameFoundation
 
             if (!m_UsedScrollWheelInSuggestBox)
             {
-                float rowHeight = CategoryPickerStyles.categorySuggestItemStyle.CalcSize(new GUIContent("lorem ipsum")).y;
-                float minVisibleY = m_CategorySearchSuggestScrollPosition.y;
-                float maxVisibleY = m_SuggestRect.height + m_CategorySearchSuggestScrollPosition.y;
-                float selectedItemTopY = rowHeight * m_CategorySuggestSelectedIndex;
-                float selectedItemBottomY = selectedItemTopY + rowHeight;
+                var rowHeight = CategoryPickerStyles.categorySuggestItemStyle.CalcSize(new GUIContent("lorem ipsum")).y;
+                var minVisibleY = m_CategorySearchSuggestScrollPosition.y;
+                var maxVisibleY = m_SuggestRect.height + m_CategorySearchSuggestScrollPosition.y;
+                var selectedItemTopY = rowHeight * m_CategorySuggestSelectedIndex;
+                var selectedItemBottomY = selectedItemTopY + rowHeight;
 
                 if (minVisibleY > selectedItemTopY)
                 {
@@ -276,23 +288,25 @@ namespace UnityEditor.GameFoundation
 
             using (new GUILayout.AreaScope(m_SuggestRect, "", CategoryPickerStyles.searchSuggestAreaStyle))
             {
-                using (var scrollViewScope = new GUILayout.ScrollViewScope(m_CategorySearchSuggestScrollPosition, false, true))
+                using (var scrollViewScope = new EditorGUILayout.ScrollViewScope(m_CategorySearchSuggestScrollPosition, false, true))
                 {
                     m_CategorySearchSuggestScrollPosition = scrollViewScope.scrollPosition;
 
-                    for (int resultIndex = 0; resultIndex < m_CategorySearchResults.Count; resultIndex++)
+                    for (var resultIndex = 0; resultIndex < m_CategorySearchResults.Count; resultIndex++)
                     {
-                        CategoryDefinition suggestedCategory = m_CategorySearchResults[resultIndex];
+                        var suggestedCategory = m_CategorySearchResults[resultIndex];
 
                         // use the normal style, unless this is the highlighted item, in which case use the highlighted style
-                        GUIStyle style = resultIndex == m_CategorySuggestSelectedIndex ? CategoryPickerStyles.categorySuggestItemStyleSelected : CategoryPickerStyles.categorySuggestItemStyle;
+                        var style = resultIndex == m_CategorySuggestSelectedIndex
+                            ? CategoryPickerStyles.categorySuggestItemStyleSelected
+                            : CategoryPickerStyles.categorySuggestItemStyle;
 
                         if (GUILayout.Button(suggestedCategory.displayName, style, GUILayout.ExpandWidth(true)))
                         {
                             AssignCategory(gameItemDefinition, suggestedCategory);
-                            ResetCategorySearch(takeFocus: true);
+                            ResetCategorySearch(true);
                             UpdateCategorySuggestions();
-                            RecalculateCategoryBoxHeight(gameItemDefinition);
+                            RecalculateCategoryBoxHeight();
                         }
                     }
                 }
@@ -303,83 +317,82 @@ namespace UnityEditor.GameFoundation
         {
             if (string.IsNullOrEmpty(m_CategorySearchString)) return;
 
-            if (Event.current.type == EventType.KeyUp)
+            if (Event.current.type != EventType.KeyUp)
             {
-                switch (Event.current.keyCode)
-                {
-                    case KeyCode.UpArrow:
-                        if (m_CategorySearchResults.Count > 0)
-                        {
-                            Event.current.Use();
-
-                            m_CategorySuggestSelectedIndex -= 1;
-                            m_UsedScrollWheelInSuggestBox = false;
-                        }
-                        break;
-
-                    case KeyCode.DownArrow:
-                        if (m_CategorySearchResults.Count > 0)
-                        {
-                            Event.current.Use();
-                            m_CategorySuggestSelectedIndex += 1;
-                            m_UsedScrollWheelInSuggestBox = false;
-                        }
-                        break;
-
-                    case KeyCode.Return:
-                    case KeyCode.KeypadEnter:
-                    case KeyCode.Tab:
-                        Event.current.Use();
-
-                        if (m_CategorySearchResults.Count > 0)
-                        {
-                            if (m_CategorySuggestSelectedIndex >= 0)
-                            {
-                                // if there are results and one is selected, then assign it
-                                AssignCategory(gameItemDefinition, m_CategorySearchResults[m_CategorySuggestSelectedIndex]);
-                                RecalculateCategoryBoxHeight(gameItemDefinition);
-                            }
-                            else
-                            {
-                                // if there are results but none are selected, then do nothing
-                            }
-                        }
-                        else if (Event.current.keyCode != KeyCode.Tab)
-                        {
-                            // same as if "Add" is clicked
-                            // if there are no suggestions but there is search string, then create a new category
-                            // but it's probably not expected when tab key is used, so we'll exclude that one
-
-                            CreateAndAssignCategoryFromSearchField(gameItemDefinition);
-                        }
-
-                        ResetCategorySearch(takeFocus: true);
-                        UpdateCategorySuggestions();
-                        break;
-
-                    case KeyCode.Escape:
-                        Event.current.Use();
-                        ResetCategorySearch();
-                        UpdateCategorySuggestions();
-                        break;
-
-                    default:
-                        break;
-                }
-
-                CorrectCategorySearchSuggestSelectedIndex();
+                return;
             }
+
+            switch (Event.current.keyCode)
+            {
+                case KeyCode.UpArrow:
+                    if (m_CategorySearchResults.Count > 0)
+                    {
+                        Event.current.Use();
+
+                        m_CategorySuggestSelectedIndex -= 1;
+                        m_UsedScrollWheelInSuggestBox = false;
+                    }
+                    break;
+
+                case KeyCode.DownArrow:
+                    if (m_CategorySearchResults.Count > 0)
+                    {
+                        Event.current.Use();
+                        m_CategorySuggestSelectedIndex += 1;
+                        m_UsedScrollWheelInSuggestBox = false;
+                    }
+                    break;
+
+                case KeyCode.Return:
+                case KeyCode.KeypadEnter:
+                case KeyCode.Tab:
+                    Event.current.Use();
+
+                    if (m_CategorySearchResults.Count > 0)
+                    {
+                        if (m_CategorySuggestSelectedIndex >= 0)
+                        {
+                            // if there are results and one is selected, then assign it
+                            AssignCategory(gameItemDefinition, m_CategorySearchResults[m_CategorySuggestSelectedIndex]);
+                            RecalculateCategoryBoxHeight();
+                        }
+                        // if there are results but none are selected, then do nothing
+                    }
+                    else if (Event.current.keyCode != KeyCode.Tab)
+                    {
+                        // same as if "Add" is clicked
+                        // if there are no suggestions but there is search string, then create a new category
+                        // but it's probably not expected when tab key is used, so we'll exclude that one
+
+                        CreateAndAssignCategoryFromSearchField(gameItemDefinition);
+                    }
+
+                    ResetCategorySearch(true);
+                    UpdateCategorySuggestions();
+                    break;
+
+                case KeyCode.Escape:
+                    Event.current.Use();
+                    ResetCategorySearch();
+                    UpdateCategorySuggestions();
+                    break;
+
+                default:
+                    break;
+            }
+
+            CorrectCategorySearchSuggestSelectedIndex();
         }
 
         private void CreateAndAssignCategoryFromSearchField(GameItemDefinition gameItemDefinition)
         {
-            if (GameFoundationSettings.database == null)
+            if (GameFoundationDatabaseSettings.database == null)
             {
                 Debug.LogError("Could not create category because Game Foundation database is null");
                 return;
             }
 
-            if (GameFoundationSettings.database.inventoryCatalog == null)
+            if (GameFoundationDatabaseSettings.database.inventoryCatalog == null)
             {
                 Debug.LogError("Could not create category because inventory catalog is null");
                 return;
@@ -396,30 +409,30 @@ namespace UnityEditor.GameFoundation
                 categoryId = CollectionEditorTools.DeDuplicateNewId(m_CategorySearchString, new HashSet<string>(m_CategoryDefinitions.Select(category => category.id)));
             }
             
-            CategoryDefinition newCategory = new CategoryDefinition(categoryId, m_CategorySearchString);
+            var newCategory = new CategoryDefinition(categoryId, m_CategorySearchString);
 
-            GameFoundationSettings.database.inventoryCatalog.AddCategory(newCategory);
+            GameFoundationDatabaseSettings.database.inventoryCatalog.AddCategory(newCategory);
             RefreshCategories();
             AssignCategory(gameItemDefinition, newCategory);
 
             // Refresh settings with new category
-            RecalculateCategoryBoxHeight(gameItemDefinition);
-            ResetCategorySearch(takeFocus: true);
+            RecalculateCategoryBoxHeight();
+            ResetCategorySearch(true);
             UpdateCategorySuggestions();
             m_CategoryFilterEditor.RefreshSidebarCategoryFilterList(m_CategoryDefinitions);
         }
 
-        private void RecalculateCategoryBoxHeight(GameItemDefinition gameItemDefinition)
+        private void RecalculateCategoryBoxHeight()
         {
-            float currentRowContentWidth = 0f;
+            var currentRowContentWidth = 0f;
 
-            m_WrappableCategoryRows = new List<CategoryRow>() { new CategoryRow() };
+            m_WrappableCategoryRows = new List<CategoryRow> { new CategoryRow() };
 
             if (m_AssignedCategories != null)
             {
-                foreach (CategoryDefinition category in m_AssignedCategories)
+                foreach (var category in m_AssignedCategories)
                 {
-                    Vector2 contentSize = CategoryPickerStyles.categoryListItemStyle.CalcSize(new GUIContent(category.displayName));
+                    var contentSize = CategoryPickerStyles.categoryListItemStyle.CalcSize(new GUIContent(category.displayName));
                     contentSize.x += CategoryPickerStyles.categoryListItemStyle.padding.horizontal + CategoryPickerStyles.categoryRemoveButtonSpaceWidth;
 
                     if (currentRowContentWidth + contentSize.x > m_CategoryItemsRect.width)
@@ -446,19 +459,17 @@ namespace UnityEditor.GameFoundation
                 return;
             }
 
-            CategoryDefinition[] potentialMatches =
+            var potentialMatches =
                 System.Array.FindAll(
                     m_CategoryDefinitions,
                     cat => cat.displayName.ToLowerInvariant().Contains(m_CategorySearchString.ToLowerInvariant()));
 
             m_CategorySearchResults = potentialMatches
-                .Where(potentialCategory => {
-                    if (m_AssignedCategories == null)
-                    {
-                        return false;
-                    }
-                    return m_AssignedCategories.All(existingCategory => existingCategory != potentialCategory);
-                }).ToList();
+                .Where(potentialCategory =>
+                {
+                    return m_AssignedCategories != null && m_AssignedCategories.All(existingCategory => existingCategory != potentialCategory);
+                })
+                .ToList();
 
             CorrectCategorySearchSuggestSelectedIndex();
         }
@@ -481,11 +492,14 @@ namespace UnityEditor.GameFoundation
 
         private void AssignCategory(GameItemDefinition gameItemDefinition, CategoryDefinition addCategory)
         {
-            if (gameItemDefinition != null && addCategory != null)
+            if (gameItemDefinition == null || addCategory == null)
             {
-                gameItemDefinition.AddCategory(addCategory);
-                RefreshAssignedCategories(gameItemDefinition);
+                return;
             }
+
+            gameItemDefinition.AddCategory(addCategory);
+
+            RefreshAssignedCategories(gameItemDefinition);
         }
     }
 }

@@ -1,9 +1,8 @@
-﻿namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// This is one entry in the list of possible stats an item could have.
     /// </summary>
-    [System.Serializable]
     public class StatDefinition
     {
         /// <summary>
@@ -21,86 +20,55 @@
             /// </summary>
             Float,
         }
-
-        /// <summary>
-        /// This is one entry in the list of possible Stats an item could have.
-        /// This method throws if not in editor mode.
-        /// </summary>
-        /// <param name="id">The Id this StatDefinition will use.</param>
-        /// <param name="displayName">The name this StatDefinition will use.</param>
-        /// <param name="statValueType">The value type this StatDefinition will hold.</param>
-        public StatDefinition(string id, string displayName, StatValueType statValueType)
-        {
-            Tools.ThrowIfPlayMode("Cannot construct a StatDefinition while in play mode.");
-
-            if (string.IsNullOrEmpty(id))
-            {
-                throw new System.ArgumentNullException("StatDefinition cannot have null or empty ids.");
-            }
-
-            if (!Tools.IsValidId(id))
-            {
-                throw new System.ArgumentException("StatDefinition can only be alphanumeric with optional dashes or underscores.");
-            }
-            
-            m_Id = id;
-            m_IdHash = Tools.StringToHash(id);
-            m_DisplayName = displayName;
-            m_StatValueType = statValueType;
-        }
-
+        
         /// <summary>
         /// Id for this Stat definition.
         /// </summary>
         /// <returns>id for this Stat definition.</returns>
-        public string id
-        {
-            get { return m_Id; }
-        }
-        [SerializeField]
-        private string m_Id;
+        public string id { get; }
 
         /// <summary>
         /// Hash for Id string for this Stat definition.
         /// </summary>
         /// <returns>Hash for Id string for this Stat definition.</returns>
-        public int idHash
-        {
-            get { return m_IdHash; }
-        }
-        [SerializeField]
-        private int m_IdHash;
+        public int idHash { get; }
 
-        [SerializeField]
-        private string m_DisplayName;
-        
         /// <summary>
         /// Custom string attached to this Stat definition.
         /// </summary>
         /// <returns>Custom string attached to this Stat definition.</returns>
-        public string displayName
-        {
-            get { return m_DisplayName; }
-            set { SetDisplayName(value); }
-        }
-
-        private void SetDisplayName(string name)
-        {
-            Tools.ThrowIfPlayMode("Cannot set the display name of a StatDefinition while in play mode.");
-
-            m_DisplayName = name;
-        }
+        public string displayName { get; }
 
         /// <summary>
         /// Stat value type for this Stat definition.
         /// </summary>
         /// <returns>Stat value type for this Stat definition.</returns>
-        public StatValueType statValueType
+        public StatValueType statValueType { get; }
+
+        /// <summary>
+        /// This is one entry in the list of possible Stats an item could have.
+        /// </summary>
+        /// <param name="id">The Id this StatDefinition will use.</param>
+        /// <param name="displayName">The name this StatDefinition will use.</param>
+        /// <param name="statValueType">The value type this StatDefinition will hold.</param>
+        /// <exception cref="System.ArgumentException">Throws if id parameter is null, empty, or not valid. Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        internal StatDefinition(string id, string displayName, StatValueType statValueType)
         {
-            get { return m_StatValueType; }
+            if (string.IsNullOrEmpty(id))
+            {
+                throw new System.ArgumentException("StatDefinition cannot have null or empty ids.");
+            }
+
+            if (!Tools.IsValidId(id))
+            {
+                throw new System.ArgumentException("StatDefinition must be alphanumeric. Dashes (-) and underscores (_) allowed.");
+            }
+            
+            this.id = id;
+            idHash = Tools.StringToHash(id);
+            this.displayName = displayName;
+            this.statValueType = statValueType;
         }
-        [SerializeField]
-        private StatValueType m_StatValueType;
 
         internal bool DoesValueTypeMatch(System.Type type)
         {

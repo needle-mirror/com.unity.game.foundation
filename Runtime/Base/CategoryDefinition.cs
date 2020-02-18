@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace UnityEngine.GameFoundation
 {
@@ -7,81 +7,52 @@ namespace UnityEngine.GameFoundation
     /// CategoryDefinitions are usable across multiple systems, but each system is 
     /// responsible for containing and managing its own Categories.
     /// </summary>
-    [System.Serializable]
     public class CategoryDefinition
     {
-        [SerializeField]
-        private string m_Id;
-
-        /// <summary>x
+        /// <summary>
         /// The string Id of this CategoryDefinition.
         /// </summary>
         /// <returns>The string Id of this CategoryDefinition.</returns>
-        public string id
-        {
-            get { return m_Id; }
-        }
-
-        [SerializeField] 
-        private int m_Hash;
+        public string id { get; }
 
         /// <summary>
         /// The Hash of this CategoryDefinition.
         /// </summary>
         /// <returns>The Hash of this CategoryDefinition.</returns>
-        public int hash
-        {
-            get { return m_Hash; }
-        }
-
-        [SerializeField] 
-        private string m_DisplayName;
+        public int hash { get; }
 
         /// <summary>
         /// The name of this CategoryDefinition for the user to display.
         /// </summary>
         /// <returns>The name of this CategoryDefinition for the user to display.</returns>
-        public string displayName
-        {
-            get { return m_DisplayName; }
-            set { SetDisplayName(value); }
-        }
-
-        private void SetDisplayName(string name)
-        {
-            Tools.ThrowIfPlayMode("Cannot set the display name of a CategoryDefinition while in play mode.");
-
-            m_DisplayName = name;
-        }
+        public string displayName { get; }
 
         /// <summary>
         /// Constructor for a CategoryDefinition.
         /// </summary>
         /// <param name="id">The Id this CategoryDefinition will use.</param>
         /// <param name="displayName">The name this CategoryDefinition will use.</param>
-        /// <exception cref="ArgumentException">Thrown if an empty Id is given.</exception>
-        public CategoryDefinition(string id, string displayName)
+        /// <exception cref="ArgumentException">Thrown if given id or display name is null or empty or if the id is invalid.  Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        internal CategoryDefinition(string id, string displayName)
         {
-            Tools.ThrowIfPlayMode("Cannot create a CategoryDefinition while in play mode.");
-            
             if (string.IsNullOrEmpty(id))
             {
-                throw new System.ArgumentException("CategoryDefinition cannot have null or empty id.");
+                throw new ArgumentException("CategoryDefinition cannot have null or empty id.");
             }
             
             if (!Tools.IsValidId(id))
             {
-                throw new System.ArgumentException("CategoryDefinition can only be alphanumeric with optional dashes or underscores.");
+                throw new ArgumentException("CategoryDefinition must be alphanumeric. Dashes (-) and underscores (_) allowed.");
             }
             
             if (string.IsNullOrEmpty(displayName))
             {
-                throw new System.ArgumentException("CategoryDefinition cannot have null or empty display name.");
+                throw new ArgumentException("CategoryDefinition cannot have null or empty display name.");
             }
             
-            m_DisplayName = displayName;
-            m_Id = id;
-            m_Hash = Tools.StringToHash(m_Id); 
+            this.displayName = displayName;
+            this.id = id;
+            hash = Tools.StringToHash(this.id); 
         }
 
         /// <summary>
@@ -128,7 +99,7 @@ namespace UnityEngine.GameFoundation
         /// <returns>The Hash code associated with this CategoryDefinition's Id.</returns>
         public override int GetHashCode()
         {
-            return m_Hash;
+            return hash;
         }
     }
     

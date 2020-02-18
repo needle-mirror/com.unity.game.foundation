@@ -1,4 +1,5 @@
-﻿using UnityEngine.UI;
+﻿using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
 {
@@ -8,7 +9,7 @@ namespace UnityEngine.GameFoundation.Sample
     public class InventoryBasics : MonoBehaviour
     {
         private bool m_WrongDatabase;
-        
+
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
         /// </summary>
@@ -31,17 +32,21 @@ namespace UnityEngine.GameFoundation.Sample
                 wrongDatabasePanel.SetActive(true);
                 return;
             }
-            
-            // Initialize must always be called before working with any game foundation code.
-            GameFoundation.Initialize();
-            
+
+            // - Initialize must always be called before working with any game foundation code.
+            // - GameFoundation requires an IDataAccessLayer object that will provide and persist
+            //   the data required for the various services (Inventory, Stats, ...).
+            // - For this sample we don't need to persist any data so we use the MemoryDataLayer
+            //   that will store GameFoundation's data only for the play session.
+            GameFoundation.Initialize(new MemoryDataLayer());
+
             // Here we bind our UI refresh method to callbacks on the main inventory.
             // These callbacks will automatically be invoked anytime an item is added, removed, or has its quantity changed within the main inventory.
             // This prevents us from having to manually invoke RefreshUI every time we perform one of these actions.
             Inventory.main.onItemAdded += RefreshUI;
             Inventory.main.onItemRemoved += RefreshUI;
             Inventory.main.onItemQuantityChanged += RefreshUI;
-            
+
             RefreshUI();
         }
 
@@ -66,7 +71,6 @@ namespace UnityEngine.GameFoundation.Sample
                 mainText.text += itemName + ": " + quantity + "\n";
             }
         }
-        
 
         /// <summary>
         /// Adds a single apple to the main inventory.
@@ -75,7 +79,16 @@ namespace UnityEngine.GameFoundation.Sample
         /// </summary>
         public void AddApple()
         {
-            Inventory.main.AddItem("apple", 1);
+            // It's a good idea to perform a safety check by using ContainsItem when getting items before performing operations on them.
+            if (Inventory.main.ContainsItem("apple"))
+            {
+                Inventory.main.GetItem("apple").quantity++;
+            }
+            else
+            {
+                // This will happen if there is no apple in the inventory yet. If that is the case, add one.
+                Inventory.main.AddItem("apple");
+            }
         }
 
         /// <summary>
@@ -87,7 +100,18 @@ namespace UnityEngine.GameFoundation.Sample
         /// </summary>
         public void RemoveApple()
         {
-            Inventory.main.RemoveItem("apple", 1);
+            // If you don't want quantity to drop into a negative value, it'll be a good idea to check the quantity first.
+            // It's also more efficient to use GetItem and do a null check rather than use ContainsItem and then GetItem.
+            // This lowers the amount of times the inventory system needs to check its dictionary.
+            var apple = Inventory.main.GetItem("apple");
+            if (apple != null && apple.quantity > 0)
+            {
+                apple.quantity--;
+            }
+            else
+            {
+                Inventory.main.RemoveItem("apple");
+            }
         }
 
         /// <summary>
@@ -97,16 +121,9 @@ namespace UnityEngine.GameFoundation.Sample
         /// </summary>
         public void TenApples()
         {
-            // ContainsItem is a simple way to easily check if an item type is within an inventory.
-            if (!Inventory.main.ContainsItem("apple"))
-            {
-                // We can initially add any amount of items we want.
-                Inventory.main.AddItem("apple", 10);
-            }
-            else
-            {
-                Inventory.main.SetQuantity("apple", 10);
-            }
+            // Add item will create a new instance if need be and return that, or return a reference to the one already in the inventory.
+            // In both cases, we want to set the quantity to 10.
+            Inventory.main.AddItem("apple").SetQuantity(10);
         }
     }
 }

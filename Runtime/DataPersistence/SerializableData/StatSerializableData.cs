@@ -6,43 +6,16 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// Serializable data structure that contains the state of a Stat.
     /// </summary>
     [Serializable]
-    public class StatSerializableData
+    public struct StatSerializableData
     {
-        [SerializeField] long m_StatDictionaryId;
-        [SerializeField] StatItemSerializableData m_StatItem;
-
         /// <summary>
         /// The id of the stat in the dictionary.
         /// </summary>
-        public long statDictionaryId
-        {
-            get { return m_StatDictionaryId; }
-        }
+        public ulong statDictionaryId;
 
         /// <summary>
         /// The serialized data of the stat.
         /// </summary>
-        public StatItemSerializableData statItem
-        {
-            get { return m_StatItem; }
-        }
-
-        /// <summary>
-        /// Basic constructor that take in the id of the item in the dictionary and the serialized data of this stat.
-        /// </summary>
-        /// <param name="statDictionaryId">The id of the stat dictionary.</param>
-        /// <param name="statItem">The data for this stat item.</param>
-        public StatSerializableData(long statDictionaryId, StatItemSerializableData statItem)
-        {
-            m_StatDictionaryId = statDictionaryId;
-            m_StatItem = statItem;
-        }
-        
-        /// <summary>
-        /// Default constructor for serialization purpose.
-        /// </summary>
-        public StatSerializableData()
-        {
-        }
+        public StatItemSerializableData statItem;
     }
 }
