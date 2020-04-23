@@ -40,7 +40,7 @@ namespace UnityEditor.GameFoundation
 
         protected virtual void OnFocus()
         {
-            foreach (ICollectionEditor collectionEditor in m_Editors)
+            foreach (var collectionEditor in m_Editors)
             {
                 collectionEditor.ValidateSelection();
             }
@@ -51,7 +51,7 @@ namespace UnityEditor.GameFoundation
             }
 
             // Trigger creating the settings file if it's been deleted or doesn't exist
-            GameFoundationSettings.CreateGameFoundationSettingsIfNecessary();
+            GameFoundationSettings.Editor_CreateGameFoundationSettingsIfNecessary();
         }
 
         private void OnGUI()

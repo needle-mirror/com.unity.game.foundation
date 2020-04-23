@@ -1,8 +1,11 @@
-﻿using UnityEngine.GameFoundation.DataPersistence;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.GameFoundation.DataPersistence;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation.DataAccessLayers
 {
+    /// <summary>
+    /// Base for the memory data layers.
+    /// </summary>
     public abstract partial class BaseMemoryDataLayer : IDataAccessLayer
     {
         protected int m_Version;
@@ -15,18 +18,18 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
         /// </summary>
         protected GameFoundationSerializableData GetData()
         {
-            var inventoryData = m_InventoryDataLayer.GetData();
+            var inventoryData = (this as IInventoryDataLayer).GetData();
 
-            var lookupData = m_GameItemLookupDataLayer.GetData();
+            var statData = (this as IStatDataLayer).GetData();
 
-            var statData = m_StatDataLayer.GetData();
+            var walletData = (this as IWalletDataLayer).GetData();
 
             var data = new GameFoundationSerializableData
             {
                 version = m_Version,
                 statManagerData = statData,
                 inventoryManagerData = inventoryData,
-                gameItemLookupData = lookupData
+                walletData = walletData
             };
 
             return data;

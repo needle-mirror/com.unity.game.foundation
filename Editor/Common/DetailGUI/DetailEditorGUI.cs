@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.GameFoundation.CatalogManagement;
 
@@ -12,24 +12,24 @@ namespace UnityEditor.GameFoundation
         private static readonly GUIContent s_DetailDefinitionsLabel = new GUIContent("Detail Definitions", "Detail definitions extend the information that is attached to a given definition.");
         private static readonly GUIContent s_InheritedDetailDefinitionsLabel = new GUIContent("Inherited Detail Definitions", "Detail definitions that are attached to the Reference Definition are inherited by the item. They extend the information that is attached to the current item, but can be overridden by attaching the same type of detail to the current item.");
 
-        static BaseDetailDefinition m_detailDefinitionToRemove;
+        static BaseDetailAsset m_detailDefinitionToRemove;
 
         /// <summary>
         /// Uses Unity GUI and GUILayout calls to draw a detail manager in a custom editor window.
         /// </summary>
-        /// <param name="gameItemDefinition">The GameItemDefinition for which the Detail definitions are to be managed.</param>
-        public static void DrawDetailView(GameItemDefinition gameItemDefinition)
+        /// <param name="catalogItem">The GameItemDefinition for which the Detail definitions are to be managed.</param>
+        public static void DrawDetailView(CatalogItemAsset catalogItem)
         {
             EditorGUILayout.LabelField(s_DetailDefinitionsLabel, GameFoundationEditorStyles.titleStyle);
 
             using (new EditorGUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
             {
-                var detailDefinitions = gameItemDefinition.GetDetailDefinitions();
+                var details = catalogItem.GetDetails();
 
-                if (detailDefinitions != null)
+                if (details != null)
                 {
                     // loop through details and render their property drawers
-                    var detailCount = detailDefinitions.Length;
+                    var detailCount = details.Length;
                     if (detailCount <= 0)
                     {
                         GUILayout.Label("no details attached", GameFoundationEditorStyles.centeredGrayLabel);
@@ -38,24 +38,11 @@ namespace UnityEditor.GameFoundation
                     {
                         var i = 0;
 
-                        foreach (var detailDefinition in detailDefinitions)
+                        foreach (var detail in details)
                         {
-                            var detailDisplayName = detailDefinition.DisplayName();
+                            var detailDisplayName = detail.DisplayName();
 
-                            // if the reference entity has this same detail type attached, then this is overriding that
-                            if (gameItemDefinition.referenceDefinition != null)
-                            {
-                                foreach (var compareDetailDefinition in gameItemDefinition.referenceDefinition.GetDetailDefinitions())
-                                {
-                                    if (compareDetailDefinition.GetType() != detailDefinition.GetType())
-                                    {
-                                        continue;
-                                    }
-                                    detailDisplayName += " (overriding)";
-                                    break;
-                                }
-                            }
-                            var detailLabel = new GUIContent(detailDisplayName, detailDefinition.TooltipMessage());
+                            var detailLabel = new GUIContent(detailDisplayName, detail.TooltipMessage());
                             GUILayout.Label(detailLabel, EditorStyles.boldLabel);
 
                             var removeButtonRect = GUILayoutUtility.GetLastRect();
@@ -63,22 +50,22 @@ namespace UnityEditor.GameFoundation
                             removeButtonRect.width = 20f;
                             if (GUI.Button(removeButtonRect, "<b>X</b>", GameFoundationEditorStyles.deleteButtonStyle))
                             {
-                                if (EditorUtility.DisplayDialog("Are you sure?", "Do you want to delete " + detailDefinition.DisplayName() + "?", "Yes", "No"))
+                                if (EditorUtility.DisplayDialog("Are you sure?", "Do you want to delete " + detail.DisplayName() + "?", "Yes", "No"))
                                 {
-                                    m_detailDefinitionToRemove = detailDefinition;
+                                    m_detailDefinitionToRemove = detail;
                                 }
                             }
 
-                            var detailDefinitionEditor = Editor.CreateEditor(detailDefinition);
+                            var detailDefinitionEditor = Editor.CreateEditor(detail);
 
                             if (detailDefinitionEditor != null)
                             {
                                 if (System.Attribute.GetCustomAttribute(
-                                    detailDefinition.GetType(),
+                                    detail.GetType(),
                                     typeof(System.ObsoleteAttribute))
                                     is System.ObsoleteAttribute obsoleteAttribute)
                                 {
-                                    EditorGUILayout.HelpBox($"Warning: {detailDefinition.GetType().Name} is obsolete. {obsoleteAttribute.Message}", MessageType.Warning);
+                                    EditorGUILayout.HelpBox($"Warning: {detail.GetType().Name} is obsolete. {obsoleteAttribute.Message}", MessageType.Warning);
                                 }
 
                                 detailDefinitionEditor.OnInspectorGUI();
@@ -101,9 +88,16 @@ namespace UnityEditor.GameFoundation
 
             if (m_detailDefinitionToRemove != null)
             {
-                gameItemDefinition.RemoveDetailDefinition(m_detailDefinitionToRemove);
+                catalogItem.Editor_RemoveDetail(m_detailDefinitionToRemove);
+                if (EditorUtility.IsPersistent(m_detailDefinitionToRemove))
+                {
+                    AssetDatabase.RemoveObjectFromAsset(m_detailDefinitionToRemove);
+                    Object.DestroyImmediate(m_detailDefinitionToRemove, true);
+                }
                 m_detailDefinitionToRemove = null;
             }
+
+            EditorGUILayout.Space();
 
             using (new GUILayout.HorizontalScope())
             {
@@ -115,13 +109,13 @@ namespace UnityEditor.GameFoundation
 
                     // keep a list of the names of all detail types already added to this GameItemDefinition
                     var alreadyAddedDetails =
-                        new List<BaseDetailDefinition>(gameItemDefinition.GetDetailDefinitions());
+                        new List<BaseDetailAsset>(catalogItem.GetDetails());
 
                     var alreadyAddedDetailTypesNames = new List<string>();
 
-                    foreach (BaseDetailDefinition detailDefinition in alreadyAddedDetails)
+                    foreach(var detail in alreadyAddedDetails)
                     {
-                        alreadyAddedDetailTypesNames.Add(detailDefinition.DisplayName());
+                        alreadyAddedDetailTypesNames.Add(detail.DisplayName());
                     }
 
                     var newDetailTypesAvailable = false;
@@ -129,9 +123,9 @@ namespace UnityEditor.GameFoundation
 
                     var detailChoicesMenu = new GenericMenu();
 
-                    foreach (KeyValuePair<string, System.Type> detailDefinitionInfo in DetailHelper.defaultDetailDefinitionInfo)
+                    foreach (var detailInfo in DetailHelper.defaultDetailInfo)
                     {
-                        if (alreadyAddedDetailTypesNames.Contains(detailDefinitionInfo.Key))
+                        if (alreadyAddedDetailTypesNames.Contains(detailInfo.Key))
                         {
                             continue;
                         }
@@ -139,15 +133,17 @@ namespace UnityEditor.GameFoundation
                         newDetailTypesAvailable = true;
 
                         detailChoicesMenu.AddItem(
-                            new GUIContent(detailDefinitionInfo.Key),
+                            new GUIContent(detailInfo.Key),
                             false,
                             () =>
                             {
                                 // create new detail definition
-                                var newDetailDefinition = ScriptableObject.CreateInstance(detailDefinitionInfo.Value) as BaseDetailDefinition;
+                                var newDetailDefinition = ScriptableObject.CreateInstance(detailInfo.Value) as BaseDetailAsset;
 
                                 // add to GameItemDefinition
-                                gameItemDefinition.AddDetailDefinition(newDetailDefinition);
+                                catalogItem.Editor_AddDetail(newDetailDefinition);
+
+                                AssetDatabase.AddObjectToAsset(newDetailDefinition, catalogItem);
                             });
                     }
 
@@ -166,20 +162,20 @@ namespace UnityEditor.GameFoundation
                     {
                         detailChoicesMenu.AddSeparator("");
 
-                        foreach (var detailDefinitionInfo in DetailHelper.customDetailDefinitionInfo)
+                        foreach (var detailInfo in DetailHelper.customDetailDefinitionInfo)
                         {
-                            if (!alreadyAddedDetailTypesNames.Contains(detailDefinitionInfo.Key))
+                            if (!alreadyAddedDetailTypesNames.Contains(detailInfo.Key))
                             {
                                 detailChoicesMenu.AddItem(
-                                    new GUIContent(detailDefinitionInfo.Key),
+                                    new GUIContent(detailInfo.Key),
                                     false,
                                     () =>
                                     {
                                         // create new detail definition
-                                        var newDetailDefinition = ScriptableObject.CreateInstance(detailDefinitionInfo.Value) as BaseDetailDefinition;
+                                        var newDetail = ScriptableObject.CreateInstance(detailInfo.Value) as BaseDetailAsset;
 
                                         // add to GameItemDefinition
-                                        gameItemDefinition.AddDetailDefinition(newDetailDefinition);
+                                        catalogItem.Editor_AddDetail(newDetail);
                                     });
                             }
                         }
@@ -196,95 +192,7 @@ namespace UnityEditor.GameFoundation
                 GUILayout.FlexibleSpace();
             }
 
-            // only show this section if inheritance is possible (not possible with GameItemDefinition, for example)
-            if (gameItemDefinition.GetType() != typeof(GameItemDefinition))
-            {
-                EditorGUILayout.Space();
-
-                EditorGUILayout.LabelField(s_InheritedDetailDefinitionsLabel, GameFoundationEditorStyles.titleStyle);
-
-                using (new EditorGUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
-                {
-                    if (gameItemDefinition.referenceDefinition != null)
-                    {
-                        var detailDefinitions = gameItemDefinition.referenceDefinition.GetDetailDefinitions();
-
-                        if (detailDefinitions != null)
-                        {
-                            // loop through components and render their property drawers
-                            var referenceDetailCount = detailDefinitions.Length;
-
-                            if (referenceDetailCount <= 0)
-                            {
-                                GUILayout.Label("no details inherited", GameFoundationEditorStyles.centeredGrayLabel);
-                            }
-                            else
-                            {
-                                var i = 0;
-
-                                foreach (var detailDefinition in detailDefinitions)
-                                {
-                                    // if this DetailDef type is also attached to the gameItemDefinition, then this has been overridden
-                                    var isOverridden = false;
-
-                                    foreach (var compareDetailDefinition in gameItemDefinition.GetDetailDefinitions())
-                                    {
-                                        if (compareDetailDefinition.GetType() != detailDefinition.GetType())
-                                        {
-                                            continue;
-                                        }
-                                        isOverridden = true;
-                                        break;
-                                    }
-
-                                    // this should always be disabled at editor time and runtime
-                                    using (new EditorGUI.DisabledScope(true))
-                                    {
-                                        var componentDefinitionSerializedObject = new SerializedObject(detailDefinition);
-
-                                        var detailDisplayName = detailDefinition.DisplayName();
-
-                                        if (isOverridden)
-                                        {
-                                            detailDisplayName += " (overridden)";
-                                        }
-
-                                        GUIContent detailLabel = new GUIContent(detailDisplayName, detailDefinition.TooltipMessage());
-                                        GUILayout.Label(detailLabel, EditorStyles.boldLabel);
-
-                                        if (!isOverridden)
-                                        {
-                                            var detailDefinitionEditor = Editor.CreateEditor(detailDefinition);
-
-                                            if (detailDefinitionEditor != null)
-                                            {
-                                                detailDefinitionEditor.OnInspectorGUI();
-                                            }
-                                        }
-
-                                        componentDefinitionSerializedObject.ApplyModifiedProperties();
-                                    }
-
-                                    i++;
-
-                                    if (i < referenceDetailCount)
-                                    {
-                                        DrawDetailSeparator();
-                                    }
-                                }
-                            }
-                        }
-                        else
-                        {
-                            GUILayout.Label("Error: The component definitions list is null!");
-                        }
-                    }
-                    else
-                    {
-                        GUILayout.Label("no reference definition selected", GameFoundationEditorStyles.centeredGrayLabel);
-                    }
-                }
-            }
+            EditorGUILayout.Space();
         }
 
         private static void DrawDetailSeparator()

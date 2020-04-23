@@ -1,4 +1,4 @@
-﻿namespace UnityEngine.GameFoundation
+namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Enum for each supported notification type.

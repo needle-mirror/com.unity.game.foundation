@@ -1,4 +1,4 @@
-﻿#if UNITY_ANALYTICS
+#if UNITY_ANALYTICS
 using System.Collections.Generic;
 using UnityEngine.Analytics;
 #endif
@@ -51,14 +51,14 @@ namespace UnityEngine.GameFoundation
             m_Initialized = false;
         }
 
-        private static AnalyticsDetailDefinition GetAnalyticsDetail(GameItem gameItem)
+        private static AnalyticsDetail GetAnalyticsDetail(GameItem gameItem)
         {
             if (gameItem == null || gameItem.definition == null)
             {
                 return null;
             }
-            
-            return gameItem.definition.GetDetailDefinition<AnalyticsDetailDefinition>();
+
+            return gameItem.definition.GetDetail<AnalyticsDetail>();
         }
 
         private static bool VerifyAnalyticsEnabled()
@@ -84,36 +84,30 @@ namespace UnityEngine.GameFoundation
             {
                 return;
             }
-            
-            int quantity = 0;
-            string inventoryOwner = "None";
-            bool hasQuantity = false;
-            if (gameItem.GetType() == typeof(InventoryItem))
-            {
-                var inventoryItem = (InventoryItem)(gameItem);
-                quantity = inventoryItem.quantity;
-                hasQuantity = true;
 
-                if (inventoryItem.inventory != null)
-                {
-                    inventoryOwner = inventoryItem.inventory.displayName;
-                }
-            }
-
-            string currencyType = "NonCurrency";
-            var currencyDetail = gameItem.definition.GetDetailDefinition<CurrencyDetailDefinition>();
-            if (currencyDetail != null)
-            {
-                currencyType = currencyDetail.currencyType.ToString();
-            }
-            
-            AnalyticsEvent.Custom(eventName, new Dictionary<string, object>
-            {
-                { "id", gameItem.id },
-                { "quantity", hasQuantity ? quantity.ToString() : "-" },
-                { "currencyType", currencyType },
-                { "owner", inventoryOwner }
-            });
+            // TODO: rewrite for new inventory architecture
+            // int quantity = 0;
+            // string inventoryOwner = "None";
+            // bool hasQuantity = false;
+            // if (gameItem.GetType() == typeof(InventoryItem))
+            // {
+            //     var inventoryItem = (InventoryItem)(gameItem);
+            //     quantity = inventoryItem.quantity;
+            //     hasQuantity = true;
+            //
+            //     if (inventoryItem.inventory != null)
+            //     {
+            //         inventoryOwner = inventoryItem.inventory.displayName;
+            //     }
+            // }
+            //
+            // AnalyticsEvent.Custom(eventName, new Dictionary<string, object>
+            // {
+            //     { "id", gameItem.id },
+            //     { "quantity", hasQuantity ? quantity.ToString() : "-" },
+            //     //{ "currencyType", currencyType },
+            //     { "owner", inventoryOwner }
+            // });
 #endif
         }
         

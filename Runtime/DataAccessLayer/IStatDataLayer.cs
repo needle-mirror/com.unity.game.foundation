@@ -1,5 +1,5 @@
-﻿using UnityEngine.GameFoundation.DataPersistence;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.GameFoundation.DataPersistence;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation
 {
@@ -19,15 +19,8 @@ namespace UnityEngine.GameFoundation
         /// <param name="gameItemId">Game item's id the stat item is connected to.</param>
         /// <param name="statDefinitionId">Definition's Id the stat item is based on.</param>
         /// <param name="value">Value to set to the stat item.</param>
-        /// <param name="defaultValue">Value used to reset the stat item.</param>
         /// <param name="completer">The handle to settle the promise with.</param>
-        /// <typeparam name="T">
-        /// Type of the stat.
-        /// Supported types currently are:
-        /// - <see cref="int"/>
-        /// - <see cref="float"/>
-        /// </typeparam>
-        void SetStatValue<T>(int gameItemId, string statDefinitionId, T value, T defaultValue, Completer completer);
+        void SetStatValue(string gameItemId, string statDefinitionId, StatValue value, Completer completer);
 
         /// <summary>
         /// Request to delete the stat item defined by the given ids.
@@ -41,6 +34,15 @@ namespace UnityEngine.GameFoundation
         /// - <see cref="int"/>
         /// - <see cref="float"/>
         /// </typeparam>
-        void DeleteStatValue<T>(int gameItemId, string statDefinitionId, Completer completer);
+        void DeleteStatValue(string gameItemId, string statDefinitionId, Completer completer);
+
+        /// <summary>
+        /// Gets the stat of an item by the <paramref name="gameItemId"/> and
+        /// the <paramref name="statDefinitionId"/>.
+        /// </summary>
+        /// <param name="gameItemId">The id of the game item</param>
+        /// <param name="statDefinitionId">The id of the stat definition</param>
+        /// <returns>The value of the stat</returns>
+        StatValue GetStatValue(string gameItemId, string statDefinitionId);
     }
 }

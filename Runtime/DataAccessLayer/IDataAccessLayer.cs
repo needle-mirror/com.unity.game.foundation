@@ -1,16 +1,18 @@
-﻿using UnityEngine.GameFoundation.Promise;
+using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Contract for objects providing data to all Game Foundation's
-    /// systems (GameItemLookup, InventoryManager, StatManager, ...).
-    /// Note that usually they are also responsible for persisting these data.
+    /// systems (InventoryManager, StatManager, ...).
     /// </summary>
     public interface IDataAccessLayer :
+        ICatalogConfigurator,
         IInventoryDataLayer,
         IStatDataLayer,
-        IGameItemLookupDataLayer
+        IWalletDataLayer,
+        ITransactionDataLayer
     {
         /// <summary>
         /// Initialize this data layer.

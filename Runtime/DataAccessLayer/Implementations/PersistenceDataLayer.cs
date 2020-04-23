@@ -1,7 +1,8 @@
-﻿using System;
+using System;
 using System.IO;
+using UnityEngine.GameFoundation.CatalogManagement;
 using UnityEngine.GameFoundation.DataPersistence;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation.DataAccessLayers
 {
@@ -15,16 +16,24 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
         /// </summary>
         public IDataPersistence persistence { get; }
 
+        /// <summary>
+        /// The generator of the promises of this data layer.
+        /// </summary>
         PromiseGenerator m_PromiseGenerator = new PromiseGenerator();
 
         /// <summary>
-        /// Create a data layer that will use the given persistence object to save & load GameFoundation's data.
+        /// Create a data layer with the given catalog provider
+        /// that will use the given persistence object to save & load GameFoundation's data.
         /// </summary>
+        /// <param name="database">
+        /// Provides catalogs to the <see cref="CatalogManager" />.
+        /// </param>
         /// <param name="persistence">
         /// Persistence used by this data layer.
         /// </param>
         /// <exception cref="ArgumentNullException">If the given persistence is null.</exception>
-        public PersistenceDataLayer(IDataPersistence persistence)
+        public PersistenceDataLayer(IDataPersistence persistence, GameFoundationDatabase database = null)
+            : base(database)
         {
             this.persistence = persistence ?? throw new ArgumentNullException(nameof(persistence));
         }
@@ -35,8 +44,8 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
             void InitializeWith(GameFoundationSerializableData data)
             {
                 InitializeInventoryDataLayer(data.inventoryManagerData);
-                InitializeGameItemLookupDataLayer(data.gameItemLookupData);
                 InitializeStatDataLayer(data.statManagerData);
+                InitializeWalletDataLayer(data.walletData, database.currencyCatalog);
 
                 m_Version = data.version;
 
@@ -50,7 +59,7 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
                     switch (error)
                     {
                         case FileNotFoundException _:
-                            InitializeWith(GameFoundationSerializableData.Empty);
+                            InitializeWith(database.CreateDefaultData());
                             break;
 
                         default:

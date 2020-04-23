@@ -3,14 +3,60 @@ using UnityEngine.GameFoundation;
 
 namespace UnityEditor.GameFoundation
 {
-    internal class InventoryTreeItem : TreeViewItem
+    internal sealed class InventoryItemView : TreeViewItem
     {
-        public StatDefinition.StatValueType statType { get; set; }
-        public int itemHash { get; set; }
-        public object statValue { get; set; }
+        public readonly InventoryItem inventoryItem;
 
-        internal InventoryTreeItem(int id, int depth, string displayName) : base(id, depth, displayName)
+        public InventoryItemView
+            (int id, int depth, string displayName, InventoryItem inventoryItem)
+            : base(id, depth, displayName)
         {
+            this.inventoryItem = inventoryItem;
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(InventoryItemView)} item:{inventoryItem.definition.id}";
+        }
+    }
+
+    internal sealed class StatView : TreeViewItem
+    {
+        public readonly InventoryItem inventoryItem;
+
+        public readonly StatDefinition statDefinition;
+
+        public StatView(
+            int id, int depth, string displayName,
+            InventoryItem inventoryItem,
+            StatDefinition statDefinition)
+            : base(id, depth, displayName)
+        {
+            this.inventoryItem = inventoryItem;
+            this.statDefinition = statDefinition;
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(StatView)} item:{inventoryItem.definition.id}, stat:{statDefinition.id}";
+        }
+    }
+
+    internal sealed class CurrencyView : TreeViewItem
+    {
+        public readonly Currency currency;
+
+        public CurrencyView(
+            int id, int depth, string displayName,
+            Currency currency)
+            : base(id, depth, displayName)
+        {
+            this.currency = currency;
+        }
+
+        public override string ToString()
+        {
+            return $"{nameof(CurrencyView)} id:{currency.id}";
         }
     }
 }

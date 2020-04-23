@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
-namespace UnityEngine.GameFoundation.Promise
+namespace UnityEngine.Promise
 {
     /// <summary>
     /// A <see cref="Promise"/> pool manager.
@@ -190,8 +190,6 @@ namespace UnityEngine.GameFoundation.Promise
 
                     errors.Add(deferred.error);
                 }
-
-                deferred.Release();
             }
 
             if (errors != null)

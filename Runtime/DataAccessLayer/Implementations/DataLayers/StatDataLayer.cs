@@ -1,211 +1,245 @@
 ﻿using System;
 using System.Collections.Generic;
+using UnityEngine.GameFoundation.CatalogManagement;
 using UnityEngine.GameFoundation.DataPersistence;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.GameFoundation.Exceptions;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation.DataAccessLayers
 {
-    using StatType = StatDictionarySerializableData.StatType;
-
     /// <summary>
     /// Straightforward implementation of <see cref="IStatDataLayer"/>.
     /// </summary>
     class StatDataLayer : IStatDataLayer
     {
         /// <summary>
-        /// The number of handled stat types.
+        /// Owner this <see cref="StatDataLayer"/> instance.
         /// </summary>
-        static readonly int k_StatsTypeCount;
+        BaseMemoryDataLayer m_Owner;
 
         /// <summary>
-        /// Contains all stats for its handled <see cref="StatDictionarySerializableData.StatType"/>.
+        /// Container of all the stats of Game Foundation.
         /// </summary>
-        /// <remarks>
-        /// The stats at the i-th index are stats of the type (StatDictionarySerializableData.StatType)i.
-        /// </remarks>
-        List<StatSerializableData>[] m_Stats;
-
-        static StatDataLayer()
-        {
-            k_StatsTypeCount = Enum.GetValues(typeof(StatDefinition.StatValueType)).Length;
-        }
+        internal Dictionary<string, Dictionary<string, StatValue>> m_Stats =
+            new Dictionary<string, Dictionary<string, StatValue>>();
 
         /// <summary>
-        /// Create a new <see cref="StatDataLayer"/> with the given data.
+        /// Initializes a new instance of the <see cref="StatDataLayer"/> class
+        /// with the given <paramref name="data"/>.
         /// </summary>
+        /// <param name="owner">The data layer owning this object.</param>
         /// <param name="data">StatManager's serializable data.</param>
-        public StatDataLayer(StatManagerSerializableData data)
+        public StatDataLayer(BaseMemoryDataLayer owner, StatManagerSerializableData data)
         {
-            m_Stats = new List<StatSerializableData>[k_StatsTypeCount];
-            for (var i = 0; i < k_StatsTypeCount; ++i)
-            {
-                m_Stats[i] = new List<StatSerializableData>();
-            }
-
+            m_Owner = owner;
             UpdateStats(data);
         }
 
         /// <inheritdoc />
         StatManagerSerializableData IStatDataLayer.GetData()
         {
-            var data = new StatManagerSerializableData
-            {
-                statDictionaries = new StatDictionarySerializableData[m_Stats.Length]
-            };
+            var items = new StatItemSerializableData[m_Stats.Count];
 
-            for (var i = 0; i < m_Stats.Length; ++i)
+            var itemIndex = 0;
+            foreach (var kvp in m_Stats)
             {
-                data.statDictionaries[i] = new StatDictionarySerializableData
+                var itemData = new StatItemSerializableData
                 {
-                    statType = (StatType)i,
-                    stats = m_Stats[i].ToArray()
+                    itemId = kvp.Key
                 };
-            }
 
-            return data;
-        }
+                var itemStats = kvp.Value;
 
-        /// <inheritdoc />
-        void IStatDataLayer.SetStatValue<T>(int gameItemId, string statDefinitionId, T value, T defaultValue, Completer completer)
-        {
-            var valueType = typeof(T);
-            StatType statType;
-            if (typeof(int) == valueType)
-            {
-                statType = StatType.Int;
-            }
-            else if (typeof(float) == valueType)
-            {
-                statType = StatType.Float;
-            }
-            else
-            {
-                completer.Reject(new ArgumentException($"The type \"{valueType.Name}\" isn't a valid stat type."));
-
-                return;
-            }
-
-            var typedStats = m_Stats[(int)statType];
-
-            var isUpdate = false;
-            var indexToSet = -1;
-            StatSerializableData statToSet = default;
-
-            //Search for the stat to update.
-            for (var i = 0; i < typedStats.Count; i++)
-            {
-                var stat = typedStats[i];
-                if (stat.statItem.gameItemId != gameItemId
-                    || stat.statItem.definitionId != statDefinitionId)
+                itemData.stats = new ItemStat[itemStats.Count];
+                var statIndex = 0;
+                foreach (var statKvp in itemStats)
                 {
-                    continue;
-                }
-
-                indexToSet = i;
-                statToSet = stat;
-
-                isUpdate = true;
-            }
-
-            //Create the stat since it doesn't exist yet.
-            if (!isUpdate)
-            {
-                statToSet = new StatSerializableData
-                {
-                    //Note that any generic version works for the get key.
-                    statDictionaryId = StatManager.GetGameItemStatKey(gameItemId, statDefinitionId),
-                    statItem = new StatItemSerializableData
+                    itemData.stats[statIndex++] = new ItemStat
                     {
-                        definitionId = statDefinitionId,
-                        gameItemId = gameItemId
-                    }
-                };
+                        statId = statKvp.Key,
+                        value = statKvp.Value
+                    };
+                }
 
-                indexToSet = typedStats.Count;
-
-                typedStats.Add(statToSet);
+                items[itemIndex++] = itemData;
             }
 
-            //Update the stat. There is no default case since this they would have already been rejected.
-            switch (statType)
+            return new StatManagerSerializableData
             {
-                case StatType.Int:
-                {
-                    statToSet.statItem.intValue = Convert.ToInt32(value);
-                    statToSet.statItem.defaultIntValue = Convert.ToInt32(defaultValue);
+                items = items
+            };
+        }
 
-                    break;
-                }
+        /// <inheritdoc />
+        StatValue IStatDataLayer.GetStatValue(string gameItemId, string statDefinitionId)
+        {
+            Tools.ThrowIfArgNullOrEmpty(gameItemId, nameof(gameItemId));
+            Tools.ThrowIfArgNullOrEmpty(statDefinitionId, nameof(statDefinitionId));
 
-                case StatType.Float:
-                {
-                    statToSet.statItem.floatValue = Convert.ToSingle(value);
-                    statToSet.statItem.defaultFloatValue = Convert.ToSingle(defaultValue);
-
-                    break;
-                }
+            m_Stats.TryGetValue(gameItemId, out var itemStats);
+            if (itemStats is null)
+            {
+                throw new StatDefinitionNotFoundException(gameItemId, statDefinitionId);
             }
 
-            //Don't forget to reassign the value since we are working on structs.
-            typedStats[indexToSet] = statToSet;
+            var found = itemStats.TryGetValue(statDefinitionId, out var statValue);
+            if (!found)
+            {
+                throw new StatDefinitionNotFoundException(gameItemId, statDefinitionId);
+            }
 
+            return statValue;
+        }
+
+        /// <inheritdoc />
+        void IStatDataLayer.SetStatValue(
+            string gameItemId,
+            string statDefinitionId,
+            StatValue value,
+            Completer completer)
+        {
+            Tools.ThrowIfArgNullOrEmpty(gameItemId, nameof(gameItemId));
+            Tools.ThrowIfArgNullOrEmpty(statDefinitionId, nameof(statDefinitionId));
+
+            var inventoryCatalog = m_Owner.database.inventoryCatalog;
+            var statCatalog = m_Owner.database.statCatalog;
+
+            var itemFound = m_Owner.m_InventoryDataLayer.m_Items.TryGetValue
+                (gameItemId, out var item);
+
+            if (!itemFound)
+            {
+                var exception = new InventoryItemNotFoundException(gameItemId);
+                completer.Reject(exception);
+                return;
+            }
+
+            var statDefinition = statCatalog.FindStatDefinition(statDefinitionId);
+            if (statDefinition is null)
+            {
+                var exception =
+                    new ArgumentException(
+                        $"{nameof(StatDefinition)} {statDefinitionId} not found",
+                        nameof(statDefinitionId));
+
+                completer.Reject(exception);
+                return;
+            }
+
+            if (statDefinition.statValueType != value.type)
+            {
+                var exception = new InvalidCastException
+                    ($"Stat {statDefinitionId} is not {value.type}");
+
+                completer.Reject(exception);
+                return;
+            }
+
+            var itemDefinition = inventoryCatalog.FindItem(item.definitionId);
+
+            var statDetail = itemDefinition.GetDetail<StatDetailAsset>();
+            if (statDetail is null)
+            {
+                var exception = new DetailNotFoundException
+                    (gameItemId, typeof(StatDetailAsset));
+
+                completer.Reject(exception);
+                return;
+            }
+
+            var statFound = statDetail.m_Stats.TryGetValue
+                (statDefinition, out var statValue);
+
+            if (!statFound)
+            {
+                var exception =
+                    new StatDefinitionNotFoundException(gameItemId, statDefinitionId);
+
+                completer.Reject(exception);
+                return;
+            }
+
+
+            m_Stats.TryGetValue(gameItemId, out var itemStats);
+
+            if (itemStats is null)
+            {
+                itemStats = new Dictionary<string, StatValue>();
+                m_Stats.Add(gameItemId, itemStats);
+            }
+
+            itemStats[statDefinitionId] = value;
             completer.Resolve();
         }
 
         /// <inheritdoc />
-        void IStatDataLayer.DeleteStatValue<T>(int gameItemId, string statDefinitionId, Completer completer)
+        void IStatDataLayer.DeleteStatValue
+            (string gameItemId, string statDefinitionId, Completer completer)
         {
-            var valueType = typeof(T);
-            StatType statType;
-            if (typeof(int) == valueType)
+            m_Stats.TryGetValue(gameItemId, out var itemStats);
+            if (itemStats is null)
             {
-                statType = StatType.Int;
-            }
-            else if (typeof(float) == valueType)
-            {
-                statType = StatType.Float;
-            }
-            else
-            {
-                completer.Reject(new ArgumentException($"The type \"{valueType.Name}\" isn't a valid stat type."));
-
+                completer.Resolve();
                 return;
             }
 
-            var typedStats = m_Stats[(int)statType];
-            for (var i = 0; i < typedStats.Count; ++i)
-            {
-                var stat = typedStats[i];
-                if (stat.statItem.gameItemId != gameItemId
-                    || stat.statItem.definitionId != statDefinitionId)
-                {
-                    continue;
-                }
-
-                typedStats.RemoveAt(i);
-
-                break;
-            }
-
+            itemStats.Remove(statDefinitionId);
             completer.Resolve();
         }
 
+        /// <summary>
+        /// Updates all the stats.
+        /// Clears the container before populating again.
+        /// </summary>
+        /// <param name="data">The data of all the stats to add.</param>
         void UpdateStats(StatManagerSerializableData data)
         {
-            foreach (var typedStats in m_Stats)
-            {
-                typedStats.Clear();
-            }
+            m_Stats.Clear();
 
-            if (data.statDictionaries == null)
+            if (data.items == null)
             {
                 return;
             }
 
-            foreach (var statDictionary in data.statDictionaries)
+            foreach (var item in data.items)
             {
-                var statData = m_Stats[(int)statDictionary.statType];
-                statData.AddRange(statDictionary.stats);
+                var itemStats = new Dictionary<string, StatValue>();
+                foreach (var stat in item.stats)
+                {
+                    itemStats.Add(stat.statId, stat.value);
+                }
+                m_Stats.Add(item.itemId, itemStats);
+            }
+        }
+        /// <summary>
+        /// Initializes the stat of the new item.
+        /// </summary>
+        /// <param name="itemId">Id of the item</param>
+        public void InitStats(string itemId)
+        {
+            var inventoryCatalog = m_Owner.database.inventoryCatalog;
+
+            var found = m_Owner.m_InventoryDataLayer.m_Items.TryGetValue(itemId, out var item);
+            if (!found)
+            {
+                throw new InventoryItemNotFoundException(itemId);
+            }
+
+            // Initialize the stats
+            var itemDefinition = inventoryCatalog.FindItem(item.definitionId);
+
+            var statDetail = itemDefinition.GetDetail<StatDetailAsset>();
+
+            // Not having stat is possible
+            if (statDetail is null) return;
+
+            foreach (var kvp in statDetail.m_Stats)
+            {
+                var statDefinition = kvp.Key;
+                var statValue = kvp.Value;
+
+                (this as IStatDataLayer).SetStatValue
+                    (itemId, statDefinition.id, statValue, Completer.None);
             }
         }
     }

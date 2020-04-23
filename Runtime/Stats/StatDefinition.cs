@@ -1,75 +1,71 @@
 namespace UnityEngine.GameFoundation
 {
     /// <summary>
-    /// This is one entry in the list of possible stats an item could have.
+    /// Enum to specify the type of value stored in this StatDefinition.
     /// </summary>
-    public class StatDefinition
+    public enum StatValueType : int
     {
         /// <summary>
-        /// Enum to determine the value type for this StatDefinition
+        /// Stat value is of type int.
         /// </summary>
-        public enum StatValueType
-        {
-            /// <summary>
-            /// Stats that use ints.
-            /// </summary>
-            Int,
-            
-            /// <summary>
-            /// Stats that use floats.
-            /// </summary>
-            Float,
-        }
-        
+        Int,
+
         /// <summary>
-        /// Id for this Stat definition.
+        /// Stat value is of type float.
         /// </summary>
-        /// <returns>id for this Stat definition.</returns>
+        Float,
+    }
+
+    /// <summary>
+    /// The definition of a stat, attached to <see cref="CatalogItem"/>.
+    /// </summary>
+    public class StatDefinition
+    {        
+        /// <summary>
+        /// The identifier of this <see cref="StatDefinition"/> instance.
+        /// </summary>
         public string id { get; }
 
         /// <summary>
-        /// Hash for Id string for this Stat definition.
+        /// Custom display name (string) attached to this
+        /// <see cref="StatDefinition"/> instance.
         /// </summary>
-        /// <returns>Hash for Id string for this Stat definition.</returns>
-        public int idHash { get; }
-
-        /// <summary>
-        /// Custom string attached to this Stat definition.
-        /// </summary>
-        /// <returns>Custom string attached to this Stat definition.</returns>
         public string displayName { get; }
 
         /// <summary>
-        /// Stat value type for this Stat definition.
+        /// The type of this for this <see cref="StatDefinition"/> instance.
+        /// Determines if stat stores an int or a float.
         /// </summary>
-        /// <returns>Stat value type for this Stat definition.</returns>
         public StatValueType statValueType { get; }
 
         /// <summary>
-        /// This is one entry in the list of possible Stats an item could have.
+        /// Initializes a new instance of the <see cref="StatDefinition"/>
+        /// class.
         /// </summary>
-        /// <param name="id">The Id this StatDefinition will use.</param>
-        /// <param name="displayName">The name this StatDefinition will use.</param>
-        /// <param name="statValueType">The value type this StatDefinition will hold.</param>
-        /// <exception cref="System.ArgumentException">Throws if id parameter is null, empty, or not valid. Valid ids are alphanumeric with optional dashes or underscores.</exception>
+        /// <param name="id">The identifier this <see cref="StatDefinition"/>
+        /// instance.</param>
+        /// <param name="displayName">Custom display name (string) attached to
+        /// this <see cref="StatDefinition"/> instance.</param>
+        /// <param name="statValueType">The type of this for this
+        /// <see cref="StatDefinition"/> instance.
+        /// Determines if stat stores an int or a float.</param>
+        /// <exception cref="System.ArgumentException">Throws if id parameter is
+        /// null, empty, or not valid. Valid ids are alphanumeric with optional
+        /// dashes or underscores.</exception>
         internal StatDefinition(string id, string displayName, StatValueType statValueType)
         {
-            if (string.IsNullOrEmpty(id))
-            {
-                throw new System.ArgumentException("StatDefinition cannot have null or empty ids.");
-            }
-
-            if (!Tools.IsValidId(id))
-            {
-                throw new System.ArgumentException("StatDefinition must be alphanumeric. Dashes (-) and underscores (_) allowed.");
-            }
-            
             this.id = id;
-            idHash = Tools.StringToHash(id);
             this.displayName = displayName;
             this.statValueType = statValueType;
         }
 
+        /// <summary>
+        /// Tells whether or not the given <paramref name="type"/> matches the
+        /// internal <see cref="statValueType"/>.
+        /// </summary>
+        /// <param name="type">The type of test.</param>
+        /// <returns><c>true</c> if the <paramref name="type"/> matches,
+        /// <c>false</c> otherwise.</returns>
         internal bool DoesValueTypeMatch(System.Type type)
         {
             switch (statValueType)

@@ -1,6 +1,8 @@
 {
     "name": "Unity.Game.Foundation",
-    "references": [],
+    "references": [
+        "Unity.Promise"
+    ],
     "optionalUnityReferences": [],
     "includePlatforms": [],
     "excludePlatforms": [],

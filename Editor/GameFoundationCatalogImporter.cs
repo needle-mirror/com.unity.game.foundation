@@ -24,7 +24,7 @@ namespace UnityEngine.GameFoundation.CatalogManagement
                 
                 if (catalog != null)
                 {
-                    catalog.VerifyDefaultCatalogs();
+                    catalog.VerifyCatalogs();
                 }
             }
         }

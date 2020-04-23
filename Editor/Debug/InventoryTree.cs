@@ -4,7 +4,6 @@ using System.Linq;
 using System.Reflection;
 using UnityEditor.IMGUI.Controls;
 using UnityEngine;
-using UnityEngine.GameFoundation.CatalogManagement;
 using UnityEngine.GameFoundation;
 
 namespace UnityEditor.GameFoundation
@@ -15,43 +14,45 @@ namespace UnityEditor.GameFoundation
         {
             Items,
             Value,
-            Remove,
+            Action,
         }
 
-        private enum Depth
+
+        static readonly Texture2D kIcon_InventoryItem = EditorGUIUtility.FindTexture("Prefab Icon");
+
+        static readonly Texture2D kIcon_StatItem = EditorGUIUtility.FindTexture("GameManager Icon");
+
+
+        public static object GetInstanceField(Type type, object instance, string fieldName)
         {
-            Inventory,
-            InventoryItem,
-            Stat
+            BindingFlags bindFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
+            FieldInfo field = type.GetField(fieldName, bindFlags);
+            return field.GetValue(instance);
         }
 
-        private List<TreeViewItem> m_AllTreeViewItems = new List<TreeViewItem>();
 
-        private IList<int> m_ExpandedIdsBeforeSearch;
+        List<TreeViewItem> m_AllTreeViewItems = new List<TreeViewItem>();
 
-        private string m_SearchString = String.Empty;
+        IList<int> m_ExpandedIdsBeforeSearch;
+
+        string m_SearchString = string.Empty;
         public string SearchString
         {
-          get => m_SearchString;
-          set => m_SearchString = value;
+            get => m_SearchString;
+            set
+            {
+                if (m_SearchString != value)
+                {
+                    m_SearchString = value;
+                    Reload();
+                }
+            }
         }
 
-        private List<Inventory> m_IncomingInventories = new List<Inventory>();
-        private List<Inventory> m_Inventories = new List<Inventory>();
-        public List<Inventory> Inventories
-        {
-            get => m_Inventories;
-        }
-        
-        private List<InventoryItem> m_InventoryItems = new List<InventoryItem>();
+        List<InventoryItem> m_InventoryItems = new List<InventoryItem>();
 
-        private readonly List<Texture2D> m_ItemIcons = new List<Texture2D>
-        {
-            EditorGUIUtility.FindTexture ("Folder Icon"),
-            EditorGUIUtility.FindTexture ("Prefab Icon"),
-            EditorGUIUtility.FindTexture ("GameManager Icon")
-            
-        };
+        public int itemCount => m_InventoryItems.Count;
+
 
         public InventoryTree(TreeViewState state = null, MultiColumnHeader multiColumnHeader = null) : base(state ?? new TreeViewState(), multiColumnHeader)
         {
@@ -59,11 +60,6 @@ namespace UnityEditor.GameFoundation
             showAlternatingRowBackgrounds = true;
         }
 
-        public void Update()
-        {
-            //Calls BuildRoot and RowGUI in order.
-            Reload();
-        }
         
         protected override void SelectionChanged(IList<int> selectedIds)
         {
@@ -88,16 +84,16 @@ namespace UnityEditor.GameFoundation
 
         protected override TreeViewItem BuildRoot()
         {
-            TreeViewItem inventoryRoot = GenerateInventoryTreeRoot();
-            
+            var inventoryRoot = GenerateInventoryTreeRoot();
+
             //Filter generated root according to search and save previous expanded state.
-            if (!string.IsNullOrEmpty(m_SearchString))
+            if (!string.IsNullOrEmpty(SearchString))
             {
                 if (m_ExpandedIdsBeforeSearch == null)
                 {
                     m_ExpandedIdsBeforeSearch = GetExpanded();
                 }
-                FilterRootOnSearch(inventoryRoot, m_SearchString, m_AllTreeViewItems);
+                FilterRootOnSearch(inventoryRoot, SearchString, m_AllTreeViewItems);
             }
             else
             {
@@ -107,6 +103,12 @@ namespace UnityEditor.GameFoundation
                     m_ExpandedIdsBeforeSearch = null;
                 }
             }
+
+            if (!inventoryRoot.hasChildren)
+            {
+                inventoryRoot.AddChild(new TreeViewItem());
+            }
+
             return inventoryRoot;
         }
 
@@ -114,15 +116,17 @@ namespace UnityEditor.GameFoundation
         protected override void RowGUI(RowGUIArgs args)
         {
             var item = args.item;
+            if (item is null) return;
 
             for (int i = 0; i < args.GetNumVisibleColumns(); ++i)
             {
-                CellGUI(args.GetCellRect(i), (InventoryTreeItem)item, (Columns)args.GetColumn(i), ref args);
+                CellGUI(args.GetCellRect(i), item, (Columns)args.GetColumn(i), ref args);
             }
         }
-        
+
+
         //This function processes a single cell based on the column its in and renders it in a different way.
-        private void CellGUI(Rect cellRect, InventoryTreeItem item, Columns column, ref RowGUIArgs args)
+        void CellGUI(Rect cellRect, TreeViewItem viewItem, Columns column, ref RowGUIArgs args)
         {
             CenterRectUsingSingleLineHeight(ref cellRect);
 
@@ -130,148 +134,160 @@ namespace UnityEditor.GameFoundation
             {
                 case Columns.Items:
                 {
-                    ItemColumnGUI(cellRect, item);
+                    ItemColumnGUI(cellRect, viewItem);
                     break;
                 }
                 case Columns.Value:
                 {
-                    ValueColumnGUI(cellRect, item);
+                    ValueColumnGUI(cellRect, viewItem);
                     break;
                 }
-                case Columns.Remove:
+                case Columns.Action:
                 {
-                    RemoveColumnGUI(cellRect, item);
+                    ActionColumnGUI(cellRect, viewItem);
                     break;
                 }
             }
         }
 
-        private void RemoveColumnGUI(Rect cellRect, InventoryTreeItem item)
+        void ActionColumnGUI(Rect cellRect, TreeViewItem viewItem)
         {
             Rect centeredButtonPosition = cellRect;
             centeredButtonPosition.x += ((cellRect.xMax - cellRect.x - 30) / 2);
 
-            //Can't remove the main and wallet inventories
-            if (InventoryManager.GetInventory(item.itemHash)?.hash == InventoryManager.mainInventoryHash ||
-                InventoryManager.GetInventory(item.itemHash)?.hash == InventoryManager.walletInventoryHash)
-                return;
-
-            if (GUI.Button(centeredButtonPosition, "X",
-                new GUIStyle(GUI.skin.button) {fixedWidth = 30, alignment = TextAnchor.MiddleCenter}))
+            if (viewItem is InventoryItemView itemView)
             {
-                HandleSelectionRemoved(item);
-                switch ((Depth) item.depth)
+                var clicked = GUI.Button(
+                    centeredButtonPosition,
+                    viewItem is InventoryItemView ? "Delete" : "Reset",
+                    new GUIStyle(GUI.skin.button)
+                    {
+                        fixedWidth = 50,
+                        alignment = TextAnchor.MiddleCenter
+                    });
+
+                if (clicked)
                 {
-                    case  Depth.Inventory:
-                    {
-                        Inventory inventory = GetGameItem(item) as Inventory;
-                        InventoryManager.RemoveInventory(inventory);
-                        break;
-                    }
-                    case Depth.InventoryItem:
-                    {
-                        //Get Inventory from tree item parent to get InventoryItem
-                        InventoryManager.GetInventory(((InventoryTreeItem) item.parent).itemHash).RemoveItem(item.itemHash);
-                        InventoryItem inventoryItem = GetGameItem(item) as InventoryItem;
-                        inventoryItem?.inventory.RemoveItem(inventoryItem.id);
-                        break;
-                    }
-                    case Depth.Stat:
-                    {
-                        InventoryItem inventoryItem = GetGameItem(item) as InventoryItem;
-                        if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Int)
-                        {
-                            StatManager.RemoveIntValue(inventoryItem, item.itemHash);
-                        }
-
-                        if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Float)
-                        {
-                            StatManager.RemoveFloatValue(inventoryItem, item.itemHash);
-                        }
-
-                        break;
-                    }
+                    HandleSelectionRemoved(viewItem);
+                    //Get Inventory from tree item parent to get InventoryItem
+                    var inventoryItem = itemView.inventoryItem;
+                    InventoryManager.RemoveItem(inventoryItem);
+                    CorrectFoldouts(viewItem);
+                    Update();
                 }
-                CorrectFoldouts(item);
-                Update();
             }
+
+            else if (viewItem is StatView statView)
+            {
+                var clicked = GUI.Button(
+                    centeredButtonPosition,
+                    viewItem is InventoryItemView ? "Delete" : "Reset",
+                    new GUIStyle(GUI.skin.button)
+                    {
+                        fixedWidth = 50,
+                        alignment = TextAnchor.MiddleCenter
+                    });
+
+                if (clicked)
+                {
+                    var inventoryItem = statView.inventoryItem;
+                    var statDefinition = statView.statDefinition;
+                    inventoryItem.ResetStat(statDefinition);
+                    CorrectFoldouts(viewItem);
+                    Update();
+                }
+            }
+
         }
 
-        private void ValueColumnGUI(Rect cellRect, InventoryTreeItem item)
+        void ValueColumnGUI(Rect cellRect, TreeViewItem viewItem)
         {
-            if (item.depth > 0)
+            GUIStyle guiStyle = new GUIStyle(IsSelected(viewItem.id) ? GUI.skin.textField : GUI.skin.label)
             {
-                GUIStyle guiStyle = new GUIStyle(IsSelected(item.id) ? GUI.skin.textField : GUI.skin.label)
-                {
-                    alignment = TextAnchor.MiddleCenter
-                };
+                alignment = TextAnchor.MiddleCenter
+            };
 
-                //Bold Item Quantities
-                if ((Depth) item.depth == Depth.InventoryItem)
-                {
-                    guiStyle.fontStyle = FontStyle.Bold;
-                }
+            //Bold Item Quantities
+            if (viewItem is InventoryItemView)
+            {
+                guiStyle.fontStyle = FontStyle.Bold;
+            }
 
-                //Enable write mode when item is selected.
-                if (IsSelected(item.id))
-                {
-                    string newValue = EditorGUI.TextField(cellRect, item.statValue.ToString(), guiStyle);
-                    if (!string.IsNullOrWhiteSpace(newValue))
+            switch (viewItem)
+            {
+                case StatView statView:
+                    try
                     {
-                        switch ((Depth) item.depth)
+                        var inventoryItem = statView.inventoryItem;
+                        var statDefinition = statView.statDefinition;
+
+                        var statValue = inventoryItem.GetStat(statDefinition);
+
+                        if (statDefinition.statValueType == StatValueType.Int)
                         {
-                            case Depth.InventoryItem:
+                            var newValue = EditorGUI.IntField(cellRect, statValue, guiStyle);
+                            if (newValue != statValue)
                             {
-                                int result;
-                                if (int.TryParse(newValue, out result))
-                                {
-                                    (GetGameItem(item) as InventoryItem)?.SetQuantity(result);
-                                }
-
-                                break;
+                                inventoryItem.SetStat(statDefinition, newValue);
                             }
-                            case Depth.Stat:
+                        }
+
+                        else if (statDefinition.statValueType == StatValueType.Float)
+                        {
+                            var newValue = EditorGUI.FloatField(cellRect, statValue, guiStyle);
+                            if (newValue != statValue)
                             {
-                                InventoryItem inventoryItem = GetGameItem(item) as InventoryItem;
-                                if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Int &&
-                                    int.TryParse(newValue, out var resultInt))
-                                {
-                                    StatManager.SetIntValue(inventoryItem, item.itemHash, resultInt);
-                                }
-
-                                if (item.statType == UnityEngine.GameFoundation.StatDefinition.StatValueType.Float &&
-                                    float.TryParse(newValue, out var resultFloat))
-                                {
-                                    StatManager.SetFloatValue(inventoryItem, item.itemHash, resultFloat);
-                                }
-
-                                break;
+                                inventoryItem.SetStat(statDefinition, newValue);
                             }
                         }
                     }
-                }
-                else
-                {
-                    EditorGUI.LabelField(cellRect, item.statValue.ToString(), guiStyle);
-                }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                        Debug.LogError(e.StackTrace);
+                    }
+                    break;
+                case CurrencyView currencyView:
+                    try
+                    {
+                        var currency = currencyView.currency;
+
+                        var balance = WalletManager.GetBalance(currency);
+
+                        var newValue = EditorGUI.LongField(cellRect, balance, guiStyle);
+                        if (newValue != balance)
+                        {
+                            var done = WalletManager.SetBalance(currency, newValue);
+                            if (!done)
+                            {
+                                Debug.LogError("Cannot change the currency");
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogException(e);
+                        Debug.LogError(e.StackTrace);
+                    }
+                    break;
             }
         }
 
-        private void ItemColumnGUI(Rect cellRect, InventoryTreeItem item)
+        void ItemColumnGUI(Rect cellRect, TreeViewItem viewItem)
         {
             //Make Room for Icon between Arrow and Label
             Rect tempRect = cellRect;
-            tempRect.x += GetContentIndent(item);
+            tempRect.x += GetContentIndent(viewItem);
             tempRect.width = 16f;
             //Get clipping width for cell and remaining column width. 
-            tempRect.width = cellRect.width - GetContentIndent(item);
+            tempRect.width = cellRect.width - GetContentIndent(viewItem);
 
-            string labelText = item.displayName;
+            string labelText = viewItem.displayName;
 
             GUI.Label(tempRect, labelText, DefaultStyles.label);
         }
 
-        private void DrawTreeViewIcons(Rect cellRect, InventoryTreeItem item, Rect tempRect)
+        void DrawTreeViewIcons(Rect cellRect, TreeViewItem item, Rect tempRect)
         {
             //Draw Texture if in column if it can fit
             if (cellRect.width - GetContentIndent(item) > 16f)
@@ -281,9 +297,9 @@ namespace UnityEditor.GameFoundation
             tempRect.width = cellRect.width - GetContentIndent(item) - 16f;
         }
 
-        private void FilterRootOnSearch(TreeViewItem root, string search, List<TreeViewItem> allItems)
+        void FilterRootOnSearch(TreeViewItem root, string search, List<TreeViewItem> allItems)
         {
-            List<TreeViewItem> foundItems = allItems.Where(x => GetRealDisplayName((InventoryTreeItem)x).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
+            List<TreeViewItem> foundItems = allItems.Where(x => GetRealDisplayName(x).IndexOf(search, StringComparison.OrdinalIgnoreCase) >= 0).ToList();
             var newExpandedState = new HashSet<int>();
             foreach (var foundItem in foundItems)
             {
@@ -318,7 +334,7 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        private IEnumerable<int> AddItemAndItsAncestorsIDs(TreeViewItem item)
+        IEnumerable<int> AddItemAndItsAncestorsIDs(TreeViewItem item)
         {
             var results = new List<int>();
             results.Add(item.id);
@@ -331,7 +347,7 @@ namespace UnityEditor.GameFoundation
             return results;
         }
 
-        private void HandleSelectionRemoved(InventoryTreeItem item)
+        void HandleSelectionRemoved(TreeViewItem item)
         {
             List<int> selectedIds = new List<int>(GetSelection());
             selectedIds.Remove(item.id);
@@ -347,7 +363,7 @@ namespace UnityEditor.GameFoundation
         }
 
         //Correct expanded foldouts state when removing a row.
-        private void CorrectFoldouts(InventoryTreeItem deletedItem)
+        void CorrectFoldouts(TreeViewItem deletedItem)
         {
             int GetLastId(TreeViewItem item)
             {
@@ -372,107 +388,98 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        private TreeViewItem GenerateInventoryTreeRoot()
+        TreeViewItem GenerateInventoryTreeRoot()
         {
-            int id = -1;
+            int id = 0;
             m_AllTreeViewItems.Clear();
-            TreeViewItem root = new InventoryTreeItem(id++,-1,"Root");
-            
-            InventoryManager.GetInventories(m_IncomingInventories);
-            //Add and remove inventories based on the what the API reports. We do this to preserve order of lists added to ensure the latest inventories always appear towards the bottom.
-            IEnumerable<Inventory> inventoriesToAdd = m_IncomingInventories.Except(m_Inventories);
-            List<Inventory> inventoriesToRemove = m_Inventories.Except(m_IncomingInventories).ToList();
-            m_Inventories.AddRange(inventoriesToAdd);
-            m_Inventories.RemoveAll(inventory => inventoriesToRemove.Contains(inventory));
-            m_IncomingInventories.Clear();
+            var rootView = new TreeViewItem(id++, -1, "Root");
 
-            foreach (var inventory in m_Inventories)
+            var statCatalog = UnityEngine.GameFoundation.GameFoundation.catalogs.statCatalog;
+            var currencyCatalog = UnityEngine.GameFoundation.GameFoundation.catalogs.currencyCatalog;
+
+            var currenciesView = new TreeViewItem(id++, 0, "Wallet");
+            rootView.AddChild(currenciesView);
+
+            foreach (var currency in currencyCatalog.GetItems())
             {
-                m_InventoryItems.Clear();
-                inventory.GetItems(m_InventoryItems);
-                
-                TreeViewItem inventoryNode;
-                root.AddChild(inventoryNode = new InventoryTreeItem(id++,0,$"{inventory.displayName} - {m_InventoryItems.Count} item{(m_InventoryItems.Count > 1 ? "s" : "")} ({inventory.id})") {itemHash = inventory.hash, statValue = -1});
-                m_AllTreeViewItems.Add(inventoryNode);
-                inventoryNode.icon = m_ItemIcons[(int)Depth.Inventory];
-                
-                
-                foreach (var item in m_InventoryItems)
+                var currencyView = new CurrencyView
+                    (id++, 1, $"{currency.displayName}", currency);
+
+                currenciesView.AddChild(currencyView);
+            }
+
+            var itemsView = new TreeViewItem(id++, 0, "Items");
+            rootView.AddChild(itemsView);
+
+            InventoryManager.GetItems(m_InventoryItems);
+
+            foreach (var item in m_InventoryItems)
+            {
+                var itemView = new InventoryItemView
+                    (id++, 1, $"{item.definition.displayName} ({item.definition.id}) #{item.id}", item);
+
+                rootView.AddChild(itemView);
+
+                itemView.icon = kIcon_InventoryItem;
+                m_AllTreeViewItems.Add(itemView);
+
+                var statDetail = item.definition.GetDetail<StatDetail>();
+                if (statDetail is null) continue;
+
+                foreach (var statId in statDetail.m_DefaultValues.Keys)
                 {
-                    TreeViewItem inventoryItemNode;
-                    inventoryNode.AddChild(inventoryItemNode = new InventoryTreeItem(id++, 1, $"{item.displayName} ({item.id})") {itemHash = item.hash, statValue = item.quantity});
-                    inventoryItemNode.icon = m_ItemIcons[(int) Depth.InventoryItem];
-                    m_AllTreeViewItems.Add(inventoryItemNode);
+                    var statDefinition = statCatalog.FindStatDefinition(statId);
 
-                    //Contains information of which statDefinitions are on GameItems
-                    var intStatHashLookup = (Dictionary<int, List<int>>)GetInstanceField(typeof(StatManager.StatDictionary<int>), null, "m_GameItemStatList");
-                    var floatStatHashLookup = (Dictionary<int, List<int>>)GetInstanceField(typeof(StatManager.StatDictionary<float>), null, "m_GameItemStatList");
+                    var statView = new StatView
+                        (id++, 2, statDefinition.displayName, item, statDefinition);
 
-                    TreeViewItem statsNode;
-                    if (intStatHashLookup.ContainsKey(item.gameItemId))
-                    {
-                        foreach (var statHash in intStatHashLookup[item.gameItemId])
-                        {
-                            if (StatManager.HasIntValue(item, statHash))
-                            {
-                                UnityEngine.GameFoundation.StatDefinition statDefinition = StatManager.catalog.GetStatDefinition(statHash);
-                                inventoryItemNode.AddChild(statsNode = new InventoryTreeItem(id++,2,statDefinition.displayName) { itemHash = statDefinition.idHash, statValue = StatManager.GetIntValue(item,statDefinition.id), statType = UnityEngine.GameFoundation.StatDefinition.StatValueType.Int});
-                                statsNode.icon = m_ItemIcons[(int)Depth.Stat];
-                                m_AllTreeViewItems.Add(statsNode);
-                            }
-                        }
-                    }
-                    if (floatStatHashLookup.ContainsKey(item.gameItemId))
-                    {
-                        foreach (int statHash in floatStatHashLookup[item.gameItemId])
-                        {
-                            if (StatManager.HasFloatValue(item, statHash))
-                            {
-                                UnityEngine.GameFoundation.StatDefinition statDefinition = StatManager.catalog.GetStatDefinition(statHash);
-                                inventoryItemNode.AddChild(statsNode = new InventoryTreeItem(id++,2,statDefinition.displayName) { itemHash = statDefinition.idHash, statValue = StatManager.GetFloatValue(item,statDefinition.id), statType = UnityEngine.GameFoundation.StatDefinition.StatValueType.Float});
-                                statsNode.icon = m_ItemIcons[(int)Depth.Stat];
-                                m_AllTreeViewItems.Add(statsNode);
-                            }
-                        }
-                    }
+                    itemView.AddChild(statView);
+                    statView.icon = kIcon_StatItem;
+                    m_AllTreeViewItems.Add(statView);
                 }
             }
 
-            return root;
-        }
-        
-        public TreeViewItem FindItem(int id)
-        {
-            return base.FindItem(id,rootItem);
+            return rootView;
         }
 
-        public string GetRealDisplayName(InventoryTreeItem inventoryTreeItem)
+        bool m_Bound;
+        public void Update()
         {
-            switch ((Depth)inventoryTreeItem.depth)
+            if (!m_Bound)
             {
-                case Depth.Inventory:
-                    return InventoryManager.GetInventory(inventoryTreeItem.itemHash).displayName;
-                case Depth.InventoryItem:
-                    return GameFoundationDatabaseSettings.database.inventoryCatalog.GetItemDefinition(inventoryTreeItem.itemHash).displayName;
-                case Depth.Stat:
-                    return GameFoundationDatabaseSettings.database.statCatalog.GetStatDefinition(inventoryTreeItem.itemHash).displayName;
-                default:
-                    throw new ArgumentException("Cannot get real display name of this InventoryTreeItem, bad depth parameter.");
+                if (UnityEngine.GameFoundation.GameFoundation.IsInitialized)
+                {
+                    InventoryManager.itemAdded += o => Reload();
+                    InventoryManager.itemRemoved += o => Reload();
+                    WalletManager.balanceChanged += (b, o, v) => Reload();
+
+                    m_Bound = true;
+
+                    //Calls BuildRoot and RowGUI in order.
+                    Reload();
+                }
             }
         }
 
-        public GameItem GetGameItem(InventoryTreeItem inventoryTreeItem)
+        public TreeViewItem FindItem(int id)
         {
-            switch ((Depth)inventoryTreeItem.depth)
+            return base.FindItem(id, rootItem);
+        }
+
+        public string GetRealDisplayName(TreeViewItem itemView)
+        {
+            switch (itemView)
             {
-                case Depth.Inventory:
-                    return InventoryManager.GetInventory(inventoryTreeItem.itemHash);
-                case Depth.InventoryItem:
-                    return InventoryManager.GetInventory(((InventoryTreeItem)inventoryTreeItem.parent).itemHash).GetItem(inventoryTreeItem.itemHash);
-                case Depth.Stat:
-                    return InventoryManager.GetInventory(((InventoryTreeItem)inventoryTreeItem.parent.parent).itemHash).GetItem(((InventoryTreeItem)inventoryTreeItem.parent).itemHash);
+                case InventoryItemView inventoryItemView:
+                    var inventoryItem = inventoryItemView.inventoryItem;
+                    return inventoryItem.definition.displayName;
+
+                case StatView statView:
+                    var statDefinition = statView.statDefinition;
+                    return statDefinition.displayName;
+
                 default:
-                    throw new ArgumentException("Cannot get the corresponding GameItem for this InventoryTreeItem, bad depth parameter.");
+                    throw new ArgumentException("Cannot get real display name of this InventoryTreeItem, bad depth parameter.");
             }
         }
 
@@ -485,7 +492,7 @@ namespace UnityEditor.GameFoundation
                 {
                     contextMenuText = "Items",
                     headerTextAlignment = TextAlignment.Center,
-                    width = treeViewWidth - 107,
+                    width = treeViewWidth - 130,
                     autoResize = true,
                     allowToggleVisibility = true,
                     canSort = false,
@@ -502,9 +509,9 @@ namespace UnityEditor.GameFoundation
                 },
                 new MultiColumnHeaderState.Column
                 {
-                    contextMenuText = "Remove Item",
-                    headerContent = new GUIContent("Remove"),
-                    width = 55,
+                    contextMenuText = "Trigger action on Item",
+                    headerContent = new GUIContent("Actions"),
+                    width = 70,
                     headerTextAlignment = TextAlignment.Center,
                     autoResize = false,
                     allowToggleVisibility = true,
@@ -512,13 +519,6 @@ namespace UnityEditor.GameFoundation
                 },
             };
             return new MultiColumnHeaderState(columns);
-        }
-        
-        public static object GetInstanceField(Type type, object instance, string fieldName)
-        {
-            BindingFlags bindFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
-            FieldInfo field = type.GetField(fieldName, bindFlags);
-            return field.GetValue(instance);
         }
     }
 }

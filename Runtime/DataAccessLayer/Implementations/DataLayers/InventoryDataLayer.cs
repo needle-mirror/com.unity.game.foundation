@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using UnityEngine.GameFoundation.DataPersistence;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation.DataAccessLayers
 {
@@ -10,165 +10,144 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
     /// </summary>
     class InventoryDataLayer : IInventoryDataLayer
     {
-        public class Inventory
-        {
-            public InventorySerializableData data;
-
-            public Dictionary<string, InventoryItemSerializableData> items =
-                new Dictionary<string, InventoryItemSerializableData>();
-        }
-
-        Dictionary<string, Inventory> m_Inventories;
+        /// <summary>
+        /// Owner this <see cref="InventoryDataLayer"/> instance.
+        /// </summary>
+        BaseMemoryDataLayer m_Owner;
+        /// <summary>
+        /// Stores the data of all the item instances.
+        /// </summary>
+        internal Dictionary<string, InventoryItemSerializableData> m_Items;
 
         /// <summary>
-        /// Create a new <see cref="InventoryDataLayer"/> with the given data.
+        /// Initializes a new instance of the <see cref="InventoryDataLayer"/>
+        /// class with the given <paramref name="data"/>.
         /// </summary>
         /// <param name="data">InventoryManager's serializable data.</param>
-        public InventoryDataLayer(InventoryManagerSerializableData data)
+        public InventoryDataLayer(BaseMemoryDataLayer owner, InventoryManagerSerializableData data)
         {
-            m_Inventories = new Dictionary<string, Inventory>();
+            m_Owner = owner;
+            m_Items = new Dictionary<string, InventoryItemSerializableData>();
 
-            var inventories = data.inventories;
-            if (inventories == null) return;
-
-            var items = data.items;
-
-            foreach (var inventoryData in inventories)
+            foreach (var item in data.items)
             {
-                var inventory = new Inventory
-                {
-                    data = inventoryData
-                };
-
-                m_Inventories.Add(inventory.data.Id, inventory);
-
-                if (items == null) continue;
-
-                foreach (var itemData in items)
-                {
-                    if (itemData.inventoryId == inventoryData.Id)
-                        inventory.items.Add(itemData.definitionId, itemData);
-                }
+                m_Items.Add(item.id, item);
             }
         }
+
+        /// <summary>
+        /// Tells whether or not an item exists with the specified
+        /// <paramref name="id"/>.
+        /// </summary>
+        /// <param name="id">The id of the item.</param>
+        /// <returns>True if an item exists with the specified
+        /// <paramref name="id"/>, false otherwise.</returns>
+        internal bool Contains(string id) => m_Items.ContainsKey(id);
+
+        /// <summary>
+        /// Gets the item of a given type.
+        /// </summary>
+        /// <param name="id">The identifier of the
+        /// <see cref="InventoryItemDefinition"/>.</param>
+        /// <param name="target">The target collection the items are added
+        /// to.</param>
+        /// <returns>The numnber of items added.</returns>
+        internal int GetItemsByDefinition
+            (string id, ICollection<string> target = null)
+        {
+            Tools.ThrowIfArgNullOrEmpty(id, nameof(id));
+
+            var count = 0;
+            target?.Clear();
+
+            foreach (var item in m_Items.Values)
+            {
+                if (item.definitionId == id)
+                {
+                    count++;
+                    target?.Add(item.id);
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Creates a new item.
+        /// </summary>
+        /// <param name="definitionId">The definition of the item to create</param>
+        /// <returns>The id of the newly created item</returns>
+        internal string CreateItem(string definitionId)
+        {
+            var itemId = Guid.NewGuid().ToString();
+            var data = new InventoryItemSerializableData
+            {
+                id = itemId,
+                definitionId = definitionId
+            };
+            
+            m_Items.Add(itemId, data);
+            m_Owner.m_StatDataLayer.InitStats(itemId);
+
+            return itemId;
+        }
+
+        /// <summary>
+        /// Deletes an item.
+        /// </summary>
+        /// <param name="id">Identifier of the item to delete.</param>
+        /// <returns><c>true</c> if deleted, <c>false</c> otherwise.</returns>
+        internal bool DeleteItem(string id) => m_Items.Remove(id);
 
         /// <inheritdoc />
         InventoryManagerSerializableData IInventoryDataLayer.GetData()
         {
-            var inventories = new List<InventorySerializableData>();
-            var items = new List<InventoryItemSerializableData>();
-
-            foreach (var inventory in m_Inventories.Values)
-            {
-                inventories.Add(inventory.data);
-                items.AddRange(inventory.items.Values);
-            }
-
+            var items = new InventoryItemSerializableData[m_Items.Count];
+            m_Items.Values.CopyTo(items, 0);
+            
             var data = new InventoryManagerSerializableData
             {
-                inventories = inventories.ToArray(),
-                items = items.ToArray()
+                items = items
             };
 
             return data;
         }
 
-        /// <inheritdoc />
-        void IInventoryDataLayer.CreateInventory(
-            string definitionId,
-            string inventoryId,
-            string displayName,
-            int gameItemId,
-            Completer completer)
+        /// <inheritdoc/>
+        void IInventoryDataLayer.CreateItem(string definitionId, string itemId, Completer completer)
         {
-            if (m_Inventories.ContainsKey(inventoryId))
+            if (m_Items.ContainsKey(itemId))
             {
-                var error = new ArgumentException(
-                    $"An inventory with the id \"{inventoryId}\" already exists.");
+                var error = new ArgumentException
+                    ($"An Item with the id \"{itemId}\" already exists.");
 
                 completer.Reject(error);
                 return;
             }
 
-            var inventoryData = new InventorySerializableData
+            var item = new InventoryItemSerializableData
             {
-                Id = inventoryId,
                 definitionId = definitionId,
-                displayName = displayName,
-                gameItemId = gameItemId
+                id = itemId
             };
-
-            var inventory = new Inventory
-            {
-                data = inventoryData,
-                items = new Dictionary<string, InventoryItemSerializableData>()
-            };
-
-            m_Inventories.Add(inventoryId, inventory);
+            m_Items.Add(item.id, item);
 
             completer.Resolve();
         }
 
         /// <inheritdoc />
-        void IInventoryDataLayer.DeleteInventory(string inventoryId, Completer completer)
+        void IInventoryDataLayer.DeleteItem(string itemId, Completer completer)
         {
-            m_Inventories.Remove(inventoryId);
-
-            // The deletion of a none existing inventory is considered a valid
-            // operation so we resolve instead of rejecting the response.
-            completer.Resolve();
-        }
-
-        /// <inheritdoc />
-        void IInventoryDataLayer.SetItemQuantity(
-            string inventoryId,
-            string itemDefinitionId,
-            int quantity,
-            int gameItemId,
-            Completer completer)
-        {
-            var found = m_Inventories.TryGetValue(inventoryId, out Inventory inventory);
-
-            if (!found)
-            {
-                var error = new KeyNotFoundException($"There is no inventory with the id \"{inventoryId}\".");
-
-                completer.Reject(error);
-                return;
-            }
-
-            found = inventory.items.TryGetValue(itemDefinitionId, out InventoryItemSerializableData itemData);
-
-            if (found)
-            {
-                itemData.quantity = quantity;
-                inventory.items[itemDefinitionId] = itemData;
-            }
-            else
-            {
-                itemData = new InventoryItemSerializableData(inventoryId, itemDefinitionId, quantity, gameItemId);
-                inventory.items.Add(itemDefinitionId, itemData);
-            }
-
-            completer.Resolve();
-        }
-
-        /// <inheritdoc />
-        void IInventoryDataLayer.DeleteItem(string inventoryId, string itemDefinitionId, Completer completer)
-        {
-            var found = m_Inventories.TryGetValue(inventoryId, out Inventory inventory);
-
+            var found = m_Items.ContainsKey(itemId);
+            
             if (!found)
             {
                 //Requesting deletion of an item in a non existing inventory is a silent error.
                 completer.Resolve();
-
                 return;
             }
 
-            inventory.items.Remove(itemDefinitionId);
-
-            //Deleting an Item that isn't in the inventory is considered valid 
+            m_Items.Remove(itemId);
             completer.Resolve();
         }
     }

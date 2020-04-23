@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace UnityEngine.GameFoundation.DataPersistence
 {
@@ -9,33 +9,23 @@ namespace UnityEngine.GameFoundation.DataPersistence
     public struct StatItemSerializableData
     {
         /// <summary>
-        /// The GameItem hash id of the stat.
+        /// The id of the item the stat is linked to.
         /// </summary>
-        public int gameItemId;
+        public string itemId;
 
         /// <summary>
-        /// The definition id of the stat.
+        /// List of the item stats with their value.
         /// </summary>
-        public string definitionId;
+        public ItemStat[] stats;
 
         /// <summary>
-        /// The int value of the stat when StatDictionary type is an int.
+        /// Initializes an instance from a <paramref name="source"/>.
         /// </summary>
-        public int intValue;
-
-        /// <summary>
-        /// The default int value of the stat when StatDictionary type is an int.
-        /// </summary>
-        public int defaultIntValue;
-
-        /// <summary>
-        /// The float value of the stat when StatDictionary type is a float.
-        /// </summary>
-        public float floatValue;
-
-        /// <summary>
-        /// The float value of the stat when StatDictionary type is a float.
-        /// </summary>
-        public float defaultFloatValue;
+        /// <param name="source">The source data.</param>
+        public StatItemSerializableData(StatItemSerializableData source)
+        {
+            itemId = source.itemId;
+            stats = Tools.ToArray(source.stats);
+        }
     }
 }

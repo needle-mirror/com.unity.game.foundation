@@ -13,20 +13,22 @@ namespace UnityEditor.GameFoundation
     {
         private class CategoryRow
         {
-            public readonly List<CategoryDefinition> categories;
+            public readonly List<CategoryAsset> categories;
 
             public CategoryRow()
             {
-                categories = new List<CategoryDefinition>();
+                categories = new List<CategoryAsset>();
             }
         }
 
-        private CategoryDefinition[] m_CategoryDefinitions;
-        public CategoryDefinition[] categoryDefinitions => m_CategoryDefinitions;
+        BaseCatalogAsset m_Catalog;
+
+        private CategoryAsset[] m_Categories;
+        public CategoryAsset[] categories => m_Categories;
 
         private List<CategoryRow> m_WrappableCategoryRows = new List<CategoryRow>();
-        private List<CategoryDefinition> m_CategorySearchResults = new List<CategoryDefinition>();
-        private List<CategoryDefinition> m_AssignedCategories;
+        private List<CategoryAsset> m_CategorySearchResults = new List<CategoryAsset>();
+        private List<CategoryAsset> m_AssignedCategories;
 
         private Rect m_CategoryItemsRect;
         private string m_CategorySearchString = string.Empty;
@@ -44,61 +46,65 @@ namespace UnityEditor.GameFoundation
             "Categories",
             "Assign existing categories or create new ones. Use categories to filter/group items in the editor and code.");
 
+        public CategoryPickerEditor(BaseCatalogAsset catalog)
+        {
+            m_Catalog = catalog;
+        }
+
         /// <summary>
         /// Re-cache the collection of categories from the inventory catalog.
         /// </summary>
         public void RefreshCategories()
         {
-            if (GameFoundationDatabaseSettings.database != null
-                && GameFoundationDatabaseSettings.database.inventoryCatalog != null)
-            {
-                m_CategoryDefinitions = GameFoundationDatabaseSettings.database.inventoryCatalog.GetCategories();
-            }
-            else
-            {
-                m_CategoryDefinitions = new CategoryDefinition[0];
-            }
+            if(!CheckCatalog()) return;
+            var categories = GetCatalogCategories();
+            if (categories == null) categories = new CategoryAsset[0];
+
+            m_Categories = categories;
         }
 
-        private void RefreshAssignedCategories(GameItemDefinition gameItemDefinition)
+        protected CategoryAsset[] GetCatalogCategories()
+            => m_Catalog.GetCategories();
+
+        private void RefreshAssignedCategories(CatalogItemAsset catalogItem)
         {
             if (m_AssignedCategories == null)
             {
-                m_AssignedCategories = new List<CategoryDefinition>();
+                m_AssignedCategories = new List<CategoryAsset>();
             }
 
             m_AssignedCategories.Clear();
 
-            if (gameItemDefinition == null)
+            if (catalogItem == null)
             {
                 return;
             }
 
-            gameItemDefinition.GetCategories(m_AssignedCategories);
+            catalogItem.GetCategories(m_AssignedCategories);
         }
 
         /// <summary>
         /// Draws category selection search bar and selected categories.
         /// </summary>
-        /// <param name="gameItemDefinition">The GameItemDefinition of the item that is
+        /// <param name="catalogItem">The GameItemDefinition of the item that is
         /// currently selected for category selection.</param>
-        public void DrawCategoryPicker(GameItemDefinition gameItemDefinition)
+        public void DrawCategoryPicker(CatalogItemAsset catalogItem)
         {
-            RefreshAssignedCategories(gameItemDefinition);
+            RefreshAssignedCategories(catalogItem);
 
-            DrawCategoriesDetail(gameItemDefinition);
+            DrawCategoriesDetail(catalogItem);
         }
 
         /// <summary>
         /// Draws category search suggestion view. NOTE: This needs to be the last GUI call
         /// in the given window otherwise other elements will be drawn over it.
         /// </summary>
-        /// <param name="gameItemDefinition">The GameItemDefinition of the item that is
+        /// <param name="catalogItem">The GameItemDefinition of the item that is
         /// currently selected for category selection.</param>
-        public void DrawCategoryPickerPopup(GameItemDefinition gameItemDefinition)
+        public void DrawCategoryPickerPopup(CatalogItemAsset catalogItem)
         {
-            DrawCategorySearchSuggest(gameItemDefinition);
-            HandleCategorySearchInput(gameItemDefinition);
+            DrawCategorySearchSuggest(catalogItem);
+            HandleCategorySearchInput(catalogItem);
         }
 
         /// <summary>
@@ -119,7 +125,7 @@ namespace UnityEditor.GameFoundation
             m_UsedScrollWheelInSuggestBox = false;
         }
 
-        private void DrawCategoriesDetail(GameItemDefinition gameItemDefinition)
+        private void DrawCategoriesDetail(CatalogItemAsset catalogItem)
         {
             EditorGUILayout.LabelField(s_CategoryLabel, GameFoundationEditorStyles.titleStyle);
 
@@ -149,7 +155,7 @@ namespace UnityEditor.GameFoundation
                                 var addButtonDisabled = !CollectionEditorTools.IsValidId(
                                     CollectionEditorTools.CraftUniqueId(
                                         m_CategorySearchString,
-                                        new HashSet<string>(m_CategoryDefinitions.Select(category => category.id))));
+                                        new HashSet<string>(m_Categories.Select(category => category.id))));
 
                                 using (new EditorGUI.DisabledGroupScope(addButtonDisabled))
                                 {
@@ -160,7 +166,7 @@ namespace UnityEditor.GameFoundation
                                     if (GUILayout.Button(new GUIContent("Add", tooltip), GUILayout.Width(CategoryPickerStyles.categoryAddButtonWidth)))
                                     {
                                         // same as if user presses Enter or Return
-                                        CreateAndAssignCategoryFromSearchField(gameItemDefinition);
+                                        CreateAndAssignCategoryFromSearchField(catalogItem);
                                     }
                                 }
                             }
@@ -184,7 +190,7 @@ namespace UnityEditor.GameFoundation
                         }
 
                         // don't modify a collection while iterating through it
-                        CategoryDefinition categoryToRemove = null;
+                        CategoryAsset categoryToRemove = null;
 
                         using (new GUILayout.VerticalScope(GameFoundationEditorStyles.boxStyle))
                         {
@@ -244,14 +250,14 @@ namespace UnityEditor.GameFoundation
                             return;
                         }
 
-                        gameItemDefinition.RemoveCategory(categoryToRemove);
-                        RefreshAssignedCategories(gameItemDefinition);
+                        catalogItem.Editor_RemoveCategory(categoryToRemove);
+                        RefreshAssignedCategories(catalogItem);
                     }
                 }
             }
         }
 
-        private void DrawCategorySearchSuggest(GameItemDefinition gameItemDefinition)
+        private void DrawCategorySearchSuggest(CatalogItemAsset catalogItem)
         {
             // only show the search suggest window and handle input for it if...
             // - the search field is currently in focus
@@ -303,7 +309,7 @@ namespace UnityEditor.GameFoundation
 
                         if (GUILayout.Button(suggestedCategory.displayName, style, GUILayout.ExpandWidth(true)))
                         {
-                            AssignCategory(gameItemDefinition, suggestedCategory);
+                            AssignCategory(catalogItem, suggestedCategory);
                             ResetCategorySearch(true);
                             UpdateCategorySuggestions();
                             RecalculateCategoryBoxHeight();
@@ -313,7 +319,7 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        private void HandleCategorySearchInput(GameItemDefinition gameItemDefinition)
+        private void HandleCategorySearchInput(CatalogItemAsset catalogItem)
         {
             if (string.IsNullOrEmpty(m_CategorySearchString)) return;
 
@@ -353,7 +359,7 @@ namespace UnityEditor.GameFoundation
                         if (m_CategorySuggestSelectedIndex >= 0)
                         {
                             // if there are results and one is selected, then assign it
-                            AssignCategory(gameItemDefinition, m_CategorySearchResults[m_CategorySuggestSelectedIndex]);
+                            AssignCategory(catalogItem, m_CategorySearchResults[m_CategorySuggestSelectedIndex]);
                             RecalculateCategoryBoxHeight();
                         }
                         // if there are results but none are selected, then do nothing
@@ -364,7 +370,7 @@ namespace UnityEditor.GameFoundation
                         // if there are no suggestions but there is search string, then create a new category
                         // but it's probably not expected when tab key is used, so we'll exclude that one
 
-                        CreateAndAssignCategoryFromSearchField(gameItemDefinition);
+                        CreateAndAssignCategoryFromSearchField(catalogItem);
                     }
 
                     ResetCategorySearch(true);
@@ -384,7 +390,15 @@ namespace UnityEditor.GameFoundation
             CorrectCategorySearchSuggestSelectedIndex();
         }
 
-        private void CreateAndAssignCategoryFromSearchField(GameItemDefinition gameItemDefinition)
+        protected bool CheckCatalog() => m_Catalog != null;
+
+        protected void AddItem(CategoryAsset category)
+        {
+            m_Catalog.Editor_AddCategory(category);
+            CollectionEditorTools.AssetDatabaseAddObject(category, m_Catalog);
+        }
+
+        private void CreateAndAssignCategoryFromSearchField(CatalogItemAsset catalogItem)
         {
             if (GameFoundationDatabaseSettings.database == null)
             {
@@ -392,34 +406,33 @@ namespace UnityEditor.GameFoundation
                 return;
             }
 
-            if (GameFoundationDatabaseSettings.database.inventoryCatalog == null)
-            {
-                Debug.LogError("Could not create category because inventory catalog is null");
-                return;
-            }
+            if(!CheckCatalog()) return;
 
             // don't allow creation of duplicate displayNames here
             // you can still do it in the main category editor
-            if (m_CategoryDefinitions == null || m_CategoryDefinitions.Any(category => category.displayName == m_CategorySearchString)) return;
+            if (m_Categories == null || m_Categories.Any(category => category.displayName == m_CategorySearchString)) return;
 
-            string categoryId = CollectionEditorTools.CraftUniqueId(m_CategorySearchString, new HashSet<string>(m_CategoryDefinitions.Select(category => category.id)));
+            string categoryId = CollectionEditorTools.CraftUniqueId(m_CategorySearchString, new HashSet<string>(m_Categories.Select(category => category.id)));
 
             if (CollectionEditorTools.IsValidId(m_CategorySearchString))
             {
-                categoryId = CollectionEditorTools.DeDuplicateNewId(m_CategorySearchString, new HashSet<string>(m_CategoryDefinitions.Select(category => category.id)));
+                categoryId = CollectionEditorTools.DeDuplicateNewId(m_CategorySearchString, new HashSet<string>(m_Categories.Select(category => category.id)));
             }
             
-            var newCategory = new CategoryDefinition(categoryId, m_CategorySearchString);
+            var newCategory = CategoryAsset.Editor_Create(categoryId, m_CategorySearchString);
+            if (newCategory != null)
+            {
+                AddItem(newCategory);
 
-            GameFoundationDatabaseSettings.database.inventoryCatalog.AddCategory(newCategory);
-            RefreshCategories();
-            AssignCategory(gameItemDefinition, newCategory);
+                RefreshCategories();
+                AssignCategory(catalogItem, newCategory);
+            }
 
             // Refresh settings with new category
             RecalculateCategoryBoxHeight();
             ResetCategorySearch(true);
             UpdateCategorySuggestions();
-            m_CategoryFilterEditor.RefreshSidebarCategoryFilterList(m_CategoryDefinitions);
+            m_CategoryFilterEditor.RefreshSidebarCategoryFilterList(m_Categories);
         }
 
         private void RecalculateCategoryBoxHeight()
@@ -452,16 +465,16 @@ namespace UnityEditor.GameFoundation
 
         private void UpdateCategorySuggestions()
         {
-            if (string.IsNullOrEmpty(m_CategorySearchString) || m_CategoryDefinitions == null)
+            if (string.IsNullOrEmpty(m_CategorySearchString) || m_Categories == null)
             {
-                m_CategorySearchResults = new List<CategoryDefinition>();
+                m_CategorySearchResults = new List<CategoryAsset>();
                 m_CategorySuggestSelectedIndex = -1;
                 return;
             }
 
             var potentialMatches =
                 System.Array.FindAll(
-                    m_CategoryDefinitions,
+                    m_Categories,
                     cat => cat.displayName.ToLowerInvariant().Contains(m_CategorySearchString.ToLowerInvariant()));
 
             m_CategorySearchResults = potentialMatches
@@ -490,16 +503,16 @@ namespace UnityEditor.GameFoundation
             }
         }
 
-        private void AssignCategory(GameItemDefinition gameItemDefinition, CategoryDefinition addCategory)
+        private void AssignCategory(CatalogItemAsset catalogItem, CategoryAsset category)
         {
-            if (gameItemDefinition == null || addCategory == null)
+            if (catalogItem == null || category == null)
             {
                 return;
             }
 
-            gameItemDefinition.AddCategory(addCategory);
+            catalogItem.Editor_AddCategory(category);
 
-            RefreshAssignedCategories(gameItemDefinition);
+            RefreshAssignedCategories(catalogItem);
         }
     }
 }

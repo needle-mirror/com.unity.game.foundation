@@ -1,13 +1,9 @@
-﻿#if UNITY_EDITOR
-using UnityEditor;
-#endif
-
 namespace UnityEngine.GameFoundation
 {
     /// <summary>
     /// Game Foundation settings for runtime implementation and serialization.
     /// </summary>
-    public class GameFoundationSettings : ScriptableObject
+    public partial class GameFoundationSettings : ScriptableObject
     {
         /// <summary>
         /// The directory name where Unity project assets will be created/stored.
@@ -19,10 +15,18 @@ namespace UnityEngine.GameFoundation
         {
             get
             {
+#if UNITY_EDITOR
+                Editor_CreateGameFoundationSettingsIfNecessary();
+#else
                 if (s_Instance == null)
                 {
-                    CreateGameFoundationSettingsIfNecessary();
+                    s_Instance = Resources.Load<GameFoundationSettings>("GameFoundationSettings");
                 }
+                if (s_Instance == null)
+                {
+                    throw new System.InvalidOperationException("Unable to find a GameFoundationSettings resource!");
+                }
+#endif
 
                 return s_Instance;
             }
@@ -36,15 +40,7 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <returns>True if analytics events should be fired while in Play Mode.</returns>
         public static bool enablePlayModeAnalytics
-        {
-            get { return singleton.m_EnablePlayModeAnalytics; }
-            set {
-                singleton.m_EnablePlayModeAnalytics = value;
-#if UNITY_EDITOR
-                EditorUtility.SetDirty(s_Instance);
-#endif
-            }
-        }
+            => singleton.m_EnablePlayModeAnalytics;
 
         [SerializeField]
         private bool m_EnableEditorModeAnalytics = false;
@@ -54,55 +50,21 @@ namespace UnityEngine.GameFoundation
         /// </summary>
         /// <returns>True if analytic events should be fired while in Editor Mode.</returns>
         public static bool enableEditorModeAnalytics
-        {
-            get { return singleton.m_EnableEditorModeAnalytics; }
-            set {
-                singleton.m_EnableEditorModeAnalytics = value;
-#if UNITY_EDITOR
-                EditorUtility.SetDirty(s_Instance);
-#endif
-            }
-        }
+            => singleton.m_EnableEditorModeAnalytics;
 
-        internal static void CreateGameFoundationSettingsIfNecessary()
+        /// <summary>
+        /// Indicates whether Game Foundation With IAP is enabled.
+        /// </summary>
+        /// <returns>True if UNITY_PURCHASING_FOR_GAME_FOUNDATION has been enabled for the project.</returns>
+        public static bool purchasingEnabled
         {
-            if (s_Instance == null)
+            get
             {
-                s_Instance = Resources.Load<GameFoundationSettings>("GameFoundationSettings");
-
-#if UNITY_EDITOR
-                if (s_Instance == null && !Application.isPlaying)
-                {
-                    Debug.Log("No Game Foundation settings file has been found. " +
-                              "Game Foundation code will automatically create one. " +
-                              "The Settings file is critical to Game Foundation, " +
-                              "if you wish to remove it you will need to " +
-                              "remove the entire Game Foundation package.");
-
-                    s_Instance = ScriptableObject.CreateInstance<GameFoundationSettings>();
-
-                    if (!AssetDatabase.IsValidFolder($"Assets/{kAssetsFolder}"))
-                    {
-                        AssetDatabase.CreateFolder("Assets", kAssetsFolder);
-                    }
-
-                    if (!AssetDatabase.IsValidFolder($"Assets/{kAssetsFolder}/Resources"))
-                    {
-                        AssetDatabase.CreateFolder($"Assets/{kAssetsFolder}", "Resources");
-                    }
-
-                    AssetDatabase.CreateAsset(s_Instance, $"Assets/{kAssetsFolder}/Resources/GameFoundationSettings.asset");
-                    AssetDatabase.SaveAssets();
-                    AssetDatabase.Refresh();
-
-                    s_Instance = Resources.Load<GameFoundationSettings>("GameFoundationSettings");
-                }
+#if UNITY_PURCHASING && UNITY_PURCHASING_FOR_GAME_FOUNDATION
+                return true;
+#else
+                return false;
 #endif
-
-                if (s_Instance == null)
-                {
-                    throw new System.InvalidOperationException("Unable to find or create a GameFoundationSettings resource!");
-                }
             }
         }
     }

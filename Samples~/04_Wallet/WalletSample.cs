@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System.Text;
 using UnityEngine.GameFoundation.DataAccessLayers;
 using UnityEngine.UI;
 
@@ -12,6 +12,21 @@ namespace UnityEngine.GameFoundation.Sample
         private bool m_WrongDatabase;
 
         /// <summary>
+        /// Flag for whether the Wallet has changes in it that have not yet been updated in the UI.
+        /// </summary>
+        private bool m_WalletChanged;
+
+        /// <summary>
+        /// We will want to hold onto reference to currency for easy use later.
+        /// </summary>
+        private Currency m_CoinDefinition;
+
+        /// <summary>
+        /// Used to reduce times mainText.text is accessed.
+        /// </summary>
+        private readonly StringBuilder m_DisplayText = new StringBuilder();
+
+        /// <summary>
         /// Reference to the panel to display when the wrong database is in use.
         /// </summary>
         public GameObject wrongDatabasePanel;
@@ -22,27 +37,14 @@ namespace UnityEngine.GameFoundation.Sample
         public Text mainText;
 
         /// <summary>
-        /// References to the specific buy/sell buttons to enable/disable when either action is not possible.
+        /// Reference to the specific lose coin button to enable/disable when the action is not possible.
         /// </summary>
-        public Button buyButton;
-        public Button sellButton;
-
-        /// <summary>
-        /// We will want to hold onto reference to inventories for easy use later.
-        /// </summary>
-        private Inventory m_Wallet;
-        private Inventory m_Store;
-        private Inventory m_Main;
-
-        /// <summary>
-        /// Used to determine how many coins an apple will cost.
-        /// </summary>
-        private int m_ApplePrice;
+        public Button loseButton;
 
         /// <summary>
         /// Standard starting point for Unity scripts.
         /// </summary>
-        void Start()
+        private void Start()
         {
             // The database has been properly setup.
             m_WrongDatabase = !SamplesHelper.VerifyDatabase();
@@ -59,105 +61,98 @@ namespace UnityEngine.GameFoundation.Sample
             //   that will store GameFoundation's data only for the play session.
             GameFoundation.Initialize(new MemoryDataLayer());
 
-            // Grab a reference to the main, wallet, and store inventories.
-            m_Main = Inventory.main;
-            m_Wallet = InventoryManager.wallet;
-            m_Store = InventoryManager.GetInventory("store");
+            m_CoinDefinition = GameFoundation.catalogs.currencyCatalog.FindItem("coin");
 
-            // Here we bind our UI refresh method to callbacks on the inventory manager.
-            // These callbacks will automatically be invoked anytime an inventory is added, or removed.
+            // Here we bind a listener that will set a walletChanged flag to callbacks on the Wallet Manager.
+            // These callbacks will automatically be invoked anytime a currency balance is changed.
             // This prevents us from having to manually invoke RefreshUI every time we perform one of these actions.
-            m_Wallet.onItemAdded += RefreshUI;
-            m_Wallet.onItemRemoved += RefreshUI;
-            m_Wallet.onItemQuantityChanged += RefreshUI;
+            WalletManager.balanceChanged += OnCoinBalanceChanged;
 
-            m_ApplePrice = Random.Range(5, 26);
+            // We'll initialize our WalletManager's coin balance with 50 coins.
+            // This will set the balance to 50 no matter what it's current balance is.
+            WalletManager.SetBalance(m_CoinDefinition, 50);
+
             RefreshUI();
         }
 
         /// <summary>
-        /// This will fill out the main text box with information about the main inventory.
+        /// Standard Update method for Unity scripts.
         /// </summary>
-        /// <param name="item">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void RefreshUI(InventoryItem item = null)
+        private void Update()
         {
-            // Show the current price of an apple
-            mainText.text = "Apple Price: " + m_ApplePrice + "\n\n";
-
-            // We only care about displaying the wallet, the main inventory, and the store.
-            List<Inventory> inventories = new List<Inventory>();
-            inventories.Add(m_Wallet);
-            inventories.Add(m_Main);
-            inventories.Add(m_Store);
-
-            // Loop through the inventories we want to display
-            foreach (Inventory inventory in inventories)
+            // This flag will be set to true when the balance of a currency has changed in the WalletManager
+            if (m_WalletChanged)
             {
-                // Display the main inventory's display name
-                mainText.text += "Inventory - " + inventory.displayName + "\n";
-
-                // Loop through every type of item within the inventory and display its name and quantity.
-                foreach (InventoryItem inventoryItem in inventory.GetItems())
-                {
-                    // All game items have an associated display name, this includes game items.
-                    string itemName = inventoryItem.displayName;
-
-                    // Every inventory item has an associated quantity. This represents how many units of this item there are within the inventory.
-                    int quantity = inventoryItem.quantity;
-
-                    mainText.text += itemName + ": " + quantity + "\n";
-                }
-
-                // Display a separator between inventories
-                mainText.text += "\n";
+                RefreshUI();
+                m_WalletChanged = false;
             }
         }
 
         /// <summary>
-        /// This method does a price check to make sure there are enough coins in the wallet to buy an apple.
-        /// If so, it will add an apple to the main inventory, remove one to the store, and deduct the value from the wallet.
-        /// It will also refresh to the apple price to keep things interesting.
-        /// Because we never use RemoveItem in this sample, we don't have to worry about safety checking everything.
+        /// Standard cleanup point for Unity scripts.
         /// </summary>
-        public void BuyApple()
+        private void OnDestroy()
         {
-            var coin = m_Wallet.GetItem("coin");
-            if (coin.quantity >= m_ApplePrice)
-            {
-                m_Main.GetItem("apple").quantity++;
-                m_Store.GetItem("apple").quantity--;
-                coin.quantity -= m_ApplePrice;
-                RefreshBuySelllButtons();
-            }
+            if (WalletManager.IsInitialized)
+                WalletManager.balanceChanged -= OnCoinBalanceChanged;
         }
 
         /// <summary>
-        /// This method makes sure there is at least 1 apple to sell.
-        /// If so, it will remove an apple from the main inventory, add one to the store, and add the value to the wallet.
-        /// It will also refresh to the apple price to keep things interesting.
-        /// Because we never use RemoveItem in this sample, we don't have to worry about safety checking everything.
+        /// This method adds 50 coins to the wallet.
         /// </summary>
-        public void SellApple()
+        public void FindBagOfCoins()
         {
-            var apple = m_Main.GetItem("apple");
-            if (apple.quantity >= 1)
-            {
-                apple.quantity--;
-                m_Store.GetItem("apple").quantity++;
-                m_Wallet.GetItem("coin").quantity += m_ApplePrice;
-                RefreshBuySelllButtons();
-            }
+            WalletManager.AddBalance(m_CoinDefinition, 50);
         }
 
         /// <summary>
-        /// Enables/Disables the buy/sell buttons.
-        /// Can only buy more apples if you have enough coins.
-        /// Can only sell apples if you have at least 1 apple to sell.
+        /// This method deducts 10 coins from the wallet.
         /// </summary>
-        private void RefreshBuySelllButtons()
+        public void Drop10Coins()
         {
-            buyButton.interactable = m_Wallet.ContainsItem("coin") && m_Wallet.GetQuantity("coin") >= m_ApplePrice;
-            sellButton.interactable = m_Main.ContainsItem("apple") && m_Main.GetQuantity("apple") >= 1;
+            WalletManager.RemoveBalance(m_CoinDefinition, 10);
+        }
+
+        /// <summary>
+        /// This will fill out the main text box with information about the wallet.
+        /// </summary>
+        private void RefreshUI()
+        {
+            m_DisplayText.Clear();
+            m_DisplayText.Append("Wallet:");
+            m_DisplayText.AppendLine();
+            
+            var coinBalance = WalletManager.GetBalance(m_CoinDefinition);
+            m_DisplayText.Append($"Currency - {m_CoinDefinition.displayName}: {coinBalance.ToString()}");
+
+            mainText.text = m_DisplayText.ToString();
+
+            RefreshLoseCoinsButton();
+        }
+
+        /// <summary>
+        /// Enables/Disables the add/lose coins buttons.
+        /// The addButton will always be interactable,
+        /// but we can only lose coins if we have enough to lose.
+        /// </summary>
+        private void RefreshLoseCoinsButton()
+        {
+            var coinBalance = WalletManager.GetBalance(m_CoinDefinition);
+            loseButton.interactable = coinBalance >= 10;
+        }
+
+        /// <summary>
+        /// This will be called every time a currency balance is changed.
+        /// </summary>
+        /// <param name="currency">The currency that was changed.</param>
+        /// <param name="balance">The previous balance of that currency.</param>
+        /// <param name="newBalance">The new balance of that currency.</param>
+        private void OnCoinBalanceChanged(Currency currency, long balance, long newBalance)
+        {
+            if (currency.id != m_CoinDefinition.id)
+                return;
+
+            m_WalletChanged = true;
         }
     }
 }

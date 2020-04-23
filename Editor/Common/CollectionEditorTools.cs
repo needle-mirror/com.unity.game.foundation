@@ -88,7 +88,7 @@ namespace UnityEditor.GameFoundation
         }
 
         /// <summary>
-        /// Helper method which calls <see cref="CollectionEditorTools.ConvertNameToId(string)"/> followed by <see cref="CollectionEditorTools.DeDuplicateNewId(string, HashSet<string>)"/>
+        /// Helper method which calls <see cref="ConvertNameToId(string)"/> followed by <see cref="DeDuplicateNewId(string, HashSet<string>)"/>
         /// </summary>
         /// <param name="displayName">The string value entered in by the user as a display name. All types
         /// of characters are possible for this value.</param>
@@ -130,19 +130,36 @@ namespace UnityEditor.GameFoundation
         /// </summary>
         /// <param name="objectToAdd">Object to be added to the asset.</param>
         /// <param name="asset">Asset to which the object should be added.</param>
-        public static void AssetDatabaseAddObject(GameItemDefinition objectToAdd, ScriptableObject asset)
+        public static void AssetDatabaseAddObject(Object objectToAdd, ScriptableObject asset)
         {
             AssetDatabase.AddObjectToAsset(objectToAdd, asset);
+            EditorUtility.SetDirty(asset);
             AssetDatabaseUpdate();
         }
 
         /// <summary>
-        /// Helper method for removing an object from an asset in the Asset Database.
+        /// Helper method for removing a <see cref="CatalogItemAsset" /> from an catalog asset.
         /// </summary>
-        /// <param name="objectToRemove">Object to be removed from its asset.</param>
-        public static void AssetDatabaseRemoveObject(GameItemDefinition objectToRemove)
+        /// <param name="catalogItemObjectToRemove">
+        /// The <see cref="CatalogItemAsset" /> object to be removed from its catalog asset.
+        /// </param>
+        public static void RemoveObjectFromCatalogAsset(CatalogItemAsset catalogItemObjectToRemove)
         {
-            AssetDatabase.RemoveObjectFromAsset(objectToRemove);
+            AssetDatabase.RemoveObjectFromAsset(catalogItemObjectToRemove);
+            EditorUtility.SetDirty(catalogItemObjectToRemove.catalog);
+            AssetDatabaseUpdate();
+        }
+
+        /// <summary>
+        /// Helper method for removing a <see cref="CategoryAsset" /> from an catalog asset.
+        /// </summary>
+        /// <param name="categoryObjectToRemove">
+        /// The <see cref="CategoryAsset" /> object to be removed from its catalog asset.
+        /// </param>
+        public static void RemoveObjectFromCatalogAsset(CategoryAsset categoryObjectToRemove)
+        {
+            AssetDatabase.RemoveObjectFromAsset(categoryObjectToRemove);
+            EditorUtility.SetDirty(categoryObjectToRemove.catalog);
             AssetDatabaseUpdate();
         }
 

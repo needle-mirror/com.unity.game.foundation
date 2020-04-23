@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.4.0-preview.4] - 2020-04-24
+
+### Added
+
+* Store System.
+  Editor can be found at: __Unity->Window->Game Foundation->Store__.
+  Manager/API can be found at `GameFoundation.catalogs.storeCatalog` to `GetCollectionDefinition` and/or `GetItem` as needed.
+* Assets Detail.
+  Attach assets to your item definitions and load them using `Resources.Load()` automatically.
+* Json Detail.
+  Provides the ability to add arbitrary typed fields to your item definition
+* IAP Transaction with IAP SDK
+* Item instances.
+  Items are no longer quantities in inventories, but identifiable item instances with custon stat per item.
+  Quantities, if needed, can be achieved using stats.
+
+### Changed
+
+* Inventories definition removed.
+  All the items are instantiated in the player inventory.
+  Item collections (list, map) will be introduced next release.
+* Virtual Transactions is now a item.
+
 ## [0.3.0-preview.5] - 2020-02-19
 
 ### Added

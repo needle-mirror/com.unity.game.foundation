@@ -173,6 +173,7 @@ namespace UnityEditor.GameFoundation
 
             var filteredItems = GetFilteredItems();
 
+            if(filteredItems == null) return;
             foreach (T item in filteredItems)
             {
                 DrawSidebarListItem(item);
@@ -264,13 +265,14 @@ namespace UnityEditor.GameFoundation
 
         private void DrawContent()
         {
-            using (var scrollViewScope =
-                new GUILayout.ScrollViewScope(
-                    m_ScrollPositionDetail, false, false, GUILayout.MaxWidth(k_ContentDetailMaxWidth)))
+            using (var scrollViewScope = new GUILayout.ScrollViewScope
+                (m_ScrollPositionDetail, false, false, GUILayout.MaxWidth(k_ContentDetailMaxWidth)))
             {
                 m_ScrollPositionDetail = scrollViewScope.scrollPosition;
-
                 DrawContentDetail();
+
+                EditorGUILayout.Space();
+                EditorGUILayout.Space();
             }
         }
 
@@ -336,8 +338,10 @@ namespace UnityEditor.GameFoundation
             {
                 m_Items = new List<T>();
             }
-
-            m_Items.Clear();
+            else
+            {
+                m_Items.Clear();
+            }
         }
 
         private void ClearAndRemoveItems()

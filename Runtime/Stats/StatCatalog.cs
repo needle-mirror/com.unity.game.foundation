@@ -3,103 +3,57 @@ using System.Collections.Generic;
 namespace UnityEngine.GameFoundation
 {
     /// <summary>
-    /// Definitions for StatDefinitions.
-    /// The Stat Catalog serves as a way to find references to Definitions, as needed.
+    /// Catalog for <see cref="StatDefinition"/> instances.
     /// </summary>
     public class StatCatalog
     {
-        internal readonly List<StatDefinition> m_StatDefinitions;
-        
         /// <summary>
-        /// Constructor to build a StatCatalog object.
+        /// The container of the <see cref="StatDefinition"/> instances.
         /// </summary>
-        /// <param name="statDefinitions">The list of StatDefinitions that will be available in this catalog for runtime instance instantiation. If null value is passed in an empty list will be created.</param>
-        internal StatCatalog(List<StatDefinition> statDefinitions)
+        internal Dictionary<string, StatDefinition> m_StatDefinitions;
+
+        /// <summary>
+        /// Find and return a <see cref="StatDefinition"/> by its
+        /// <paramref name="id"/>.
+        /// </summary>
+        /// <param name="id">The identifier of the <see cref="StatDefinition"/>
+        /// to find.</param>
+        /// <returns>The <see cref="StatDefinition"/> corresponding to the
+        /// <paramref name="id"/>.</returns>
+        public StatDefinition FindStatDefinition(string id)
         {
-            m_StatDefinitions = statDefinitions ?? new List<StatDefinition>();
+            Tools.ThrowIfArgNullOrEmpty(id, nameof(id));
+            m_StatDefinitions.TryGetValue(id, out var statDefinition);
+
+            return statDefinition;
         }
 
         /// <summary>
-        /// Find and return a StatDefinition by its Id.
+        /// Returns an array of all <see cref="StatDefinition"/> instances of
+        /// this catalog.
         /// </summary>
-        /// <param name="statDefinitionId">Id of Stat Definition we're looking for.</param>
-        /// <returns>StatDefinition for specified Stat Id</returns>
-        public StatDefinition GetStatDefinition(string statDefinitionId)
-        {
-            if (string.IsNullOrEmpty(statDefinitionId))
-            {
-                return null;
-            }
-            return GetStatDefinition(Tools.StringToHash(statDefinitionId));
-        }
+        /// <remarks>
+        /// Keep in mind that this method allocates an array.
+        /// If you want to avoid allocations, please consider using
+        /// <see cref="GetStatDefinitions(ICollection{StatDefinition})"/>
+        /// instead.
+        /// </remarks>
+        /// <returns>An array of all <see cref="StatDefinition"/> instances in
+        /// this catalog.</returns>
+        public StatDefinition[] GetStatDefinitions() => Tools.ToArray(m_StatDefinitions.Values);
 
         /// <summary>
-        /// Find and return Stat definition by its Hash.
+        /// Fills the given collection with all StatDefinitions in this catalog.
+        /// Note: this returns the current state of all StatDefinitions.  
+        /// The list will be cleared and updated with current data.
         /// </summary>
-        /// <param name="statDefinitionHash"> Hash of Stat Definition we're looking for.</param>
-        /// <returns>StatDefinition for specified Stat Hash </returns>
-        public StatDefinition GetStatDefinition(int statDefinitionHash)
+        /// <param name="statDefinitions">The list to clear and fill with all StatDefinitions.</param>
+        public void GetStatDefinitions(ICollection<StatDefinition> statDefinitions)
         {
-            foreach(var definition in m_StatDefinitions)
-            {
-                if (definition.idHash == statDefinitionHash)
-                {
-                    return definition;
-                }
-            }
-
-            return null;
-        }
-
-        /// <summary>
-        /// Returns an array of all stat definitions in this catalog.
-        /// </summary>
-        /// <returns>An array of all stat definitions in this catalog.</returns>
-        public StatDefinition[] GetStatDefinitions()
-        {
-            return m_StatDefinitions?.ToArray();
-        }
-
-        /// <summary>
-        /// Fills the given list with all stat definitions in this catalog.
-        /// Note: this returns the current state of all stat definitions.  To 
-        /// ensure that there are no invalid or duplicate entries, the list will 
-        /// always be cleared and 'recycled' (i.e. updated) with current data.
-        /// </summary>
-        /// <param name="statDefinitions">The list to clear and fill with updated data.</param>
-        public void GetStatDefinitions(List<StatDefinition> statDefinitions)
-        {
-            if (statDefinitions == null)
-            {
-                return;
-            }
+            Tools.ThrowIfArgNull(statDefinitions, nameof(statDefinitions));
 
             statDefinitions.Clear();
-
-            if (m_StatDefinitions == null)
-            {
-                return;
-            }
-            
-            statDefinitions.AddRange(m_StatDefinitions);
-        }
-
-        /// <summary>
-        /// Determine if specified Stat definition Hash is unique in the Stat catalog.
-        /// </summary>
-        /// <param name="statDefinitionHash">The StatDefinition Hash to check.</param>
-        /// <returns>True if Stat definition Hash is unique.</returns>
-        public bool IsStatDefinitionHashUnique(int statDefinitionHash)
-        {
-            foreach (var definition in m_StatDefinitions)
-            {
-                if (definition.idHash == statDefinitionHash)
-                {
-                    return false;
-                }
-            }
-
-            return true;
+            Tools.Copy(m_StatDefinitions.Values, statDefinitions);
         }
     }
 }

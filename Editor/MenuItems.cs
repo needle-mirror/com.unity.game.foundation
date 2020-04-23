@@ -6,19 +6,25 @@ namespace UnityEditor.GameFoundation
 {
     internal static class MenuItems
     {
+        const int GF_Inventory = 1000;
+        const int GF_Currency = 1001;
+        const int GF_Store = 1002;
+        const int GF_Stat = 1003;
+        const int GF_Transactions = 1004;
+
         /// <summary>
-        /// Creates menu item for GameItem system and shows the window when clicked.
+        /// Creates menu item for stats system and shows the window when clicked.
         /// </summary>
-        [MenuItem("Window/Game Foundation/Game Item", false, 2000)]
-        public static void ShowGameItemsWindow()
+        [MenuItem("Window/Game Foundation/Currency", priority = GF_Currency)]
+        public static void ShowCurrencyWindow()
         {
-            GameItemEditorWindow.ShowWindow();
+            CurrencyEditorWindow.ShowWindow();
         }
 
         /// <summary>
         /// Creates menu item for inventory system and shows the window when clicked.
         /// </summary>
-        [MenuItem("Window/Game Foundation/Inventory", false, 2000)]
+        [MenuItem("Window/Game Foundation/Inventory", priority = GF_Inventory)]
         public static void ShowInventoriesWindow()
         {
             InventoryEditorWindow.ShowWindow();
@@ -27,10 +33,28 @@ namespace UnityEditor.GameFoundation
         /// <summary>
         /// Creates menu item for stats system and shows the window when clicked.
         /// </summary>
-        [MenuItem("Window/Game Foundation/Stat", false, 2000)]
+        [MenuItem("Window/Game Foundation/Stat", priority = GF_Stat)]
         public static void ShowStatWindow()
         {
             StatEditorWindow.ShowWindow();
+        }
+
+        /// <summary>
+        /// Creates menu item for Store system and shows the window when clicked.
+        /// </summary>
+        [MenuItem("Window/Game Foundation/Store", priority = GF_Store)]
+        public static void ShowStoresWindow()
+        {
+            StoreEditorWindow.ShowWindow();
+        }
+
+        /// <summary>
+        /// Creates menu item for Store system and shows the window when clicked.
+        /// </summary>
+        [MenuItem("Window/Game Foundation/Transactions", priority = GF_Transactions)]
+        public static void ShowPurchasesWindow()
+        {
+            TransactionEditorWindow.ShowWindow();
         }
 
         /// <summary>
@@ -50,7 +74,7 @@ namespace UnityEditor.GameFoundation
         {
             Selection.SetActiveObjectWithContext(GameFoundationDatabaseSettings.singleton, null);
         }
-        
+
         [MenuItem("Window/Game Foundation/Tools/Debugger", false, 2013)]
         public static void ShowDebugWindow()
         {

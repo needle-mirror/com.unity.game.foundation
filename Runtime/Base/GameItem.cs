@@ -1,34 +1,50 @@
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using UnityEngine.Internal;
 
 namespace UnityEngine.GameFoundation
 {
     /// <summary>
-    /// Common Fields found in BaseItem and BaseCollection. BaseItem and BaseCollection both inherit from this class.
+    /// Base class for runtime instances in Game Foundation.
     /// </summary>
-    public class GameItem
+    public abstract class GameItem : IEquatable<GameItem>, IComparable<GameItem>
     {
-        // prevent discard of game item multiple times
-        private bool m_Discarded = false;
+        /// <summary>
+        /// The unique id of the <see cref="GameItem"/> instance.
+        /// </summary>
+        internal readonly string m_Id;
 
         /// <summary>
-        /// Constructor for a GameItem.
+        /// The local, session-wide instance id of the item.
+        /// See <seealso cref="GameItemLookup"/>.
         /// </summary>
-        /// <param name="definition">The GameItemDefinition this GameItem should use.</param>
-        /// <param name="id">The Id this GameItem will use.</param>
-        /// <param name="displayName">The display name this GameItem will use.</param>
-        public GameItem(GameItemDefinition definition, string id = null, string displayName = null) : this(definition, id, displayName, 0)
-        {
-        }
-        
-        internal GameItem(GameItemDefinition definition, string id, string displayName, int gameItemId)
-        {
-            // assign this gameItem a unique gameItem Id and register it with the GameItem instance lookup class
-            m_GameItemId = gameItemId != 0 ? gameItemId : GameItemLookup.GetNextIdForInstance();
-            GameItemLookup.RegisterInstance(m_GameItemId, this);
+        internal int m_InstanceId;
 
-            // determine Id and Hash 
+        /// <summary>
+        /// The definition of the <see cref="GameItem"/> instance.
+        /// Gives access to the static data linked to this item.
+        /// </summary>
+        internal CatalogItem m_Definition;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="GameItem"/> class.
+        /// It also registers this new instance to the
+        /// <see cref="GameItemLookup"/> utility class for faster internal
+        /// lookup.
+        /// The result of this registration is that the <see cref="instanceId"/>
+        /// property of this <see cref="GameItem"/> instance is being assigned
+        /// a unique (session-wide) indentifier.
+        /// </summary>
+        /// <param name="definition">The <see cref="CatalogItem"/> storing the
+        /// static data of this <see cref="GameItem"/> instance.</param>
+        /// <param name="id">The unique identifier of this
+        /// <see cref="GameItem"/> instance.
+        /// If <c>null</c>, the constructor will create one itself.</param>
+        /// <exception cref="ArgumentException">If the given
+        /// <paramref name="id"/> is not valid.</exception>
+        internal GameItem(CatalogItem definition, string id = null)
+        {
+            // determine Id
             if (string.IsNullOrEmpty(id))
             {
                 m_Id = Guid.NewGuid().ToString();
@@ -37,161 +53,16 @@ namespace UnityEngine.GameFoundation
             {
                 if (!Tools.IsValidId(id))
                 {
-                    throw new System.ArgumentException("GameItem must be alphanumeric. Dashes (-) and underscores (_) allowed.");
+                    throw new ArgumentException("GameItem must be alphanumeric. Dashes (-) and underscores (_) allowed.");
                 }
-                
+
                 m_Id = id;
             }
 
-            // save display name.  note: could be null, in which case we'll always return definition's display name
-            m_DisplayName = displayName;
+            GameItemLookup.Register(this);
 
-            // save definition, catgories, details, etc.
-            if (ReferenceEquals(definition, null))
-            {
-                m_Definition = null;
-                m_Categories = new CategoryDefinition[] { };
-            }
-            else
-            { 
-                m_Definition = definition;
-                var categories = definition.GetCategories();
-                if (ReferenceEquals(categories, null) || categories.Length == 0)
-                {
-                    m_Categories = new CategoryDefinition[] { };
-                }
-                else
-                {
-                    m_Categories = new CategoryDefinition[categories.Length];
-                    int counter = 0;
-                    foreach (CategoryDefinition category in categories)
-                    {
-                        m_Categories[counter] = category;
-                        counter++;
-                    }
-                }
-
-                var details = definition.GetDetailDefinitions();
-                if (!ReferenceEquals(details, null))
-                {
-                    foreach (var detailDefinition in details)
-                    {
-                        AddDetail(detailDefinition);
-                    }
-                }
-
-                if (!ReferenceEquals(definition.referenceDefinition, null))
-                {
-                    var referenceDetail = definition.referenceDefinition.GetDetailDefinitions();
-                    if (!ReferenceEquals(referenceDetail, null))
-                    {
-                        foreach (var detailDefinition in referenceDetail)
-                        {
-                            if (!m_Details.ContainsKey(detailDefinition.GetType()))
-                            {
-                                AddDetail(detailDefinition);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // if the GameItem is new, it will create its Stats
-            if (gameItemId == 0)
-            {
-                // set all stats for stats detail definitions in gameItem definition and all reference gameItem definitions
-                SetDefaultStats();
-            }
-
-            NotificationSystem.FireNotification(NotificationType.Created, this);
+            m_Definition = definition;
         }
-
-        private void SetDefaultStats()
-        {
-            // set all stats for stats detail definitions in gameItem definition and all reference gameItem definitions
-            var definitionOn = m_Definition;
-            while (definitionOn != null)
-            {
-                var details = definitionOn.GetDetailDefinitions();
-                if (details == null) continue;
-                
-                foreach (var detailDefinition in details)
-                {
-                    if (!(detailDefinition is StatDetailDefinition statDetailDefinition)
-                        || statDetailDefinition.statDefaultValues == null)
-                    {
-                        continue;
-                    }
-
-                    foreach (var kv in statDetailDefinition.statDefaultValues)
-                    {
-                        switch (kv.Value.type)
-                        {
-                            case StatDefinition.StatValueType.Int:
-                                if (!StatManager.TryGetIntValue(this, kv.Key, out _))
-                                {
-                                    StatManager.SetIntValue(this, kv.Key, kv.Value);
-                                }
-
-                                break;
-
-                            case StatDefinition.StatValueType.Float:
-                                if (!StatManager.TryGetFloatValue(this, kv.Key, out _))
-                                {
-                                    StatManager.SetFloatValue(this, kv.Key, kv.Value);
-                                }
-
-                                break;
-
-                            default:
-                                throw new ArgumentOutOfRangeException();
-                        }
-                    }
-                }
-
-                definitionOn = definitionOn.referenceDefinition;
-            }
-        }
-
-        /// <summary>
-        /// Determine if GameItem has been discarded (removed from inventory or inventory manager).
-        /// </summary>
-        /// <returns>True if the GameItem has been removed from Inventory or InventoryManager.</returns>
-        public bool discarded
-        {
-            get
-            {
-                return m_Discarded;
-            }
-        }
-
-        /// <summary>
-        /// Remove all references to this game item.
-        /// </summary>
-        internal void Discard()
-        {
-            if (m_Discarded)
-                return;
-
-            CustomDiscard();
-
-            // remove all stats for this game item
-            StatManager.OnGameItemDiscarded(this);
-
-            if (GameItemLookup.IsInitialized)
-            {
-                // remove game item lookup for this game item
-                GameItemLookup.UnregisterInstance(m_GameItemId);
-            }
-
-            // remember the item was discarded so we don't do it again
-            m_Discarded = true;
-        }
-
-        /// <summary>
-        /// Override this method if you need to execute a specific action at discard time.
-        /// </summary>
-        protected virtual void CustomDiscard() { }
 
         /// <summary>
         /// in finalizer, remove gameItem from gameItem instance lookup
@@ -201,486 +72,360 @@ namespace UnityEngine.GameFoundation
             Discard();
         }
 
-        [SerializeField]
-        private int m_GameItemId;
+        /// <summary>
+        /// The unique identifier of this <see cref="GameItem"/> instance.
+        /// </summary>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        public string id => m_Id;
 
         /// <summary>
-        /// The GameItem Id (unique thoughout game) for this GameItem.
+        /// A session-wide identifier that Game Foundation internals uses to
+        /// speed up the look ups.
         /// </summary>
-        /// <returns>The GameItem Id (unique thoughout game) for this GameItem.</returns>
-        internal int gameItemId
-        {
-            get { return m_GameItemId; }
-        }
-
-        [SerializeField] 
-        private string m_DisplayName;
-
-        /// <summary>
-        /// The name of this GameItem for the user to display.
-        /// </summary>
-        /// <returns>The name of this GameItem for the user to display.</returns>
-        public string displayName
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        internal int instanceId
         {
             get
             {
-                LogWarningIfDisposed();
-                return m_DisplayName != null ? m_DisplayName : m_Definition?.displayName;
+                AssertActive();
+                return m_InstanceId;
             }
-            internal set { m_DisplayName = value; }
-        }
-
-        [SerializeField]
-        private string m_Id;
-
-        /// <summary>
-        /// The string Id of this GameItem.
-        /// </summary>
-        /// <returns>The Id string for this GameItem.</returns>
-        public string id
-        {
-            get
-            {
-                LogWarningIfDisposed();
-                return m_Id;
-            }
-        }
-
-        private int m_Hash;
-
-        /// <summary>
-        /// The Hash of this GameItem's Id.
-        /// </summary>
-        /// <returns>The Hash of this GameItem's Id.</returns>
-        public int hash
-        {
-            get
-            {
-                LogWarningIfDisposed();
-
-                if (m_Hash == 0 && !string.IsNullOrEmpty(m_Id))
-                {
-                    m_Hash = Tools.StringToHash(m_Id);
-                }
-
-                return m_Hash;
-            }
-        }
-
-        [SerializeField]
-        private GameItemDefinition m_Definition;
-
-        /// <summary>
-        /// The GameItemDefinition for this GameItem.
-        /// </summary>
-        /// <returns>The GameItemDefinition for this GameItem.</returns>
-        public GameItemDefinition definition
-        {
-            get
-            {
-                LogWarningIfDisposed();
-                return m_Definition;
-            }
-        }
-
-        [SerializeField]
-        private CategoryDefinition[] m_Categories;
-
-        /// <summary>
-        /// An array of all CategoryDefinitions assigned to this GameItem.
-        /// </summary>
-        /// <returns>An array of all CategoryDefinitions assigned to this GameItem.</returns>
-        public CategoryDefinition[] categories
-        {
-            get
-            {
-                LogWarningIfDisposed();
-                return m_Categories;
-            }
-        }
-
-        [SerializeField] 
-        private Dictionary<Type,BaseDetail> m_Details = new Dictionary<Type, BaseDetail>();
-
-        /// <summary>
-        /// Returns an array of all details attached to this game item.
-        /// </summary>
-        /// <returns>An array of all details attached to this game item.</returns>
-        protected BaseDetail[] GetDetails()
-        {
-            if (m_Details == null)
-            {
-                return null;
-            }
-
-            BaseDetail[] baseDetails = new BaseDetail[m_Details.Count];
-            m_Details.Values.CopyTo(baseDetails, 0);
-            return baseDetails;
         }
 
         /// <summary>
-        /// Fills the given list with all details attached to this game item.
-        /// Note: this returns the current state of all details attached.  To ensure that
-        /// there are no invalid or duplicate entries, the 'details' list will always be 
-        /// cleared and 'recycled' (i.e. updated) with current data from the game item.
+        /// The dfinition of this <see cref="GameItem"/> instance.
         /// </summary>
-        /// <param name="details">The list to clear and fill with this game item's details.</param>
-        protected void GetDetails(List<BaseDetail> details)
-        {
-            if (details == null)
-            {
-                return;
-            }
-
-            details.Clear();
-
-            if (m_Details == null)
-            {
-                return;
-            }
-            
-            details.AddRange(m_Details.Values);
-        }
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        public CatalogItem definition => m_Definition;
 
         /// <summary>
-        /// This will add a Detail instance to this GameItem based on the specified DetailDefinition, if needed.
+        /// Determines if this <see cref="GameItem"/> instance has been
+        /// discarded (removed from Game Foundation).
+        /// <see cref="GameItem"/> instances being standard objets, they cannot
+        /// be destroyed and garbage collected while all their references are
+        /// not set to <c>null</c>.
+        /// The <see cref="discarded"/> property is a way for you to know if the
+        /// object is still active within Game Foundation.
         /// </summary>
-        /// <param name="detailDefinition">The DetailDefinition to create a Detail from.</param>
-        /// <returns>A reference to the Detail instance that was added or null if no runtime Detail is needed for the specified DetailDefinition.</returns>
-        protected BaseDetail AddDetail(BaseDetailDefinition detailDefinition)
-        {
-            if (ReferenceEquals(detailDefinition, null))
-            {
-                Debug.LogWarning("Null detail definition given, this will not be added.");
-                return null;
-            }
-
-            var createdDetail = detailDefinition.CreateDetail(this);
-
-            // above method only creates runtime details when they're needed--null signals runtime details not required
-            if (createdDetail != null)
-            {
-                AddDetail(createdDetail);
-            }
-            return createdDetail;
-        }
+        /// <returns>True if the <see cref="GameItem"/> instance has been
+        /// removed from Game Foundation.</returns>
+        public bool discarded { get; private set; }
 
         /// <summary>
-        /// This will add the given Detail to the Details list for this GameItem.
+        /// Event triggered right after this <see cref="GameItem"/> is removed.
         /// </summary>
-        /// <param name="detail">The Detail to add to this GameItem.</param>
-        /// <returns>A reference to the Detail that was added.</returns>
-        /// <exception cref="ArgumentException">Thrown if the given detail is a duplicate.</exception>
-        protected BaseDetail AddDetail(BaseDetail detail)
-        {
-            if (detail == null)
-            {
-                Debug.LogWarning("Null detail given, this will not be added.");
-                return null;
-            }
-            
-            var detailType = detail.GetType();
-
-            BaseDetail oldDetail;
-            if (m_Details.TryGetValue(detailType, out oldDetail))
-            {
-                if (oldDetail.GetType() == detailType)
-                {
-                   throw new ArgumentException("Cannot add a duplicate detail.");
-                }
-            }
-
-            // add specified detail by detail's type to the dictionary
-            // note: this MAY overwrite a detail with a more derived type which is correct since this IS the item of exactly the specified type
-            m_Details[detailType] = detail;
-
-            // also search base class types for the detail and add this detail for all base classes
-            // note: this allows polymorphic behavior so, if base class is looked up, it will find the derived class 
-            var typeOn = detailType;
-            while (true)
-            {
-                typeOn = typeOn.BaseType;
-                if (typeOn == null || typeOn == typeof(BaseDetail))
-                {
-                    break;
-                }
-                BaseDetail testDetail;
-                if (m_Details.TryGetValue(typeOn, out testDetail))
-                {
-                    if (testDetail != null && testDetail != oldDetail)
-                    {
-                        break;
-                    }
-                }
-
-                m_Details[typeOn] = detail;
-            }
-
-            return detail;
-        }
+        public event GameItemEventHandler removed;
 
         /// <summary>
-        /// This will add a Detail of the specified type to this GameItem.
+        /// Event triggered when a stat is updated.
         /// </summary>
-        /// <typeparam name="T">Type of detail to add.</typeparam>
-        /// <returns>A reference to the newly-created Detail that was added.</returns>
-        protected T AddDetail<T>() where T : BaseDetail, new()
-        {
-            var newDetail = new T();
-            newDetail.owner = this;
-            return AddDetail(newDetail) as T;
-        }
+        public event StatChangedEventHandler statChanged;
 
-        /// <summary> 
-        /// This will return a reference to the requested Detail by type.
+        /// <summary>
+        /// Triggers the <see cref="removed"/> event.
         /// </summary>
-        /// <typeparam name="T">The type of Detail to return.</typeparam>
-        /// <returns>A reference to the Detail or null if not found.</returns>
-        internal protected T GetDetail<T>() where T : BaseDetail
-        {
-            var type = typeof(T);
-            BaseDetail detail;
-            if (m_Details.TryGetValue(type, out detail))
-            {
-                return (T)detail;
-            }
+        internal void onRemoved() => removed?.Invoke(this);
 
-            return null;
-        }
-
-        /// <summary> 
-        /// This will remove the requested Detail (by Detail type) from this GameItem.
+        /// <summary>
+        /// Triggers the <see cref="statChanged"/> event.
         /// </summary>
-        /// <typeparam name="T">The type of Detail to remove.</typeparam>
-        /// <returns>True if Detail was successfully removed, else false.</returns>
-        protected bool RemoveDetail<T>() where T : BaseDetail
-        {
-            // remove the reference to the detail by specified type
-            var type = typeof(T);
+        /// <param name="definition">The <see cref="StatDefinition"/> whose
+        /// value has changed.</param>
+        /// <param name="value">The new value of the stat.</param>
+        internal void onStatChanged(StatDefinition definition, StatValue value)
+            => statChanged?.Invoke(this, definition, value);
 
-            BaseDetail baseDetailToRemove;
-            if (!m_Details.TryGetValue(type, out baseDetailToRemove))
-            {
-                return false;
-            }
-
-            if (!m_Details.Remove(type))
-            {
-                return false;
-            }
-
-            // remove all details linked from base classes to this same detail (they were used to allow polymorphism)
-            while (true)
-            {
-                type = type.BaseType;
-                if (type == null || type == typeof(BaseDetail))
-                {
-                    break;
-                }
-
-                BaseDetail baseDetail;
-                if (!m_Details.TryGetValue(type, out baseDetail))
-                {
-                    break;
-                }
-
-                if (baseDetail != baseDetailToRemove)
-                {
-                    break;
-                }
-
-                m_Details.Remove(type);
-            }
-
-            return true;
-        }
-
+        /// <summary>
+        /// Throws a <see cref="NullReferenceException"/> if this
+        /// <see cref="GameItem"/> is discarded.
+        /// </summary>
         [ExcludeFromDocs]
-        protected void LogWarningIfDisposed()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected void AssertActive()
         {
-            if (m_Discarded)
+            if (discarded)
             {
-                Debug.LogWarning($"Item already disposed of for id: {m_Id}.  Be sure to release all references to GameItems, Inventories and InventoryItems when they are removed or manager is reset.");
+                throw new NullReferenceException
+                    ($"Item already disposed of for id: {m_Id}. Be sure to release all references to GameItems, Inventories and InventoryItems when they are removed or manager is reset.");
             }
         }
-    
+
+        /// <summary>
+        /// Initializes the <see cref="GameItem"/> instance.
+        /// This method is called by Game Foundation during the item creation
+        /// process.
+        /// The instantiation is separated from the initialization because the
+        /// StatManager needs to access this <see cref="GameItem"/> instance
+        /// through the InventoryManager to validate the assignment of the
+        /// stat values.
+        /// So Game Foundation:
+        /// - creates the item
+        /// - adds the item into the internal collections
+        /// - initializes the item
+        ///   - initialization asks StatManager to initialize the stat values
+        ///   - StatManager tries to find the item in the internal collections.
+        /// </summary>
+        internal void Initialize()
+        {
+            var statDetail = m_Definition.GetDetail<StatDetail>();
+            if (statDetail == null) return;
+
+            foreach (var kv in statDetail.m_DefaultValues)
+            {
+                var definition = Tools.GetStatDefinitionOrDie(kv.Key, "statDefinitionId");
+                StatManager.SetValueInternal(this, definition, kv.Value);
+            }
+        }
+
+        /// <summary>
+        /// Remove all references to this <see cref="GameItem"/> instance.
+        /// </summary>
+        internal void Discard()
+        {
+            if (discarded) return;
+
+            // remove all stats for this game item
+            StatManager.OnGameItemDiscarded(this);
+
+            GameItemLookup.Unregister(this);
+
+            // remember the item was discarded so we don't do it again
+            discarded = true;
+        }
+
+        /// <inheritdoc />
+        public override int GetHashCode() => id.GetHashCode();
+
+        /// <inheritdoc />
+        public override bool Equals(object other)
+            => ReferenceEquals(this, other);
+
+        /// <inheritdoc />
+        bool IEquatable<GameItem>.Equals(GameItem other)
+            => ReferenceEquals(this, other);
+
+        /// <inheritdoc />
+        int IComparable<GameItem>.CompareTo(GameItem other)
+            => id.CompareTo(other.id);
+
         #region StatsHelpers
 
         /// <summary>
-        /// Gets the Int Stat for the input statDefinitionId
+        /// Tells if this <see cref="GameItem"/> instance has a
+        /// <see cref="StatDetail"/> with the given
+        /// <paramref name="statDefinition"/> references within this detail.
         /// </summary>
-        /// <param name="statDefinitionId">statDefinitionId for stat to get</param>
-        /// <returns>Stat with parameter Id</returns>
-        /// <exception cref="KeyNotFoundException">Thrown if an Int Stat with parameter Id is not found.</exception>
-        /// <exception cref="ArgumentNullException">The parameter is null or empty</exception>
-        public int GetStatInt(string statDefinitionId)
+        /// <param name="statDefinition">The <see cref="StatDefinition"/>
+        /// instance to look for</param>
+        /// <returns><c>true</c> if the <paramref name="statDefinition"/> is
+        /// found, <c>false</c> otherwise.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        /// <exception cref="ArgumentNullException">If the
+        /// <paramref name="statDefinition"/> parameter is null.</exception>
+        public bool HasStat(StatDefinition statDefinition)
         {
-            if (string.IsNullOrEmpty(statDefinitionId))
-                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty");
-            
-            return GetStatInt(Tools.StringToHash(statDefinitionId));
-        }
-        
-        /// <summary>
-        /// Gets the Int Stat for the input statDefinitionHash
-        /// </summary>
-        /// <param name="statDefinitionHash">statDefinitionHash for stat to get</param>
-        /// <returns>Stat with parameter hash</returns>
-        /// <exception cref="KeyNotFoundException">Thrown if an Int Stat with parameter hash is not found.</exception>
-        public int GetStatInt(int statDefinitionHash)
-        {
-            LogWarningIfDisposed();
-            return StatManager.GetIntValue(this, statDefinitionHash);
+            Tools.ThrowIfArgNull(statDefinition, nameof(statDefinition));
+            AssertActive();
+
+            var statDetail = definition.GetDetail<StatDetail>();
+            if (statDetail is null) return false;
+
+            return statDetail.HasStat(statDefinition);
         }
 
         /// <summary>
-        /// Gets the Float Stat for the input statDefinitionId
+        /// Tells if this <see cref="GameItem"/> instance has a
+        /// <see cref="StatDetail"/> with the given
+        /// <paramref name="id"/> references within this detail.
         /// </summary>
-        /// <param name="statDefinitionId">statDefinitionId for stat to get</param>
-        /// <returns>Stat with parameter Id</returns>
-        /// <exception cref="KeyNotFoundException">Thrown if an Float Stat with parameter Id is not found.</exception>
-        /// <exception cref="ArgumentNullException">The parameter is null or empty</exception>
-        public float GetStatFloat(string statDefinitionId)
+        /// <param name="id">The identifier of the <see cref="StatDefinition"/>
+        /// to look for</param>
+        /// <returns><c>true</c> if the <see cref="StatDefinition"/> is found
+        /// within the <see cref="StatDetail"/> of this <see cref="GameItem"/>
+        /// instance, <c>false</c> otherwise.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        /// <exception cref="ArgumentException">If the
+        /// <paramref name="id"/> parameter is null, empty, or
+        /// whitespace.</exception>
+        /// <exception cref="ArgumentNullException">If there is no
+        /// <see cref="StatDefinition"/> identified by this
+        /// <paramref name="id"/></exception>
+        public bool HasStat(string id)
         {
-            if (string.IsNullOrEmpty(statDefinitionId))
-                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty");
-            
-            return GetStatFloat(Tools.StringToHash(statDefinitionId));
+            Tools.ThrowIfArgNull(id, nameof(id));
+            AssertActive();
+
+            var catalog = GameFoundation.catalogs.statCatalog;
+
+            var statDefinition = catalog.FindStatDefinition(id);
+            Tools.ThrowIfArgNull(statDefinition, nameof(id));
+
+            return HasStat(statDefinition);
         }
-        
+
         /// <summary>
-        /// Gets the Float Stat for the input statDefinitionHash
+        /// Gets the value of the given <paramref name="statDefinition"/>
+        /// for this <see cref="GameItem"/> instance.
         /// </summary>
-        /// <param name="statDefinitionHash">statDefinitionHash for stat to get</param>
-        /// <returns>Stat with parameter hash</returns>
-        /// <exception cref="KeyNotFoundException">Thrown if an Float Stat with parameter hash is not found.</exception>
-        public float GetStatFloat(int statDefinitionHash)
+        /// <param name="statDefinition">The <see cref="StatDefinition"/> to get
+        /// the value from.</param>
+        /// <returns>The value of the <see cref="StatDefinition"/> in this
+        /// <see cref="GameItem"/> instance.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        public StatValue GetStat(StatDefinition statDefinition)
         {
-            LogWarningIfDisposed();
-            return StatManager.GetFloatValue(this, statDefinitionHash);;
+            Tools.ThrowIfArgNull(statDefinition, nameof(statDefinition));
+            AssertActive();
+            return StatManager.GetValue(this, statDefinition);
         }
-        
+
         /// <summary>
-        /// Sets the Int Stat with corresponding statDefinitionId to value.
+        /// Gets the value of the <see cref="StatDefinition"/> by its given
+        /// <paramref name="id"/> for this <see cref="GameItem"/> instance.
         /// </summary>
-        /// <param name="statDefinitionId">Int Stat statDefinitionId to set</param>
-        /// <param name="value">value to set stat to</param>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type</exception>
-        /// <exception cref="ArgumentNullException">The parameter is null or empty</exception>
-        public void SetStatInt(string statDefinitionId, int value)
+        /// <param name="id">Identifier of the <see cref="StatDefinition"/> to
+        /// get the value.</param>
+        /// <returns>The value of the <see cref="StatDefinition"/> in this
+        /// <see cref="GameItem"/> instance.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        /// <exception cref="ArgumentNullException">If the <paramref name="id"/>
+        /// parameter is null or empty.</exception>
+        public StatValue GetStat(string statDefinitionId)
         {
-            if (string.IsNullOrEmpty(statDefinitionId))
-                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty");
-            
-            SetStatInt(Tools.StringToHash(statDefinitionId), value);
+            Tools.ThrowIfArgNullOrEmpty(statDefinitionId, nameof(statDefinitionId));
+            AssertActive();
+            return StatManager.GetValue(this, statDefinitionId);
         }
-        
+
         /// <summary>
-        /// Sets the Int Stat with corresponding statDefinitionHash to value.
+        /// Sets the value of the given <paramref name="statDefinition"/>
+        /// for this <see cref="GameItem"/> instance.
         /// </summary>
-        /// <param name="statDefinitionHash">Int Stat statDefinitionHash to set</param>
-        /// <param name="value">value to set stat to</param>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type</exception>
-        public void SetStatInt(int statDefinitionHash, int value)
+        /// <param name="statDefinition">The <see cref="StatDefinition"/> to set
+        /// a value for this <see cref="GameItem"/> instance.</param>
+        /// <param name="value">The value to assign to the
+        /// <paramref name="statDefinition"/> entry of this <see cref="GameItem"/>
+        /// instance.</param>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        /// <exception cref="ArgumentNullException">If the
+        /// <paramref name="statDefinition"/> parameter is null.</exception>
+        public void SetStat(StatDefinition statDefinition, StatValue value)
         {
-            LogWarningIfDisposed();
-            StatManager.SetIntValue(this, statDefinitionHash, value);
+            Tools.ThrowIfArgNull(statDefinition, nameof(statDefinition));
+            AssertActive();
+            StatManager.SetValue(this, statDefinition, value);
         }
-        
+
         /// <summary>
-        /// Sets the Float Stat with corresponding statDefinitionId to value.
+        /// Sets the value of the <see cref="StatDefinition"/> by its given
+        /// <paramref name="statDefinitionId"/> for this
+        /// <see cref="GameItem"/> instance.
         /// </summary>
-        /// <param name="statDefinitionId">Float Stat statDefinitionId to set</param>
-        /// <param name="value">value to set stat to</param>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type</exception>
-        /// <exception cref="ArgumentNullException">The stat parameter is null or empty</exception>
-        public void SetStatFloat(string statDefinitionId, float value)
+        /// <param name="statDefinitionId">Identifier of the
+        /// <see cref="StatDefinition"/> to set a value to.</param>
+        /// <param name="value">The value to assign to the
+        /// <see cref="StatDefinition"/> entry of this <see cref="GameItem"/>
+        /// instance.</param>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        /// <exception cref="ArgumentNullException">If the
+        /// <paramref name="statDefinitionId"/> parameter is null, empty or
+        /// whitespace.</exception>
+        public void SetStat(string statDefinitionId, StatValue value)
         {
-            if (string.IsNullOrEmpty(statDefinitionId))
-                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty");
-            
-            SetStatFloat(Tools.StringToHash(statDefinitionId), value);
+            Tools.ThrowIfArgNullOrEmpty(statDefinitionId, nameof(statDefinitionId));
+            AssertActive();
+            StatManager.SetValue(this, statDefinitionId, value);
         }
-        
+
         /// <summary>
-        /// Sets the Float Stat with corresponding statDefinitionHash to value.
+        /// Adjusts the value of the <see cref="StatDefinition"/> by its given
+        /// <paramref name="statDefinitionId"/> by adding the
+        /// <paramref name="change"/> to its current value.
         /// </summary>
-        /// <param name="statDefinitionHash">Float Stat statDefinitionHash to set</param>
-        /// <param name="value">value to set stat to</param>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type</exception>
-        public void SetStatFloat(int statDefinitionHash, float value)
+        /// <param name="statDefinitionId">Identifier of the
+        /// <see cref="StatDefinition"/> to adjust.</param>
+        /// <param name="change">Change to apply to the current value of the
+        /// stat.</param>
+        /// <returns>The new value of the stat.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> instance has been discarded.</exception>
+        /// <exception cref="ArgumentException">If the
+        /// <paramref name="statDefinitionId"/> is null, empty, or
+        /// whitespace.</exception>
+        /// <exception cref="InvalidOperationException">The parameter refers to
+        /// a stat of a different type.</exception>
+        /// <exception cref="ArgumentNullException">The
+        /// <paramref name="statDefinitionId"/> parameter refers to a
+        /// non-existing <see cref="StatDefinition"/>.</exception>
+        public StatValue AdjustStat(string statDefinitionId, StatValue change)
         {
-            LogWarningIfDisposed();
-            StatManager.SetFloatValue(this, statDefinitionHash, value);
+            Tools.ThrowIfArgNullOrEmpty(statDefinitionId, nameof(statDefinitionId));
+            AssertActive();
+            return StatManager.AdjustValue(this, statDefinitionId, change);
         }
-        
+
         /// <summary>
-        /// Adjusts the int Stat with corresponding statDefinitionId by specified amount.
+        /// Adjusts the stat by specified amount.
         /// </summary>
-        /// <param name="statDefinitionId">Stat statDefinitionId to adjust.</param>
+        /// <param name="statDefinition">The stat to adjust.</param>
         /// <param name="change">Change in value to the Stat.</param>
         /// <returns>The new value of Stat on this GameItem.</returns>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
         /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
         /// <exception cref="ArgumentNullException">The parameter is null or empty.</exception>
-        public int AdjustStatInt(string statDefinitionId, int change)
+        public StatValue AdjustStat(StatDefinition statDefinition, StatValue change)
         {
-            if (string.IsNullOrEmpty(statDefinitionId))
-            {
-                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty.");
-            }
-            
-            return StatManager.AdjustIntValue(this, Tools.StringToHash(statDefinitionId), change);
+            Tools.ThrowIfArgNull(statDefinition, nameof(statDefinition));
+            AssertActive();
+            return StatManager.AdjustValue(this, statDefinition, change);
         }
-        
+
         /// <summary>
-        /// Adjusts the int Stat with corresponding statDefinitionHash by specified amount.
+        /// Resets the stat to the default value of its given definition.
         /// </summary>
-        /// <param name="statDefinitionHash">Stat statDefinitionHash to adjust.</param>
-        /// <param name="change">Change in value to the Stat.</param>
-        /// <returns>The new value of Stat on this GameItem.</returns>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
-        public int AdjustStatInt(int statDefinitionHash, int change)
+        /// <param name="statDefinition">The <see cref="StatDefinition"/> to
+        /// reset for this <see cref="GameItem"/> instance.</param>
+        /// <returns><c>true</c> if the stat is successfully reset, <c>false</c>
+        /// otherwise.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> has been discarded</exception>
+        /// <exception cref="ArgumentNullException">If the
+        /// <paramref name="statDefinition"/> is null.</exception>
+        public StatValue ResetStat(StatDefinition statDefinition)
         {
-            return StatManager.AdjustIntValue(this, statDefinitionHash, change);
+            Tools.ThrowIfArgNull(statDefinition, nameof(statDefinition));
+            AssertActive();
+            return StatManager.ResetToDefaultValue(this, statDefinition);
         }
-        
+
         /// <summary>
-        /// Adjusts the float Stat with corresponding statDefinitionId by specified amount.
+        /// Resets the stat to the default value of its given definition.
         /// </summary>
-        /// <param name="statDefinitionId">Stat statDefinitionId to adjust.</param>
-        /// <param name="change">Change in value to the Stat.</param>
-        /// <returns>The new value of Stat on this GameItem.</returns>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
-        /// <exception cref="ArgumentNullException">The stat parameter is null or empty.</exception>
-        public float AdjustStatFloat(string statDefinitionId, float change)
+        /// <param name="statDefinitionId">The identifier of the
+        /// <see cref="StatDefinition"/> to reset for this <see cref="GameItem"/>
+        /// instance.</param>
+        /// <returns><c>true</c> if the stat is successfully reset, <c>false</c>
+        /// otherwise.</returns>
+        /// <exception cref="NullReferenceException">If this
+        /// <see cref="GameItem"/> has been discarded</exception>
+        /// <exception cref="ArgumentNullException">If the
+        /// <paramref name="statDefinitionId"/> is null, empty, or
+        /// whitespace.</exception>
+        public StatValue ResetStat(string statDefinitionId)
         {
-            if (string.IsNullOrEmpty(statDefinitionId))
-            {
-                throw new ArgumentNullException(statDefinitionId, "The statDefinitionId is null or empty.");
-            }
-            
-            return AdjustStatFloat(Tools.StringToHash(statDefinitionId), change);
+            Tools.ThrowIfArgNullOrEmpty(statDefinitionId, nameof(statDefinitionId));
+            AssertActive();
+            return StatManager.ResetToDefaultValue(this, statDefinitionId);
         }
-        
-        /// <summary>
-        /// Sets the float Stat with corresponding statDefinitionHash by specified amount.
-        /// </summary>
-        /// <param name="statDefinitionHash">Stat statDefinitionHash to adjust.</param>
-        /// <param name="change">Change in value to the Stat.</param>
-        /// <returns>The new value of Stat on this GameItem.</returns>
-        /// <exception cref="NullReferenceException">The parameter doesn't exist in the stats catalog.</exception>
-        /// <exception cref="InvalidOperationException">The parameter refers to a stat of a different type.</exception>
-        public float AdjustStatFloat(int statDefinitionHash, float change)
-        {
-            return StatManager.AdjustFloatValue(this, statDefinitionHash, change);
-        }
+
         #endregion
     }
 }

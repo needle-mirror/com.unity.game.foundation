@@ -1,7 +1,7 @@
 {
   "name": "com.unity.game.foundation",
   "displayName": "Game Foundation",
-  "version": "0.3.0-preview.5",
+  "version": "0.4.0-preview.4",
   "unity": "2018.3",
   "description": "Game Foundation core package.\n\nThis package contains the following components: \n▪ Inventory System \n▪ Virtual Currency Wallet \n▪ Stats System \n▪ Transaction System  \n▪ Core Systems \n\nNote: CatalogManager now holds the reference to the catalogs at Runtime. Any runtime code that was previously written as \nGameFoundationSettings.database.xCatalog should now be written as CatalogManager.xCatalog. \nGameFoundation's Initialization changed to take an IDataAccessLayer as an argument instead of a persistence object. \n\nNote: Preview release, public API subject to change.",
   "keywords": [
@@ -29,9 +29,9 @@
       "path": "Samples~/01_InventoryBasics"
     },
     {
-      "displayName": "02 Inventory Manager",
-      "description": "This sample showcases how to work with multiple inventories using the inventory manager.",
-      "path": "Samples~/02_InventoryManager"
+      "displayName": "02 Inventory With Quantity",
+      "description": "This sample showcases one way to group inventory items to represent quantity concept.",
+      "path": "Samples~/02_InventoryWithQuantity"
     },
     {
       "displayName": "03 Categories",
@@ -57,15 +57,27 @@
       "displayName": "07 Transactions",
       "description": "This sample showcases how to use the Transaction System.",
       "path": "Samples~/07_Transactions"
+    },
+    {
+      "displayName": "08 Store",
+      "description": "This sample showcases how to use the Store System.",
+      "path": "Samples~/08_Store"
+    },
+    {
+      "displayName": "09 ChilliConnect",
+      "description": "This sample showcases how to use the ChilliConnect Adapter for Game Foundation.",
+      "path": "Samples~/09_ChilliConnect"
     }
   ],
   "relatedPackages": {
-    "com.unity.game.foundation.tests": "0.3.0-preview.5"
+    "com.unity.game.foundation.tests": "0.4.0-preview.4"
+  },
+  "upmCi": {
+    "footprint": "abe62e40cac68bd348e9eb0e8010354f5bd22bb1"
   },
   "repository": {
-    "footprint": "2cb82a9ef8ecfba1c2071071090a80a6bd89ec71",
     "type": "git",
     "url": "https://github.cds.internal.unity3d.com/unity/game-foundation.git",
-    "revision": "541bab044049e8db4e7094d3dbb882e0bf8bc4a3"
+    "revision": "31bd89269c4f1571057217b4d5920ef5a439a881"
   }
 }

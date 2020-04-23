@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
-using UnityEngine.Events;
 using UnityEngine.GameFoundation.DataPersistence;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation
 {
@@ -12,102 +12,279 @@ namespace UnityEngine.GameFoundation
     /// </summary>
     public static class InventoryManager
     {
-        private static readonly int k_MainInventoryHash = Tools.StringToHash(InventoryCatalog.k_MainInventoryDefinitionId);
+        [ThreadStatic]
+        static List<InventoryItem> ts_TempItemList;
 
-        private static readonly int k_WalletInventoryHash = Tools.StringToHash(InventoryCatalog.k_WalletInventoryDefinitionId);
-
-        /// <summary>
-        /// This is the 'main' Inventory Id as a Hash for quick lookup and compares.
-        /// </summary>
-        /// <returns>The 'main' Inventory Id as a Hash for quick lookup and compares.</returns>
-        internal static int mainInventoryHash { get; } = k_MainInventoryHash;
-
-        /// <summary>
-        /// This is a reference to the "main" Inventory for the InventoryManager.
-        /// </summary>
-        /// <returns>The "main" Inventory for the InventoryManager.</returns>
-        public static Inventory main
+        static List<InventoryItem> s_TempItemList
         {
             get
             {
-                ThrowIfNotInitialized();
-                return m_Inventories[k_MainInventoryHash];
+                if (ts_TempItemList is null) ts_TempItemList = new List<InventoryItem>();
+                return ts_TempItemList;
             }
         }
 
         /// <summary>
-        /// This is the 'wallet' Inventory Id as a Hash for quick lookup and compares.
-        /// </summary>
-        /// <returns>The 'wallet' Inventory id as a hash for quick lookup and compares.</returns>
-        internal static int walletInventoryHash { get; } = k_WalletInventoryHash;
-
-        /// <summary>
-        /// This is a reference to the "wallet" Inventory for the InventoryManager.
-        /// </summary>
-        /// <returns>The "wallet" Inventory for the InventoryManager.</returns>
-        public static Inventory wallet
-        {
-            get
-            {
-                ThrowIfNotInitialized();
-                return m_Inventories[k_WalletInventoryHash];
-            }
-        }
-
-        /// <summary>
-        /// Returns an array of all inventories in the manager.
-        /// </summary>
-        /// <returns>An array of all inventories in the manager.</returns>
-        public static Inventory[] GetInventories()
-        {
-            ThrowIfNotInitialized();
-
-            if (m_Inventories == null)
-                return null;
-
-            Inventory[] inventories = new Inventory[m_Inventories.Count];
-            m_Inventories.Values.CopyTo(inventories, 0);
-            return inventories;
-        }
-
-        /// <summary>
-        /// Fills the given list with all inventories in the manager.
-        /// Note: this returns the current state of all inventories.  To ensure
+        /// Fills the given list with all items in the manager.
+        /// Note: this returns the current state of all items.  To ensure
         /// that there are no invalid or duplicate entries, the list will always 
         /// be cleared and 'recycled' (i.e. updated) with current data.
         /// </summary>
-        /// <param name="inventories">The list to clear and fill with updated data.</param>
-        public static void GetInventories(List<Inventory> inventories)
+        /// <param name="target">The collection to clear and fill with updated data.</param>
+        /// <returns>The number of items copied</returns>
+        public static int GetItems(ICollection<InventoryItem> target = null)
         {
             ThrowIfNotInitialized();
-
-            if (inventories == null)
-            {
-                return;
-            }
-
-            inventories.Clear();
-
-            if (m_Inventories == null)
-            {
-                return;
-            }
-
-            inventories.AddRange(m_Inventories.Values);
+            return Tools.Copy(m_Items.Values, target);
         }
 
-        // <Inventory Definition Hash, Inventory Instance>
-        private static Dictionary<int, Inventory> m_Inventories = null;
+        /// <summary> 
+        /// Returns an array of all items in the manager.
+        /// </summary> 
+        /// <returns>An array of all items in the manager.</returns>
+        public static InventoryItem[] GetItems()
+        {
+            ThrowIfNotInitialized();
+            return Tools.ToArray(m_Items.Values);
+        }
+
+        /// <summary> 
+        /// Returns an item with the Id wanted.
+        /// </summary>
+        /// /// <param name="id">The Id of the item wanted.</param>
+        /// <returns>The item with the Id wanted.</returns>
+        internal static InventoryItem FindItemInternal(string id)
+        {
+            Tools.ThrowIfArgNull(id, nameof(id));
+            m_Items.TryGetValue(id, out var item);
+            return item;
+        }
+
+        /// <summary> 
+        /// Returns an item with the Id wanted.
+        /// </summary>
+        /// /// <param name="id">The Id of the item wanted.</param>
+        /// <returns>The item with the Id wanted.</returns>
+        public static InventoryItem FindItem(string id)
+        {
+            Tools.ThrowIfArgNull(id, nameof(id));
+            ThrowIfNotInitialized();
+            m_Items.TryGetValue(id, out var item);
+            return item;
+        }
 
         /// <summary>
-        /// This is a delegate that takes in a single Inventory as the parameter
+        /// Gets items filtered with the specified <paramref name="category"/>.
         /// </summary>
-        public delegate void InventoryEvent(Inventory inventory);
+        /// <param name="category">The category used to filter the items.
+        /// </param>
+        /// <param name="target">The target collection where filtered items are
+        /// copied</param>
+        /// <returns>The number of items copied</returns>
+        static int FindItemsByCategoryInternal
+            (Category category, ICollection<InventoryItem> target = null)
+        {
+            target?.Clear();
+
+            var count = 0;
+            foreach (var item in m_Items.Values)
+            {
+                if (item.definition.HasCategory(category))
+                {
+                    count++;
+                    target?.Add(item);
+                }
+            }
+
+            return count;
+        }
 
         /// <summary>
-        /// This is a Unity event that effects the entire InventoryManager
+        /// Gets items filtered with the specified <paramref name="category"/>.
         /// </summary>
-        public class InventoryManagerEvent : UnityEvent { }
+        /// <param name="category">The category used to filter the items.
+        /// </param>
+        /// <param name="target">The target collection where filtered items are
+        /// copied</param>
+        /// <returns>The number of items copied</returns>
+        public static int FindItemsByCategory
+            (Category category, ICollection<InventoryItem> target = null)
+        {
+            Tools.ThrowIfArgNull(category, nameof(category));
+            return FindItemsByCategoryInternal(category, target);
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="category"/>.
+        /// </summary>
+        /// <param name="category">The category used to filter the items.
+        /// </param>
+        /// <returns>The filtered items.</returns>
+        public static InventoryItem[] FindItemsByCategory(Category category)
+        {
+            Tools.ThrowIfArgNull(category, nameof(category));
+
+            try
+            {
+                FindItemsByCategoryInternal(category, s_TempItemList);
+                return s_TempItemList.ToArray();
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="category"/>.
+        /// </summary>
+        /// <param name="categoryId">The inventory id used to filter the items.
+        /// </param>
+        /// <param name="target">The target collection where filtered items are
+        /// copied</param>
+        /// <returns>The number of items copied</returns>
+        public static int FindItemsByCategory
+            (string categoryId, ICollection<InventoryItem> target = null)
+        {
+            Tools.ThrowIfArgNull(categoryId, nameof(categoryId));
+
+            var catalog = GameFoundation.catalogs.inventoryCatalog;
+            var category = catalog.GetCategoryOrDie(categoryId, nameof(categoryId));
+
+            return FindItemsByCategoryInternal(category, target);
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="category"/>.
+        /// </summary>
+        /// <param name="categoryId">The inventory id used to filter the items.
+        /// </param>
+        /// <returns>The filtered items.</returns>
+        public static InventoryItem[] FindItemsByCategory(string categoryId)
+        {
+            Tools.ThrowIfArgNull(categoryId, nameof(categoryId));
+
+            var catalog = GameFoundation.catalogs.inventoryCatalog;
+            var category = catalog.GetCategoryOrDie(categoryId, nameof(categoryId));
+
+            try
+            {
+                FindItemsByCategoryInternal(category, s_TempItemList);
+                return s_TempItemList.ToArray();
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="definition"/>.
+        /// </summary>
+        /// <param name="definition">The <see cref="InventoryItemDefinition"/>
+        /// used to filter the items</param>
+        /// <param name="target">The target collection where filtered items are
+        /// copied</param>
+        /// <returns>The number of filtered items.</returns>
+        static int FindItemsByDefinitionInternal
+            (InventoryItemDefinition definition, ICollection<InventoryItem> target = null)
+        {
+            target?.Clear();
+
+            var count = 0;
+            foreach (var item in m_Items.Values)
+            {
+                if (item.definition == definition)
+                {
+                    count++;
+                    target?.Add(item);
+                }
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="definition"/>.
+        /// </summary>
+        /// <param name="definition">The <see cref="InventoryItemDefinition"/>
+        /// used to filter the items</param>
+        /// <param name="target">The target collection where filtered items are
+        /// copied</param>
+        /// <returns>The number of filtered items.</returns>
+        public static int FindItemsByDefinition
+            (InventoryItemDefinition definition, ICollection<InventoryItem> target = null)
+        {
+            Tools.ThrowIfArgNull(definition, nameof(definition));
+            return FindItemsByDefinitionInternal(definition, target);
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="definition"/>.
+        /// </summary>
+        /// <param name="definition">The <see cref="InventoryItemDefinition"/>
+        /// used to filter the items</param>
+        /// <returns>The filtered items.</returns>
+        public static InventoryItem[] FindItemsByDefinition
+            (InventoryItemDefinition definition)
+        {
+            Tools.ThrowIfArgNull(definition, nameof(definition));
+
+            try
+            {
+                FindItemsByDefinitionInternal(definition, s_TempItemList);
+                return s_TempItemList.ToArray();
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="definition"/>.
+        /// </summary>
+        /// <param name="definitionId">The id of the <see cref="InventoryItemDefinition"/>
+        /// used to filter the items</param>
+        /// <param name="target">The target collection where filtered items are
+        /// copied</param>
+        /// <returns>The number of filtered items.</returns>
+        public static int FindItemsByDefinition
+            (string definitionId, ICollection<InventoryItem> target = null)
+        {
+            Tools.ThrowIfArgNull(definitionId, nameof(definitionId));
+
+            var definition = Tools.GetInventoryItemDefinitionOrDie
+                (definitionId, nameof(definitionId));
+
+            return FindItemsByDefinitionInternal(definition, target);
+        }
+
+        /// <summary>
+        /// Gets items filtered with the specified <paramref name="definition"/>.
+        /// </summary>
+        /// <param name="definitionId">The id of the <see cref="InventoryItemDefinition"/>
+        /// used to filter the items</param>
+        /// <returns>The filtered items.</returns>
+        public static InventoryItem[] FindItemsByDefinition(string definitionId)
+        {
+            Tools.ThrowIfArgNull(definitionId, nameof(definitionId));
+
+            var definition = Tools.GetInventoryItemDefinitionOrDie
+                (definitionId, nameof(definitionId));
+
+            try
+            {
+                FindItemsByDefinitionInternal(definition, s_TempItemList);
+                return s_TempItemList.ToArray();
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+        }
+
+        private static Dictionary<string, InventoryItem> m_Items = null;
 
         static IInventoryDataLayer s_DataLayer;
 
@@ -117,12 +294,6 @@ namespace UnityEngine.GameFoundation
             {
                 Debug.LogWarning("InventoryManager is already initialized and cannot be initialized again.");
                 return;
-            }
-
-            if (catalog.GetCollectionDefinition(InventoryCatalog.k_MainInventoryDefinitionId) == null
-                || catalog.GetCollectionDefinition(InventoryCatalog.k_WalletInventoryDefinitionId) == null)
-            {
-                throw new ArgumentException("InventoryManager can't be initialized because built-in inventories don't exist in the InventoryCatalog.");
             }
 
             s_DataLayer = dataLayer;
@@ -145,17 +316,13 @@ namespace UnityEngine.GameFoundation
         {
             var inventoryManagerData = s_DataLayer.GetData();
 
-            m_Inventories = new Dictionary<int, Inventory>(inventoryManagerData.inventories.Length);
+            m_Items = new Dictionary<string, InventoryItem>();
 
-            if (inventoryManagerData.inventories.Length > 0)
+            if (inventoryManagerData.items.Length > 0)
             {
-                FillFromInventoriesData(inventoryManagerData);
-
+                FillFromItemsData(inventoryManagerData);
                 return;
             }
-
-            CreateBuiltInInventories();
-            AddDefaultInventories();
         }
 
         internal static void Uninitialize()
@@ -165,90 +332,33 @@ namespace UnityEngine.GameFoundation
                 return;
             }
 
-            RemoveAllInventories(true, true, false);
+            RemoveAllItemsInternal();
+            m_Items = null;
 
-            m_Inventories = null;
             m_IsInitialized = false;
             s_DataLayer = null;
         }
 
-        internal static void FillFromInventoriesData(InventoryManagerSerializableData managerData)
+        internal static void FillFromItemsData(InventoryManagerSerializableData managerData)
         {
-            var inventoriesData = managerData.inventories;
-            if (inventoriesData == null)
+            foreach (var itemData in managerData.items)
             {
-                throw new NullReferenceException("There are no inventories in the data given to initialize the manager.");
-            }
-
-            var mainInventoryFound = false;
-            var walletInventoryFound = false;
-
-            foreach (var inventoryData in inventoriesData)
-            {
-                if (string.IsNullOrEmpty(inventoryData.definitionId) ||
-                    string.IsNullOrEmpty(inventoryData.Id) ||
-                    inventoryData.gameItemId == 0)
+                if (string.IsNullOrEmpty(itemData.definitionId) ||
+                    string.IsNullOrEmpty(itemData.id))
                 {
                     continue;
                 }
 
-                var inventoryDefinition = catalog.GetCollectionDefinition(inventoryData.definitionId);
-                if (ReferenceEquals(inventoryDefinition, null))
+                var itemDefinition = catalog.FindItem(itemData.definitionId);
+                if (itemDefinition == null)
                 {
                     continue;
                 }
 
-                var inventoryHash = Tools.StringToHash(inventoryData.Id);
+                //TODO
+                var item = new InventoryItem(itemDefinition, itemData.id);
 
-                if (m_Inventories.ContainsKey(inventoryHash))
-                {
-                    continue;
-                }
-
-                var inventory = new Inventory(
-                    inventoryDefinition,
-                    inventoryData.Id,
-                    inventoryData.displayName,
-                    inventoryData.gameItemId);
-                m_Inventories.Add(inventory.hash, inventory);
-
-                mainInventoryFound |= inventoryData.Id == InventoryCatalog.k_MainInventoryDefinitionId;
-                walletInventoryFound |= inventoryData.Id == InventoryCatalog.k_WalletInventoryDefinitionId;
-
-                foreach (var itemData in managerData.items)
-                {
-                    if (itemData.inventoryId != inventoryData.Id ||
-                        string.IsNullOrEmpty(itemData.definitionId) ||
-                        itemData.gameItemId == 0)
-                    {
-                        continue;
-                    }
-
-                    int itemHash = Tools.StringToHash(itemData.definitionId);
-                    var itemDefinition = catalog.GetItemDefinition(itemHash);
-                    if (itemDefinition == null)
-                    {
-                        continue;
-                    }
-
-                    if (!inventory.m_ItemsInCollection.TryGetValue(itemHash, out InventoryItem item))
-                    {
-                        item = new InventoryItem(itemDefinition, inventory, itemData.gameItemId);
-                        inventory.m_ItemsInCollection.Add(itemHash, item);
-                    }
-
-                    item.m_intValue = itemData.quantity;
-                }
-            }
-
-            if (!mainInventoryFound)
-            {
-                throw new ArgumentException("There is no Main inventory in the data given to initialize the manager.");
-            }
-
-            if (!walletInventoryFound)
-            {
-                throw new ArgumentException("There is no Wallet inventory in the data given to initialize the manager.");
+                m_Items.Add(item.id, item);
             }
         }
 
@@ -279,644 +389,351 @@ namespace UnityEngine.GameFoundation
         /// This is the InventoryCatalog the InventoryManager uses.
         /// </summary>
         /// <returns>The InventoryCatalog the InventoryManager uses.</returns>
-        public static InventoryCatalog catalog
-        {
-            get
-            {
-                return CatalogManager.inventoryCatalog;
-            }
-        }
+        public static InventoryCatalog catalog => GameFoundation.catalogs.inventoryCatalog;
 
         /// <summary>
-        /// Fired whenever a new Inventory is added.
+        /// Fired whenever a new Inventory Item is added.
         /// </summary>
-        /// <returns>The InventoryEvent fired whenever a new Inventory is added.</returns>
-        public static InventoryEvent onInventoryAdded
-        {
-            get { return m_OnInventoryAdded; }
-            set { m_OnInventoryAdded = value; }
-        }
-
-        private static InventoryEvent m_OnInventoryAdded;
+        /// <returns>The Inventory Manager Event fired whenever a new Inventory Item is added.</returns>
+        public static event GameItemEventHandler itemAdded;
 
         /// <summary>
-        /// Fired whenever the InventoryManager is reset.
+        /// Fired whenever an Inventory Item is removed.
         /// </summary>
-        /// <returns>The InventoryManagerEvent fired whenever the InventoryManager is reset.</returns>
-        public static InventoryManagerEvent onInventoryManagerReset
+        /// <returns>The Inventory Manager Event fired whenever an Inventory Item is removed.</returns>
+        public static event GameItemEventHandler itemRemoved;
+
+        static void onItemAdded(GameItem item) => itemAdded?.Invoke(item);
+
+        static void onItemRemoved(GameItem item) => itemRemoved?.Invoke(item);
+
+        // Deletes an item from the manager, but does not sync to the data layer.
+        internal static bool RemoveItemInternal(InventoryItem item)
         {
-            get { return m_OnInventoryManagerReset; }
-        }
+            Tools.ThrowIfArgNull(item, nameof(item));
 
-        private static InventoryManagerEvent m_OnInventoryManagerReset = new InventoryManagerEvent();
+            if (item.discarded) return false;
 
-        /// <summary>
-        /// Fired whenever an Inventory is unable to deduct items because it's empty (i.e. attempts to go BELOW 0 qty).
-        /// </summary>
-        /// <returns>The InventoryEvent fired whenever an Inventory is unable to deduct items because it's empty.</returns>
-        public static InventoryEvent onInventoryUnderflow
-        {
-            get { return m_OnInventoryUnderflow; }
-            set { m_OnInventoryUnderflow = value; }
-        }
-
-        private static InventoryEvent m_OnInventoryUnderflow;
-
-        /// <summary>
-        /// Fired whenever an Inventory is about to be removed.
-        /// </summary>
-        /// <returns>The InventoryEvent fired whenever an Inventory is about to be removed.</returns>
-        public static InventoryEvent onInventoryWillRemove
-        {
-            get { return m_OnInventoryWillRemove; }
-            set { m_OnInventoryWillRemove = value; }
-        }
-
-        private static InventoryEvent m_OnInventoryWillRemove;
-
-        /// <summary>
-        /// Fired whenever an Inventory is removed.
-        /// </summary>
-        /// <returns>The InventoryEvent fired whenever an Inventory is removed.</returns>
-        public static InventoryEvent onInventoryRemoved
-        {
-            get { return m_OnInventoryRemoved; }
-            set { m_OnInventoryRemoved = value; }
-        }
-
-        private static InventoryEvent m_OnInventoryRemoved;
-
-        /// <summary>
-        /// Returns a unique Inventory Id that hasn't been registered to any existing Inventory. Use with CreateInventory().
-        /// </summary>
-        /// <returns>Unique Inventory Id</returns>
-        public static string GetNewInventoryId()
-        {
-            ThrowIfNotInitialized();
-
-            string inventoryId;
-
-            // find a unique Collection Id to use (should only need 1 try, but there's a 1 in 4 billion chance that we're unlucky, so...
-            do
-            {
-                inventoryId = Guid.NewGuid().ToString();
-            } while (m_Inventories.ContainsKey(Tools.StringToHash(inventoryId)));
-
-            return inventoryId;
-        }
-
-        /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition Id to use.
-        /// </summary>
-        /// <param name="inventoryDefinitionId">The Id of the InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The Id this inventory will have.</param>
-        /// <param name="displayName">The display name this Inventory will have.</param>
-        /// <returns>The newly created Inventory based on specified InventoryDefinition.</returns>
-        public static Inventory CreateInventory(string inventoryDefinitionId, string inventoryId, string displayName = null)
-        {
-            ThrowIfNotInitialized();
-            var definition = catalog.GetCollectionDefinition(inventoryDefinitionId);
-            return CreateInventory(definition, inventoryId, 0, displayName);
-        }
-
-        /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition to use by Hash.
-        /// </summary>
-        /// <param name="inventoryDefinitionHash">The Hash of the InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The Id this Inventory will have.</param>
-        /// <param name="displayName">The display name this Inventory will have.</param>
-        /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
-        /// <exception cref="InvalidOperationException">Thrown if an invalid Hash is provided.</exception>
-        /// <exception cref="ArgumentException">Thrown if the given Id is null, empty, or a duplicate.</exception>
-        public static Inventory CreateInventory(int inventoryDefinitionHash, string inventoryId, string displayName = null)
-        {
-            ThrowIfNotInitialized();
-            var definition = catalog.GetCollectionDefinition(inventoryDefinitionHash);
-            return CreateInventory(definition, inventoryId, 0, displayName);
-        }
-
-        /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition to use.
-        /// </summary>
-        /// <param name="inventoryDefinition">The InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The Id this Inventory will have.</param>
-        /// <param name="displayName">The display name this Inventory will have.</param>
-        /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
-        public static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId, string displayName = null)
-        {
-            ThrowIfNotInitialized();
-            return CreateInventory(inventoryDefinition, inventoryId, 0, displayName);
-        }
-
-        /// <summary>
-        /// This will create a new Inventory by specifying what InventoryDefinition to use.
-        /// </summary>
-        /// <param name="inventoryDefinition">The InventoryDefinition to assign this Inventory.</param>
-        /// <param name="inventoryId">The Id this Inventory will have.</param>
-        /// <param name="gameItemId">The game item Id of the inventory</param>
-        /// <param name="displayName">The display name this Inventory will have.</param>
-        /// <returns>The newly created Inventory based on the specified InventoryDefinition.</returns>
-        static Inventory CreateInventory(InventoryDefinition inventoryDefinition, string inventoryId, int gameItemId, string displayName = null)
-        {
-            if (ReferenceEquals(inventoryDefinition, null))
-            {
-                throw new InvalidOperationException("Provided definition is not in the InventoryCatalog.");
-            }
-
-            if (string.IsNullOrEmpty(inventoryId))
-            {
-                throw new ArgumentException("Inventory Id is null or empty. Specify an Inventory Id or generate one via GetNewInventoryId()");
-            }
-
-            if (m_Inventories.ContainsKey(Tools.StringToHash(inventoryId)))
-            {
-                throw new ArgumentException("Provided Inventory ID is already registered in this InventoryManager.");
-            }
-
-            var newInventory = inventoryDefinition.CreateCollection(inventoryId, displayName, gameItemId);
-            m_Inventories.Add(newInventory.hash, newInventory);
-
-            //The inventory must be synchronized after its constructor is called, for the game item id to be properly updated.
-            SyncCreateInventory(
-                newInventory.definition.id,
-                newInventory.id,
-                newInventory.displayName,
-                newInventory.gameItemId);
-
-            // if the Collection is new, it wil create its Default Items
-            if (gameItemId == 0)
-            {
-                // iterate all default Items in the Collection's CollectionDefinition (if any) and add them to the Collection
-                newInventory.AddAllDefaultItems();
-            }
-
-            onInventoryAdded?.Invoke(newInventory);
-
-            return newInventory;
-        }
-
-        /// <summary>
-        /// This will return the Inventory using the specified Inventory Id.
-        /// </summary>
-        /// <param name="inventoryId">The Id of the Inventory we want.</param>
-        /// <returns>The Inventory with the requested Id.</returns>
-        public static Inventory GetInventory(string inventoryId)
-        {
-            ThrowIfNotInitialized();
-
-            return GetInventory(Tools.StringToHash(inventoryId));
-        }
-
-        /// <summary>
-        /// This will return the Inventory using the specified Inventory Hash.
-        /// </summary>
-        /// <param name="inventoryHash">The Hash of the Inventory of the Inventory we want.</param>
-        /// <returns>The Inventory with the requested  Hash  or null if not found.</returns>
-        public static Inventory GetInventory(int inventoryHash)
-        {
-            ThrowIfNotInitialized();
-
-            Inventory collection;
-            m_Inventories.TryGetValue(inventoryHash, out collection);
-            return collection;
-        }
-
-        /// <summary>
-        /// This method checks if an Inventory exists with the given Inventory Id.
-        /// </summary>
-        /// <param name="inventoryId">The Id we are checking for.</param>
-        /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventory(string inventoryId)
-        {
-            ThrowIfNotInitialized();
-
-            return HasInventory(Tools.StringToHash(inventoryId));
-        }
-
-        /// <summary>
-        /// This method checks if an Inventory exists with the given Inventory Hash.
-        /// </summary>
-        /// <param name="inventoryHash">The Hash we are checking for.</param>
-        /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventory(int inventoryHash)
-        {
-            ThrowIfNotInitialized();
-
-            return m_Inventories.ContainsKey(inventoryHash);
-        }
-
-        /// <summary>
-        /// This method checks if an Inventory exists with the given InventoryDefinition Id.
-        /// </summary>
-        /// <param name="inventoryDefinitionId">The Id we are checking for.</param>
-        /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventoryByDefinition(string inventoryDefinitionId)
-        {
-            ThrowIfNotInitialized();
-
-            return HasInventoryByDefinition(Tools.StringToHash(inventoryDefinitionId));
-        }
-
-        /// <summary>
-        /// This method checks if an Inventory exists for given InventoryDefinition Hash.
-        /// </summary>
-        /// <param name="inventoryDefinitionHash">The Hash we are checking for.</param>
-        /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventoryByDefinition(int inventoryDefinitionHash)
-        {
-            ThrowIfNotInitialized();
-
-            foreach (var collection in m_Inventories.Values)
-            {
-                if (collection.collectionDefinition.hash.Equals(inventoryDefinitionHash))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// This method checks if an Inventory exists for specified InventoryDefinition.
-        /// </summary>
-        /// <param name="inventoryDefinition">The InventoryDefinition we are checking for.</param>
-        /// <returns>True/False whether or not the Inventory is found in the InventoryManager.</returns>
-        public static bool HasInventoryByDefinition(InventoryDefinition inventoryDefinition)
-        {
-            ThrowIfNotInitialized();
-
-            if (inventoryDefinition == null)
+            if (!m_Items.Remove(item.id))
             {
                 return false;
             }
 
-            return HasInventoryByDefinition(inventoryDefinition.hash);
-        }
+            // notification and analytics need to happen before the item is disposed
+            NotificationSystem.FireNotification(NotificationType.Destroyed, item);
 
-        /// <summary>
-        /// This method will remove the Inventory with the given instance Id.
-        /// </summary>
-        /// <param name="inventoryId">The Id of the Inventory instance we want to remove.</param>
-        /// <returns>Whether or not the Inventory was successfully removed.</returns>
-        public static bool RemoveInventory(string inventoryId)
-        {
-            ThrowIfNotInitialized();
-
-            if (string.IsNullOrEmpty(inventoryId))
-                return false;
-
-            return RemoveInventory(Tools.StringToHash(inventoryId));
-        }
-
-        /// <summary>
-        /// This method will remove the Inventory with the given Inventory Hash.
-        /// </summary>
-        /// <param name="inventoryHash">The Hash of the Inventory instance we want to remove.</param>
-        /// <returns>Whether or not the Inventory was successfully removed.</returns>
-        public static bool RemoveInventory(int inventoryHash)
-        {
-            ThrowIfNotInitialized();
-
-            return RemoveInventory(inventoryHash, false, true);
-        }
-
-        /// <summary>
-        /// Deletes an inventory from the manager.
-        /// </summary>
-        /// <param name="inventoryHash">The hash of the inventory to remove</param>
-        /// <param name="forceToRemove">If true, can remove even the main and the wallet</param>
-        /// <param name="syncDataLayer">Tells whether of not syncing this removal with the data layer</param>
-        /// <returns></returns>
-        static bool RemoveInventory(int inventoryHash, bool forceToRemove, bool syncDataLayer)
-        {
-            if (!forceToRemove && (inventoryHash == k_MainInventoryHash || inventoryHash == k_WalletInventoryHash))
-            {
-                Debug.LogWarning("Main or Wallet inventories cannot be removed from InventoryManager.");
-                return false;
-            }
-
-            Inventory inventory;
-            if (!m_Inventories.TryGetValue(inventoryHash, out inventory))
-            {
-                return false;
-            }
-
-            m_OnInventoryWillRemove?.Invoke(inventory);
-
-            if (!m_Inventories.Remove(inventoryHash))
-            {
-                return false;
-            }
-
-            m_OnInventoryRemoved?.Invoke(inventory);
-
-            if (syncDataLayer)
-            {
-                SyncDeleteInventory(inventory.id);
-            }
-
-            NotificationSystem.FireNotification(NotificationType.Destroyed, inventory);
+            onItemRemoved(item);
+            item.onRemoved();
 
             // immediately discard all game items to remove all their stats and the items themselves from GameItemLookup
-            inventory.Discard();
+            item.Discard();
 
             return true;
         }
 
-        /// <summary>
-        /// This method will remove the given Inventory.
-        /// </summary>
-        /// <param name="inventory">The Inventory instance we want to remove.</param>
-        /// <returns>Whether or not the Inventory was successfully removed.</returns>
-        public static bool RemoveInventory(Inventory inventory)
+        // This method will remove the given Item, but will not sync with the data layer.
+        internal static bool RemoveItemInternal(string itemId)
         {
+            Tools.ThrowIfArgNull(itemId, nameof(itemId));
             ThrowIfNotInitialized();
 
-            if (inventory == null)
+            if (!m_Items.TryGetValue(itemId, out var item))
             {
                 return false;
             }
 
-            return RemoveInventory(inventory.hash);
+            return RemoveItemInternal(item);
         }
 
         /// <summary>
-        /// This method will remove the Inventory that uses the InventoryDefinition with the given Id.
+        /// This method will remove the given Item.
         /// </summary>
-        /// <param name="inventoryDefinitionId">The Id of the InventoryDefinition we want to remove.</param>
-        /// <returns>The amount of inventories that were removed.</returns>
-        public static int RemoveInventoriesByDefinition(string inventoryDefinitionId)
+        /// <param name="item">The Item instance we want to remove.</param>
+        /// <returns>Whether or not the Item was successfully removed.</returns>
+        public static bool RemoveItem(InventoryItem item)
         {
+            Tools.ThrowIfArgNull(item, nameof(item));
             ThrowIfNotInitialized();
 
-            if (string.IsNullOrEmpty(inventoryDefinitionId))
-                return 0;
+            bool itemWasRemoved = RemoveItemInternal(item);
 
-            return RemoveInventoriesByDefinition(Tools.StringToHash(inventoryDefinitionId));
+            if (itemWasRemoved)
+            {
+                SyncDeleteItem(item.id);
+            }
+
+            return itemWasRemoved;
         }
 
         /// <summary>
-        /// This method will remove the Inventory that uses the InventoryDefinition with the given Hash.
+        /// This method will remove the Item with the given Item Hash.
         /// </summary>
-        /// <param name="inventoryDefinitionHash">The Hash of the InventoryDefinition we want to remove.</param>
-        /// <returns>The amount of inventories that were removed.</returns>
-        public static int RemoveInventoriesByDefinition(int inventoryDefinitionHash)
+        /// <param name="itemId">GameItemId Item instance we want to remove.</param>
+        /// <returns>Whether or not the Item was successfully removed.</returns>
+        public static bool RemoveItem(string itemId)
         {
+            Tools.ThrowIfArgNull(itemId, nameof(itemId));
             ThrowIfNotInitialized();
 
-            List<Inventory> collectionsToRemove = new List<Inventory>();
-
-            foreach (var collection in m_Inventories.Values)
+            var found = m_Items.TryGetValue(itemId, out var item);
+            if (!found)
             {
-                if (collection.collectionDefinition.hash == inventoryDefinitionHash)
-                {
-                    collectionsToRemove.Add(collection);
-                }
-            }
-
-            foreach (var collection in collectionsToRemove)
-            {
-                RemoveInventory(collection);
-            }
-
-            return collectionsToRemove.Count;
-        }
-
-        /// <summary>
-        /// This method will remove the Inventory that uses the given InventoryDefinition.
-        /// </summary>
-        /// <param name="inventoryDefinition">The InventoryDefinition we want to remove.</param>
-        /// <returns>The amount of inventories that were removed.</returns>
-        public static int RemoveInventoriesByDefinition(InventoryDefinition inventoryDefinition)
-        {
-            ThrowIfNotInitialized();
-
-            if (inventoryDefinition == null)
-            {
-                return 0;
-            }
-
-            return RemoveInventoriesByDefinition(inventoryDefinition.hash);
-        }
-
-        /// <summary>
-        /// This will simply clear out all Inventories.
-        /// </summary>
-        /// <param name="removeDefaultInventories">Whether or not default inventories should also be removed.</param>
-        /// <returns>The total number of inventories that were removed.</returns>
-        public static int RemoveAllInventories(bool removeDefaultInventories = true)
-        {
-            ThrowIfNotInitialized();
-
-            return RemoveAllInventories(removeDefaultInventories, false, true);
-        }
-
-        private static int RemoveAllInventories(bool removeDefaultInventories, bool removeBuiltInInventories, bool syncDataLayer)
-        {
-            // gather a list of all Inventories to remove (needed since we can't iterate a dictionary and remove items as we go)
-            var inventoriesToRemove = new List<Inventory>();
-            foreach (var inventory in m_Inventories.Values)
-            {
-                bool remove = false;
-                if (removeBuiltInInventories || inventory.hash != k_MainInventoryHash && inventory.hash != k_WalletInventoryHash)
-                {
-                    remove = true;
-                    if (!removeDefaultInventories)
-                    {
-                        foreach (var defaultCollectionDefinition in catalog.m_DefaultCollectionDefinitions)
-                        {
-                            if (inventory.hash == defaultCollectionDefinition.hash)
-                            {
-                                remove = false;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (remove)
-                {
-                    inventoriesToRemove.Add(inventory);
-                }
-            }
-
-            foreach (var inventory in inventoriesToRemove)
-            {
-                RemoveInventory(inventory.hash, removeBuiltInInventories, syncDataLayer);
-            }
-
-            return inventoriesToRemove.Count;
-        }
-
-        /// <summary>
-        /// Can be called after Initialize() as many times as needed.
-        /// Will reset everything to be as it was after Initialize() was called.
-        /// </summary>
-        public static void Reset()
-        {
-            ThrowIfNotInitialized();
-
-            bool notificationDisabled = NotificationSystem.temporaryDisable;
-            if (!notificationDisabled)
-            {
-                NotificationSystem.temporaryDisable = true;
-            }
-
-            // Reset default Inventories and remove non default instances
-            var inventoriesToRemove = new List<Inventory>();
-            foreach (Inventory inventory in m_Inventories.Values)
-            {
-                bool willRemoved = true;
-                if (inventory.hash == k_MainInventoryHash || inventory.hash == k_WalletInventoryHash)
-                {
-                    willRemoved = false;
-                }
-                else
-                {
-                    foreach (var defaultCollectionDefinition in catalog.m_DefaultCollectionDefinitions)
-                    {
-                        if (inventory.hash == defaultCollectionDefinition.hash)
-                        {
-                            willRemoved = false;
-                            break;
-                        }
-                    }
-                }
-
-                if (willRemoved)
-                {
-                    inventoriesToRemove.Add(inventory);
-                }
-                else
-                {
-                    inventory.Reset();
-                }
-            }
-
-            foreach (var inventory in inventoriesToRemove)
-            {
-                RemoveInventory(inventory.hash);
-            }
-
-            AddDefaultInventories();
-
-            // invoke event for entire InventoryManager reset
-            onInventoryManagerReset?.Invoke();
-
-            if (!notificationDisabled)
-            {
-                NotificationSystem.temporaryDisable = false;
-            }
-        }
-
-        /// <summary>
-        /// Initializes the main and wallet inventories.
-        /// </summary>
-        static void CreateBuiltInInventories()
-        {
-            if (!m_Inventories.ContainsKey(k_MainInventoryHash))
-            {
-                var mainDefinition = catalog.GetCollectionDefinition(k_MainInventoryHash);
-                CreateInventory(mainDefinition, InventoryCatalog.k_MainInventoryDefinitionId, 0, null);
-            }
-
-            if (!m_Inventories.ContainsKey(k_WalletInventoryHash))
-            {
-                var walletDefinition = catalog.GetCollectionDefinition(k_WalletInventoryHash);
-                CreateInventory(walletDefinition, InventoryCatalog.k_WalletInventoryDefinitionId, 0, null);
-            }
-        }
-
-        // add all default Inventories from the InventoryCatalog
-        static void AddDefaultInventories()
-        {
-            foreach (var defaultInventoryDefinition in catalog.m_DefaultCollectionDefinitions)
-            {
-                if (!m_Inventories.ContainsKey(defaultInventoryDefinition.hash))
-                {
-                    var collectionDefinition = catalog.GetCollectionDefinition(defaultInventoryDefinition.collectionDefinitionHash);
-                    if (collectionDefinition != null)
-                    {
-                        CreateInventory(collectionDefinition, defaultInventoryDefinition.id, 0, defaultInventoryDefinition.displayName);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Checks if the given string Hash es to unique value and returns Hash as out variable, if it is.
-        /// </summary>
-        /// <param name="inventoryId">The Id to checking for.</param>
-        /// <returns>True/False whether or not the Hash is unique.</returns>
-        public static bool IsInventoryHashUnique(string inventoryId)
-        {
-            ThrowIfNotInitialized();
-
-            if (string.IsNullOrEmpty(inventoryId))
                 return false;
+            }
 
-            return !m_Inventories.ContainsKey(Tools.StringToHash(inventoryId));
+            return RemoveItem(item);
+        }
+
+        /// This method will remove the Item that uses the given ItemDefinition, but will not sync to the data layer.
+        internal static int RemoveItemsByDefinitionInternal(InventoryItemDefinition itemDefinition)
+        {
+            Tools.ThrowIfArgNull(itemDefinition, nameof(itemDefinition));
+            ThrowIfNotInitialized();
+
+            var removedCount = 0;
+            try
+            {
+                foreach (var item in m_Items.Values)
+                {
+                    if (item.definition == itemDefinition)
+                    {
+                        s_TempItemList.Add(item);
+                    }
+                }
+
+                removedCount = s_TempItemList.Count;
+
+                foreach (var item in s_TempItemList)
+                {
+                    RemoveItemInternal(item);
+                }
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+
+            return removedCount;
         }
 
         /// <summary>
-        /// Synchronizes the creation of the inventory with the data layer.
+        /// This method will remove the Item that uses the given ItemDefinition.
         /// </summary>
-        /// <param name="definitionId">The Id of the InventoryDefinition to assign this Inventory.</param>
-        /// <param name="id">The Id this inventory will have.</param>
-        /// <param name="displayName">The display name this Inventory will have.</param>
-        /// <param name="gameItemId">The gameItem id assigned to this ivnentory</param>
-        internal static void SyncCreateInventory(string definitionId, string id, string displayName, int gameItemId)
+        /// <param name="itemDefinition">The InventoryItemDefinition we want to
+        /// remove.</param>
+        /// <returns>The amount of items that were removed.</returns>
+        public static int RemoveItemsByDefinition
+            (InventoryItemDefinition itemDefinition)
         {
-            GameFoundation.GetPromiseHandles(out var deferred, out var completer);
+            Tools.ThrowIfArgNull(itemDefinition, nameof(itemDefinition));
+            ThrowIfNotInitialized();
 
-            s_DataLayer.CreateInventory(definitionId, id, displayName, gameItemId, completer);
+            var removedCount = 0;
+            try
+            {
+                foreach (var item in m_Items.Values)
+                {
+                    if (item.definition == itemDefinition)
+                    {
+                        s_TempItemList.Add(item);
+                    }
+                }
 
-            GameFoundation.updater.ReleaseOrQueue(deferred);
+                removedCount = s_TempItemList.Count;
+
+                foreach (var item in s_TempItemList)
+                {
+                    RemoveItem(item);
+                }
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+
+            return removedCount;
+        }
+
+        // This method will remove the Item that uses the InventoryItemDefinition with the given Hash, but will not sync to the data layer.
+        internal static int RemoveItemsByDefinitionInternal(string definitionId)
+        {
+            ThrowIfNotInitialized();
+
+            var catalogItem = Tools.GetInventoryItemDefinitionOrDie(definitionId, nameof(definitionId));
+
+            return RemoveItemsByDefinitionInternal(catalogItem);
         }
 
         /// <summary>
-        /// Synchronizes the update of the quantity of an item in an inventory
-        /// with the data layer.
+        /// This method will remove the Item that uses the InventoryItemDefinition with the given Hash.
         /// </summary>
-        /// <param name="inventoryId">The Id of the inventory the item to update belongs to.</param>
-        /// <param name="itemDefinitionId">The definition Id of the item to update</param>
-        /// <param name="quantity">The new quantity of items</param>
-        /// <param name="gameItemLookupId">The gameItem Id of the item</param>
-        internal static void SyncSetItemQuantity(string inventoryId, string itemDefinitionId, int quantity, int gameItemLookupId)
+        /// <param name="definitionId">The Id of the InventoryItemDefinition we want to remove.</param>
+        /// <returns>The amount of items that were removed.</returns>
+        public static int RemoveItemsByDefinition(string definitionId)
         {
-            GameFoundation.GetPromiseHandles(out var deferred, out var completer);
+            ThrowIfNotInitialized();
 
-            s_DataLayer.SetItemQuantity(inventoryId, itemDefinitionId, quantity, gameItemLookupId, completer);
+            var catalogItem = Tools.GetInventoryItemDefinitionOrDie
+                (definitionId, nameof(definitionId));
 
-            GameFoundation.updater.ReleaseOrQueue(deferred);
+            return RemoveItemsByDefinition(catalogItem);
         }
+
+        // Removes all the items from the player inventory, but does not sync to the data layer.
+        internal static int RemoveAllItemsInternal()
+        {
+            var count = m_Items.Count;
+
+            try
+            {
+                Tools.Copy(m_Items.Values, s_TempItemList);
+
+                foreach (var item in s_TempItemList)
+                {
+                    RemoveItemInternal(item);
+                }
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// Removes all the items from the player inventory.
+        /// </summary>
+        /// <returns>The number of items removed.</returns>
+        public static int RemoveAllItems()
+        {
+            var count = m_Items.Count;
+
+            try
+            {
+                Tools.Copy(m_Items.Values, s_TempItemList);
+
+                foreach (var item in s_TempItemList)
+                {
+                    RemoveItem(item);
+                }
+            }
+            finally
+            {
+                s_TempItemList.Clear();
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// This will create a new <see cref="InventoryItem"/> based on
+        /// the <see cref="InventoryItemDefinition"/> matching the given id.
+        /// It will not sync with the data layer.
+        /// </summary>
+        /// <param name="definitionId">
+        /// The Id of the <see cref="InventoryItemDefinition"/> to assign to this Item.
+        /// </param>
+        /// <param name="id">
+        /// The id to give to the created item.
+        /// If <c>null</c>, it will be automatically generated.
+        /// </param>
+        /// <returns>
+        /// The newly created item based on specified <see cref="InventoryItemDefinition"/>.
+        /// </returns>
+        internal static InventoryItem CreateItemInternal(string definitionId, string id = null)
+        {
+            ThrowIfNotInitialized();
+
+            var catalogItem = Tools.GetInventoryItemDefinitionOrDie(definitionId, nameof(definitionId));
+
+            return CreateItemInternal(catalogItem, id);
+        }
+
+        /// <summary>
+        /// This will create a new <see cref="InventoryItem"/> based on
+        /// the <see cref="InventoryItemDefinition"/> matching the given id.
+        /// </summary>
+        /// <param name="definitionId">
+        /// The Id of the <see cref="InventoryItemDefinition"/> to assign to this Item.
+        /// </param>
+        /// <returns>
+        /// The newly created item based on specified <see cref="InventoryItemDefinition"/>.
+        /// </returns>
+        public static InventoryItem CreateItem(string definitionId)
+        {
+            ThrowIfNotInitialized();
+
+            var catalogItem = Tools.GetInventoryItemDefinitionOrDie(definitionId, nameof(definitionId));
+
+            return CreateItem(catalogItem);
+        }
+
+        /// <summary>
+        /// This will create a new <see cref="InventoryItem"/> based on
+        /// the given <see cref="InventoryItemDefinition"/>.
+        /// It will not sync with the data layer.
+        /// </summary>
+        /// <param name="itemDefinition">
+        /// The <see cref="InventoryItemDefinition"/> to assign to this Item.
+        /// </param>
+        /// <param name="id">
+        /// The id to give to the created item.
+        /// If <c>null</c>, it will be automatically generated.
+        /// </param>
+        /// <returns>
+        /// The newly created item based on specified <see cref="InventoryItemDefinition"/>.
+        /// </returns>
+        internal static InventoryItem CreateItemInternal(InventoryItemDefinition itemDefinition, string id = null)
+        {
+            Tools.ThrowIfArgNull(itemDefinition, nameof(itemDefinition));
+
+            var newItem = new InventoryItem(itemDefinition, id);
+            m_Items.Add(newItem.id, newItem);
+
+            newItem.Initialize();
+
+            itemAdded?.Invoke(newItem);
+
+            NotificationSystem.FireNotification(NotificationType.Created, newItem);
+
+            return newItem;
+        }
+
+        /// <summary>
+        /// This will create a new <see cref="InventoryItem"/> based on
+        /// the given <see cref="InventoryItemDefinition"/>.
+        /// </summary>
+        /// <param name="itemDefinition">
+        /// The <see cref="InventoryItemDefinition"/> to assign to this Item.
+        /// </param>
+        /// <returns>
+        /// The newly created item based on specified <see cref="InventoryItemDefinition"/>.
+        /// </returns>
+        public static InventoryItem CreateItem(InventoryItemDefinition itemDefinition)
+        {
+            var newItem = CreateItemInternal(itemDefinition);
+
+            // The inventory must be synchronized after its constructor is called,
+            // for the game item id to be properly updated.
+            SyncCreateItem(newItem.definition.id, newItem.id);
+
+            return newItem;
+        }
+
+        /// <summary>
+        /// Synchronizes the creation of the item with the data layer.
+        /// </summary>
+        /// <param name="definitionId">The Id of the InventoryItemDefinition to assign this Item.</param>
+        /// <param name="id">The Id this item will have.</param>
+        internal static void SyncCreateItem(string definitionId, string id)
+            => s_DataLayer.CreateItem(definitionId, id, Completer.None);
 
         /// <summary>
         /// Synchronizes the removal of item from an inventory with the data layer
         /// </summary>
-        /// <param name="inventoryId">The Id of the inventory the item is removed from.</param>
-        /// <param name="itemDefinitionId">The defintion Id of the item to remove</param>
-        internal static void SyncDeleteItem(string inventoryId, string itemDefinitionId)
-        {
-            GameFoundation.GetPromiseHandles(out var deferred, out var completer);
-
-            s_DataLayer.DeleteItem(inventoryId, itemDefinitionId, completer);
-
-            GameFoundation.updater.ReleaseOrQueue(deferred);
-        }
-
-        /// <summary>
-        /// Synchronizes the removal of the inventory with the data layer
-        /// </summary>
-        /// <param name="inventoryId">The Id of the Inventory instance we want to remove.</param>
-        internal static void SyncDeleteInventory(string inventoryId)
-        {
-            GameFoundation.GetPromiseHandles(out var deferred, out var completer);
-
-            s_DataLayer.DeleteInventory(inventoryId, completer);
-
-            GameFoundation.updater.ReleaseOrQueue(deferred);
-        }
+        /// <param name="itemId">The Id of the item to delete.</param>
+        internal static void SyncDeleteItem(string itemId)
+            => s_DataLayer.DeleteItem(itemId, Completer.None);
     }
 }

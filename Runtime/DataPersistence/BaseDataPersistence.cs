@@ -7,15 +7,10 @@ namespace UnityEngine.GameFoundation.DataPersistence
     /// </summary>
     public abstract class BaseDataPersistence : IDataPersistence
     {
-        IDataSerializer m_Serializer;
-
         /// <summary>
         /// The serialization layer used by the processes of this persistence.
         /// </summary>
-        protected IDataSerializer serializer
-        {
-            get { return m_Serializer; }
-        }
+        protected IDataSerializer serializer { get; }
 
         /// <summary>
         /// Basic constructor that takes in a data serializer which this will use.
@@ -23,7 +18,7 @@ namespace UnityEngine.GameFoundation.DataPersistence
         /// <param name="serializer">The data serializer to use.</param>
         public BaseDataPersistence(IDataSerializer serializer)
         {
-            m_Serializer = serializer;
+            this.serializer = serializer;
         }
 
         /// <inheritdoc />

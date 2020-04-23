@@ -22,7 +22,7 @@ namespace UnityEditor.GameFoundation
         /// <summary>
         /// A list of all classes that inherit from BaseDetailDefinition, that come with Game Foundation. Call RefreshTypeDict() to make sure it's up to date. 
         /// </summary>
-        public static Dictionary<string, System.Type> defaultDetailDefinitionInfo { get; private set; }
+        public static Dictionary<string, System.Type> defaultDetailInfo { get; private set; }
 
         /// <summary>
         /// A list of all classes that inherit from BaseDetailDefinition, that were made by the user. Call RefreshTypeDict() to make sure it's up to date. 
@@ -34,13 +34,13 @@ namespace UnityEditor.GameFoundation
         /// </summary>
         public static void RefreshTypeDict()
         {
-            if (defaultDetailDefinitionInfo == null)
+            if (defaultDetailInfo == null)
             {
-                defaultDetailDefinitionInfo = new Dictionary<string, System.Type>();
+                defaultDetailInfo = new Dictionary<string, System.Type>();
             }
             else
             {
-                defaultDetailDefinitionInfo.Clear();
+                defaultDetailInfo.Clear();
             }
 
             if (customDetailDefinitionInfo == null)
@@ -52,7 +52,7 @@ namespace UnityEditor.GameFoundation
                 customDetailDefinitionInfo.Clear();
             }
 
-            var baseType = typeof(BaseDetailDefinition);
+            var baseType = typeof(BaseDetailAsset);
             var baseAssembly = baseType.Assembly;
             var assemblies = System.AppDomain.CurrentDomain.GetAssemblies();
             Assembly userAssembly = null;
@@ -89,17 +89,17 @@ namespace UnityEditor.GameFoundation
 
             foreach (var t in defaultTypes)
             {
-                var inst = (BaseDetailDefinition)ScriptableObject.CreateInstance(t.ToString());
+                var inst = (BaseDetailAsset)ScriptableObject.CreateInstance(t.ToString());
 
                 if (inst != null)
                 {
-                    defaultDetailDefinitionInfo.Add(inst.DisplayName(), t);
+                    defaultDetailInfo.Add(inst.DisplayName(), t);
                 }
             }
 
             foreach (var t in customTypes)
             {
-                var inst = (BaseDetailDefinition)ScriptableObject.CreateInstance(t.ToString());
+                var inst = (BaseDetailAsset)ScriptableObject.CreateInstance(t.ToString());
 
                 if (inst != null)
                 {

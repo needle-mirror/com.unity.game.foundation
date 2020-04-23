@@ -12,25 +12,25 @@ namespace UnityEditor.GameFoundation
     struct CatalogSnapshot : IEquatable<CatalogSnapshot>
     {
         public static bool operator ==(CatalogSnapshot a, CatalogSnapshot b) =>
-            a.gameItemCount == b.gameItemCount &&
             a.inventoryItemCount == b.inventoryItemCount &&
-            a.inventoryCount == b.inventoryCount &&
-            a.categoryCount == b.categoryCount &&
-            a.statCount == b.statCount;
+            a.storeCount == b.storeCount &&
+            a.statCount == b.statCount &&
+            a.virtualTransactionCount == b.virtualTransactionCount &&
+            a.iapTransactionCount == b.iapTransactionCount;
 
         public static bool operator !=(CatalogSnapshot a, CatalogSnapshot b) =>
-            a.gameItemCount != b.gameItemCount ||
             a.inventoryItemCount != b.inventoryItemCount ||
-            a.inventoryCount != b.inventoryCount ||
-            a.categoryCount != b.categoryCount ||
-            a.statCount != b.statCount;
+            a.storeCount != b.storeCount ||
+            a.statCount != b.statCount ||
+            a.virtualTransactionCount != b.virtualTransactionCount ||
+            a.virtualTransactionCount != b.virtualTransactionCount;
 
 
-        public int gameItemCount;
         public int inventoryItemCount;
-        public int inventoryCount;
-        public int categoryCount;
+        public int storeCount;
         public int statCount;
+        public int virtualTransactionCount;
+        public int iapTransactionCount;
 
 
         public bool Equals(CatalogSnapshot other) => this == other;
@@ -45,10 +45,11 @@ namespace UnityEditor.GameFoundation
         }
 
         public override int GetHashCode() =>
-            (gameItemCount & 0b111111111) << 21 |      // 511 game items
-            (inventoryItemCount & 0b111111111) << 12 | // 511 inventory items
-            (inventoryCount & 0b1111) << 10 |          //  15 inventories
-            (statCount & 0b111111) << 4 |              //  63 stats
-            (categoryCount & 0b1111);                  //  15 categories
+            (inventoryItemCount      & 0b11111111) << 24 |   //  255 stores           (8 bits)
+            (storeCount              & 0b11111111) << 16 |   //  255 inventory items  (8 bits)
+            (virtualTransactionCount & 0b1111    ) << 12 |   //   15 v transactions   (4 bits)
+            (iapTransactionCount     & 0b1111    ) <<  8 |   //   15 iap transactions (4 bits)
+            (statCount               & 0b11111111) <<  0     //  255 stats            (8 bits)
+            ;
     }
 }

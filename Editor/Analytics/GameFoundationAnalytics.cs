@@ -31,8 +31,12 @@ namespace UnityEditor.GameFoundation
         public enum TabName
         {
             InventoryItems,
+            StoreItems,
             Categories,
-            Inventories
+            Inventories,
+            Stores,
+            Currencies,
+            Transactions
         }
 
         const int k_MaxEventsPerHour = 100;
@@ -61,38 +65,35 @@ namespace UnityEditor.GameFoundation
 
                 snapshot = new CatalogSnapshot();
 
-                var giCatalog = database.gameItemCatalog;
                 var iCatalog = database.inventoryCatalog;
+                var storeCatalog = database.storeCatalog;
                 var sCatalog = database.statCatalog;
-
-                // Game item definitions
-                {
-                    var gameItems = giCatalog != null ? giCatalog.GetGameItemDefinitions() : null;
-                    snapshot.gameItemCount = gameItems != null ? gameItems.Length : 0;
-                }
-
-                // Categories
-                {
-                    var categories = iCatalog != null ? iCatalog.GetCategories() : null;
-                    snapshot.categoryCount = categories != null ? categories.Length : 0;
-                }
-
-                // Inventories definitions
-                {
-                    var inventories = iCatalog != null ? iCatalog.GetCollectionDefinitions() : null;
-                    snapshot.inventoryCount = inventories != null ? inventories.Length : 0;
-                }
+                var tCatalog = database.transactionCatalog;
 
                 // Inventory item definitions
                 {
-                    var items = iCatalog != null ? iCatalog.GetItemDefinitions() : null;
+                    var items = iCatalog != null ? iCatalog.GetItems() : null;
                     snapshot.inventoryItemCount = items != null ? items.Length : 0;
+                }
+
+                // Stores definitions
+                {
+                    var stores = storeCatalog != null ? storeCatalog.GetItems() : null;
+                    snapshot.storeCount = stores != null ? stores.Length : 0;
                 }
 
                 // Stat definitions
                 {
                     var stats = sCatalog != null ? sCatalog.GetStatDefinitions() : null;
                     snapshot.statCount = stats != null ? stats.Length : 0;
+                }
+
+                // Transaction definitions
+                {
+                    var iapTransactions = tCatalog != null ? tCatalog.GetItems<IAPTransactionAsset>() : null;
+                    var virtualTransactions = tCatalog != null ? tCatalog.GetItems<VirtualTransactionAsset>() : null;
+                    snapshot.virtualTransactionCount = virtualTransactions?.Length ?? 0;
+                    snapshot.iapTransactionCount = iapTransactions?.Length ?? 0;
                 }
 
                 return true;

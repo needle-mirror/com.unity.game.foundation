@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace UnityEngine.GameFoundation.DataPersistence
 {
@@ -15,7 +15,7 @@ namespace UnityEngine.GameFoundation.DataPersistence
         {
             inventoryManagerData = InventoryManagerSerializableData.Empty,
             statManagerData = StatManagerSerializableData.Empty,
-            gameItemLookupData = new GameItemLookupSerializableData()
+            walletData = WalletSerializableData.Empty
         };
 
         /// <summary>
@@ -29,9 +29,9 @@ namespace UnityEngine.GameFoundation.DataPersistence
         public StatManagerSerializableData statManagerData;
 
         /// <summary>
-        /// The data of GameItemLookup to be persisted.
+        /// The data of Wallet to be persisted.
         /// </summary>
-        public GameItemLookupSerializableData gameItemLookupData;
+        public WalletSerializableData walletData;
 
         /// <summary>
         /// The version of of the save schematic

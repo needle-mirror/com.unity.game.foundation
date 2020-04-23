@@ -1,6 +1,7 @@
-﻿using System;
+using System;
+using UnityEngine.GameFoundation.CatalogManagement;
 using UnityEngine.GameFoundation.DataPersistence;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation.DataAccessLayers
 {
@@ -11,38 +12,49 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
     {
         bool m_IsInitialized;
 
+        /// <summary>
+        /// The serialized data manipulated by this instance.
+        /// </summary>
         GameFoundationSerializableData m_Data;
 
         /// <summary>
-        /// Create a data layer with empty data.
+        /// Creates a data layer with no player data.
         /// </summary>
-        public MemoryDataLayer()
+        /// <param name="database">Provides catalogs to the
+        /// <see cref="CatalogManager" />.</param>
+        public MemoryDataLayer(GameFoundationDatabase database = null)
+            : base(database)
         {
-            m_Data = GameFoundationSerializableData.Empty;
+            m_Data = this.database.CreateDefaultData();
         }
 
         /// <summary>
-        /// Create a data layer that will handle the given data for the current game session only.
+        /// Create a data layer with the given catalog provider that will handle
+        /// the given data for the current game session only.
         /// </summary>
+        /// <param name="database">
+        /// Provides catalogs to the <see cref="CatalogManager" />.
+        /// </param>
         /// <param name="data">GameFoundation's serializable data.</param>
         /// <exception cref="ArgumentNullException">
         /// If the given data contains invalid null values.
         /// </exception>
-        public MemoryDataLayer(GameFoundationSerializableData data)
+        public MemoryDataLayer(GameFoundationSerializableData data, GameFoundationDatabase database = null)
+            : base(database)
         {
-            if (data.inventoryManagerData.inventories == null)
-                throw new ArgumentNullException(
-                    $"{nameof(InventoryManagerSerializableData)}'s {nameof(InventoryManagerSerializableData.inventories)} mustn't be null.",
-                    new NullReferenceException());
-
             if (data.inventoryManagerData.items == null)
                 throw new ArgumentNullException(
                     $"{nameof(InventoryManagerSerializableData)}'s {nameof(InventoryManagerSerializableData.items)} mustn't be null.",
                     new NullReferenceException());
 
-            if (data.statManagerData.statDictionaries == null)
+            if (data.statManagerData.items == null)
                 throw new ArgumentNullException(
-                    $"{nameof(StatManagerSerializableData)}'s {nameof(StatManagerSerializableData.statDictionaries)} mustn't be null.",
+                    $"{nameof(StatManagerSerializableData)}'s {nameof(StatManagerSerializableData.items)} mustn't be null.",
+                    new NullReferenceException());
+
+            if (data.walletData.balances == null)
+                throw new ArgumentNullException(
+                    $"{nameof(WalletSerializableData)}'s {nameof(WalletSerializableData.balances)} mustn't be null.",
                     new NullReferenceException());
 
             m_Data = data;
@@ -60,8 +72,8 @@ namespace UnityEngine.GameFoundation.DataAccessLayers
             }
 
             InitializeInventoryDataLayer(m_Data.inventoryManagerData);
-            InitializeGameItemLookupDataLayer(m_Data.gameItemLookupData);
             InitializeStatDataLayer(m_Data.statManagerData);
+            InitializeWalletDataLayer(m_Data.walletData, database.currencyCatalog);
 
             m_Version = m_Data.version;
 

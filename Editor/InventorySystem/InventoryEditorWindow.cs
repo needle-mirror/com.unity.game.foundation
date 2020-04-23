@@ -20,9 +20,8 @@ namespace UnityEditor.GameFoundation
         {
             m_Editors.Clear();
 
-            m_Editors.Add(new InventoryItemDefinitionEditor("Inventory Items"));
-            m_Editors.Add(new InventoryDefinitionEditor("Inventories"));
-            m_Editors.Add(new CategoryDefinitionEditor("Categories"));
+            m_Editors.Add(new InventoryItemDefinitionAssetEditor("Inventory Items"));
+            m_Editors.Add(new CategoryAssetEditor("Categories"));
         }
     }
 }

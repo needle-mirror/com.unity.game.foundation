@@ -1,0 +1,5 @@
+{
+	"displayName":"02 Inventory With Quantity",
+	"description": "This sample showcases one way to group inventory items to represent quantity concept.",
+	"createSeparatePackage": false
+}

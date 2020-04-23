@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 namespace UnityEngine.GameFoundation.DataPersistence
 {
@@ -13,12 +13,12 @@ namespace UnityEngine.GameFoundation.DataPersistence
         /// </summary>
         public static StatManagerSerializableData Empty => new StatManagerSerializableData
         {
-            statDictionaries = new StatDictionarySerializableData[0]
+            items = new StatItemSerializableData[0]
         };
 
         /// <summary>
         /// Return the data of all runtime stat dictionaries
         /// </summary>
-        public StatDictionarySerializableData[] statDictionaries;
+        public StatItemSerializableData[] items;
     }
 }

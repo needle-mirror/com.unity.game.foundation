@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace UnityEngine.GameFoundation
@@ -28,7 +28,8 @@ namespace UnityEngine.GameFoundation
         /// Creates a new pool.
         /// </summary>
         /// <param name="create">A method called to create a new object.</param>
-        /// <param name="release">A method called on the object when released.</param>
+        /// <param name="release">A method called on the object when
+        /// released.</param>
         public Pool(Func<TPooled> create, Action<TPooled> release)
         {
             if (create == null)

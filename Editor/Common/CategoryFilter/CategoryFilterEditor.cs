@@ -25,16 +25,18 @@ namespace UnityEditor.GameFoundation
         /// </summary>
         /// <param name="fullList">The list of GameItemDefinitions being filtered
         /// to the current category.</param>
-        /// <param name="catalogCategories">The list of possible categories that can be filtered to.</param>
+        /// <param name="categories">The list of possible categories that can be filtered to.</param>
         /// <returns>Filtered list of GameItemDefinitions.</returns>
-        public List<T> GetFilteredItems<T>(List<T> fullList, CategoryDefinition[] catalogCategories) where T : GameItemDefinition
+        public List<T> GetFilteredItems<T>(List<T> fullList, CategoryAsset[] categories) where T : CatalogItemAsset
         {
             if (fullList == null)
             {
                 return null;
             }
 
-            if (m_SelectedFilterCategoryIdx < 0 || m_SelectedFilterCategoryIdx >= (catalogCategories.Length + k_ListOffset))
+            if(categories is null) return null;
+
+            if(m_SelectedFilterCategoryIdx < 0 || m_SelectedFilterCategoryIdx >= (categories.Length + k_ListOffset))
             {
                 m_SelectedFilterCategoryIdx = (int)DefaultFilterOptions.All;
             }
@@ -45,22 +47,22 @@ namespace UnityEditor.GameFoundation
             }
             else if (m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
             {
-                return fullList.FindAll(gameItemDefinition =>
+                return fullList.FindAll(item =>
                 {
-                    var categories = gameItemDefinition.GetCategories();
-                    return categories == null || !categories.Any();
+                    var itemCategories = item.GetCategories();
+                    return itemCategories == null || !itemCategories.Any();
                 });
             }
 
-            return fullList.FindAll(gameItemDefinition =>
+            return fullList.FindAll(item =>
                 {
-                    var categories = gameItemDefinition.GetCategories();
-                    if (categories == null || catalogCategories == null)
+                    var itemCategories = item.GetCategories();
+                    if (itemCategories == null || categories == null)
                     {
                         return false;
                     }
 
-                    return categories.Any(categoryDefinition => categoryDefinition.hash == catalogCategories[m_SelectedFilterCategoryIdx - k_ListOffset].hash);
+                    return itemCategories.Any(category => category.id == categories[m_SelectedFilterCategoryIdx - k_ListOffset].id);
                 });
         }
 
@@ -87,24 +89,24 @@ namespace UnityEditor.GameFoundation
         /// <summary>
         /// Refreshes the list of possible categories that can be filtered to based on the given list.
         /// </summary>
-        /// <param name="catalogCategories">The list of possible categories that can be filtered to.</param>
-        public void RefreshSidebarCategoryFilterList(CategoryDefinition[] catalogCategories)
+        /// <param name="categories">The list of possible categories that can be filtered to.</param>
+        public void RefreshSidebarCategoryFilterList(CategoryAsset[] categories)
         {
             int categoryFilterCount = k_ListOffset;
-            if (catalogCategories != null)
+            if (categories != null)
             {
-                categoryFilterCount += catalogCategories.Count();
+                categoryFilterCount += categories.Count();
             }
             // Create Names for Pull-down menus
             m_CategoryNamesForFilter = new string[categoryFilterCount];
             m_CategoryNamesForFilter[(int)DefaultFilterOptions.All] = k_All;
             m_CategoryNamesForFilter[(int)DefaultFilterOptions.None] = k_None;
 
-            if (catalogCategories != null)
+            if (categories != null)
             {
-                for (int i = 0; i < catalogCategories.Length; i++)
+                for (int i = 0; i < categories.Length; i++)
                 {
-                    m_CategoryNamesForFilter[i + k_ListOffset] = catalogCategories[i].displayName;
+                    m_CategoryNamesForFilter[i + k_ListOffset] = categories[i].displayName;
                 }
             }
         }
@@ -112,18 +114,18 @@ namespace UnityEditor.GameFoundation
         /// <summary>
         /// Returns the current category selected in the filter dropdown.
         /// </summary>
-        /// <param name="catalogCategories">The list of possible categories that can be filtered to.</param>
+        /// <param name="categories">The list of possible categories that can be filtered to.</param>
         /// <returns>The current CategoryDefinition selected by the filter.</returns>
-        public CategoryDefinition GetCurrentFilteredCategory(CategoryDefinition[] catalogCategories)
+        public CategoryAsset GetCurrentFilteredCategory(CategoryAsset[] categories)
         {
-            if (catalogCategories == null
+            if (categories == null
                 || m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.All
                 || m_SelectedFilterCategoryIdx == (int)DefaultFilterOptions.None)
             {
                 return null;
             }
 
-            return catalogCategories.ElementAt(m_SelectedFilterCategoryIdx - k_ListOffset);
+            return categories.ElementAt(m_SelectedFilterCategoryIdx - k_ListOffset);
         }
 
         /// <summary>

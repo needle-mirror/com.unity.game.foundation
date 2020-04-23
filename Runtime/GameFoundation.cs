@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections;
-using UnityEngine.GameFoundation.CatalogManagement;
-using UnityEngine.GameFoundation.Promise;
+using UnityEngine.Promise;
 
 namespace UnityEngine.GameFoundation
 {
@@ -26,10 +25,9 @@ namespace UnityEngine.GameFoundation
         /// Check if the Game Foundation is initialized.
         /// </summary>
         /// <returns>Whether the Game Foundation is initialized or not</returns>
-        public static bool IsInitialized
-        {
-            get { return m_InitializationStatus == InitializationStatus.Initialized; }
-        }
+        public static bool IsInitialized => m_InitializationStatus == InitializationStatus.Initialized;
+
+        public static CatalogManager catalogs { get; private set; }
 
         static PromiseGenerator s_PromiseGenerator;
 
@@ -80,20 +78,6 @@ namespace UnityEngine.GameFoundation
 
             m_InitializationStatus = InitializationStatus.Initializing;
 
-            try
-            {
-                EditorCatalogProvider.InitializeCatalogs();
-            }
-            catch (Exception e)
-            {
-                var customException = new Exception("GameFoundation failed to initialize runtime catalogs from editor catalogs", e);
-                Debug.LogException(customException);
-                m_InitializationStatus = InitializationStatus.Failed;
-                onInitializeFailed?.Invoke(customException);
-
-                return;
-            }
-
             var routine = InitializeRoutine(onInitializeCompleted, onInitializeFailed);
 
 #if !UNITY_EDITOR
@@ -135,68 +119,99 @@ namespace UnityEngine.GameFoundation
         /// <param name="onInitializeFailed">Called if the initialization is a failure</param>
         static IEnumerator InitializeRoutine(Action onInitializeCompleted, Action<Exception> onInitializeFailed)
         {
+            void FailInitialization(Exception reason)
+            {
+                Uninitialize();
+
+                Debug.LogWarning("GameFoundation can't be initialized: " + reason);
+
+                m_InitializationStatus = InitializationStatus.Failed;
+
+                onInitializeFailed?.Invoke(reason);
+            }
+
             s_PromiseGenerator.GetPromiseHandles(out var dalInitDeferred, out var dalInitCompleter);
 
             s_DataLayer.Initialize(dalInitCompleter);
 
             if (!dalInitDeferred.isDone)
-            {
                 yield return dalInitDeferred.Wait();
-            }
 
             var isFulfilled = dalInitDeferred.isFulfilled;
             var error = dalInitDeferred.error;
             dalInitDeferred.Release();
 
-            if (isFulfilled)
+            if (!isFulfilled)
             {
-                NotificationSystem.temporaryDisable = true;
+                FailInitialization(error);
 
-                try
-                {
-                    //The order in which managers are initialized is important since they are codependent.
-                    //Be cautious if you want to change it.
-                    //The current order is: GameItemLookup -> StatManager -> InventoryManager;
-                    GameItemLookup.Initialize(s_DataLayer);
-                    StatManager.Initialize(s_DataLayer);
-                    InventoryManager.Initialize(s_DataLayer);
-
-                    AnalyticsWrapper.Initialize();
-                }
-                finally
-                {
-                    NotificationSystem.temporaryDisable = false;
-                }
-
-                m_InitializationStatus = InitializationStatus.Initialized;
-
-                currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
-
-                Debug.Log($"Successfully initialized Game Foundation version {currentVersion}");
-
-                onInitializeCompleted?.Invoke();
+                yield break;
             }
-            else
+
+            try
             {
-                Uninitialize();
-
-                Debug.LogWarning("GameFoundation can't be initialized: " + error);
-
+                var catalogBuilder = new CatalogBuilder();
+                s_DataLayer.Configure(catalogBuilder);
+                catalogs = catalogBuilder.Build();
+            }
+            catch (Exception e)
+            {
+                var customException = new Exception("GameFoundation failed to initialize runtime catalogs from editor catalogs", e);
+                Debug.LogException(customException);
                 m_InitializationStatus = InitializationStatus.Failed;
+                onInitializeFailed?.Invoke(customException);
 
-                onInitializeFailed?.Invoke(error);
+                yield break;
             }
+
+            NotificationSystem.temporaryDisable = true;
+
+            try
+            {
+                //The order in which managers are initialized is important since they are codependent.
+                //Be cautious if you want to change it.
+                //The current order is: StatManager -> InventoryManager;
+                InventoryManager.Initialize(s_DataLayer);
+                StatManager.Initialize(s_DataLayer);
+                WalletManager.Initialize(s_DataLayer);
+                TransactionManager.Initialize(s_DataLayer);
+                AnalyticsWrapper.Initialize();
+            }
+            catch (Exception e)
+            {
+                FailInitialization(e);
+
+                yield break;
+            }
+            finally
+            {
+                NotificationSystem.temporaryDisable = false;
+            }
+
+            m_InitializationStatus = InitializationStatus.Initialized;
+
+            currentVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+
+            Debug.Log($"Successfully initialized Game Foundation version {currentVersion}");
+
+            onInitializeCompleted?.Invoke();
         }
 
         public static void Uninitialize()
         {
             m_InitializationStatus = InitializationStatus.NotInitialized;
 
-            // note: InventoryManager must be unitialized first since it relies on game item lookups to do its work.
+            // note: InventoryManager must be uninitialized first since it relies on game item lookups to do its work.
             InventoryManager.Uninitialize();
-            GameItemLookup.Unintialize();
             StatManager.Uninitialize();
             AnalyticsWrapper.Uninitialize();
+            WalletManager.Uninitialize();
+            TransactionManager.Uninitialize();
+
+            currentVersion = null;
+            catalogs = null;
+            s_PromiseGenerator = null;
+            s_DataLayer = null;
 
             if (updater != null)
             {

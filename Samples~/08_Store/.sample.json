@@ -1,0 +1,5 @@
+{
+	"displayName":"08 Store",
+	"description": "This sample contains Prefabs that can be used to create a Store which uses the Transaction System to make purchases.",
+	"createSeparatePackage": false
+}

@@ -1,4 +1,7 @@
-﻿using UnityEngine.GameFoundation.DataAccessLayers;
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+using UnityEngine.GameFoundation.DataAccessLayers;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -9,6 +12,26 @@ namespace UnityEngine.GameFoundation.Sample
     public class CategoriesSample : MonoBehaviour
     {
         private bool m_WrongDatabase;
+
+        /// <summary>
+        /// The id of the category we want to filter items by.
+        /// </summary>
+        private string m_CurrentCategory;
+
+        /// <summary>
+        /// Reference to the list of InventoryItemDefinitions in the Inventory Catalog.
+        /// </summary>
+        private readonly List<InventoryItemDefinition> m_ItemDefinitions = new List<InventoryItemDefinition>();
+
+        /// <summary>
+        /// Reference to the list of InventoryItems to show in the display.
+        /// </summary>
+        private readonly List<InventoryItem> m_FilteredItems = new List<InventoryItem>();
+
+        /// <summary>
+        /// Used to reduce times mainText.text is accessed.
+        /// </summary>
+        private readonly StringBuilder m_DisplayText = new StringBuilder();
 
         /// <summary>
         /// We will need a reference to the main text box in the scene so we can easily modify it.
@@ -25,14 +48,10 @@ namespace UnityEngine.GameFoundation.Sample
         /// </summary>
         public Button[] buttons;
 
-        private Inventory m_ShoppingCart;
-
-        private string m_CurrentCategory;
-
         /// <summary>
         /// Standard starting point for Unity scripts.
         /// </summary>
-        void Start()
+        private void Start()
         {
             // The database has been properly setup.
             m_WrongDatabase = !SamplesHelper.VerifyDatabase();
@@ -48,37 +67,67 @@ namespace UnityEngine.GameFoundation.Sample
             // - For this sample we don't need to persist any data so we use the MemoryDataLayer
             //   that will store GameFoundation's data only for the play session.
             GameFoundation.Initialize(new MemoryDataLayer());
+            
+            // The Inventory Manager starts empty, so we will add a selection of items to the inventory.
+            InitializeInventoryItems();
 
-            // Grab a reference to the shopping cart
-            m_ShoppingCart = InventoryManager.GetInventory("shoppingCart");
-
-            FruitCategory();
+            NoCategoryFilter();
             RefreshUI();
         }
 
         /// <summary>
         /// This will fill out the main text box with information about the main inventory.
         /// </summary>
-        /// <param name="item">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void RefreshUI(InventoryItem item = null)
+        private void RefreshUI()
         {
-            // Display the main inventory's display name
-            mainText.text = "Inventory - " + m_ShoppingCart.displayName + "\n\n";
+            m_DisplayText.Clear();
+            m_DisplayText.Append("Inventory");
+            m_DisplayText.AppendLine();
 
-            // Similar to GetItems, GetItemsByCategory will return a list of items, but only those that have the requested category assigned to them.
-            InventoryItem[] items = m_ShoppingCart.GetItemsByCategory(m_CurrentCategory);
+            // We'll use the versions of GetItems and FindItemsByCategory that let us pass in a collection to be filled to reduce allocations
+            if (string.IsNullOrEmpty(m_CurrentCategory))
+            {
+                InventoryManager.GetItems(m_FilteredItems);
+            }
+            else
+            {
+                try
+                {
+                    // Similar to GetItems, FindItemsByCategory will return a list of items, but only those that have the requested category assigned to them.
+                    // Because this method will throw an exception if the categoryId is not found in the inventory catalog, we'll surround
+                    // in a try catch and log any exceptions thrown.
+                    InventoryManager.FindItemsByCategory(m_CurrentCategory, m_FilteredItems);
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e);
+                }
+            }
 
             // Loop through every type of item within the inventory and display its name and quantity.
-            foreach (InventoryItem inventoryItem in items)
+            foreach (InventoryItem inventoryItem in m_FilteredItems)
             {
-                // All game items have an associated display name, this includes game items.
-                string itemName = inventoryItem.displayName;
+                // All InventoryItems have an associated InventoryItemDefinition which contains a display name.
+                string itemName = inventoryItem.definition.displayName;
 
-                // Every inventory item has an associated quantity. This represents how many units of this item there are within the inventory.
-                int quantity = inventoryItem.quantity;
-
-                mainText.text += itemName + ": " + quantity + "\n";
+                m_DisplayText.Append(itemName);
+                m_DisplayText.AppendLine();
             }
+
+            mainText.text = m_DisplayText.ToString();
+        }
+
+        /// <summary>
+        /// Sets the current category to empty string for no filtering.
+        /// </summary>
+        public void NoCategoryFilter()
+        {
+            m_CurrentCategory = "";
+
+            UnselectAllButtons();
+            buttons[0].interactable = false;
+
+            RefreshUI();
         }
 
         /// <summary>
@@ -89,7 +138,7 @@ namespace UnityEngine.GameFoundation.Sample
             m_CurrentCategory = "fruit";
 
             UnselectAllButtons();
-            buttons[0].interactable = false;
+            buttons[1].interactable = false;
 
             RefreshUI();
         }
@@ -102,7 +151,7 @@ namespace UnityEngine.GameFoundation.Sample
             m_CurrentCategory = "food";
 
             UnselectAllButtons();
-            buttons[1].interactable = false;
+            buttons[2].interactable = false;
 
             RefreshUI();
         }
@@ -115,9 +164,23 @@ namespace UnityEngine.GameFoundation.Sample
             m_CurrentCategory = "vegetable";
 
             UnselectAllButtons();
-            buttons[2].interactable = false;
+            buttons[3].interactable = false;
 
             RefreshUI();
+        }
+
+        /// <summary>
+        /// Initializes one InventoryItem for each InventoryItemDefinition in the InventoryCatalog.
+        /// </summary>
+        private void InitializeInventoryItems()
+        {
+            // We'll use the version of GetItems that lets us pass in a collection to be filled to reduce allocations
+            GameFoundation.catalogs.inventoryCatalog.GetItems(m_ItemDefinitions);
+
+            foreach (var itemDefinition in m_ItemDefinitions)
+            {
+                InventoryManager.CreateItem(itemDefinition);
+            }
         }
 
         private void UnselectAllButtons()
