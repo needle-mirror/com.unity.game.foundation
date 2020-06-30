@@ -1,8 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine.GameFoundation.DataAccessLayers;
-using UnityEngine.GameFoundation.DataPersistence;
+using UnityEngine.GameFoundation.DefaultLayers;
+using UnityEngine.GameFoundation.DefaultLayers.Persistence;
 using UnityEngine.Promise;
 using UnityEngine.UI;
 
@@ -60,12 +60,16 @@ namespace UnityEngine.GameFoundation.Sample
 
             // - Initialize must always be called before working with any game foundation code.
             // - GameFoundation requires an IDataAccessLayer object that will provide and persist
-            //   the data required for the various services (Inventory, Stats, ...).
+            //   the data required for the various services (Inventory, Wallet, ...).
             // - For this sample we will persist GameFoundation's data using a PersistenceDataLayer.
             //   We create it with a LocalPersistence setup to save/load these data in a JSON file
-            //   named "DataPersistenceSample" stored on the device.
+            //   named "DataPersistenceSampleV2" stored on the device.  Note: 'V2' appended
+            //   to the filename to ensure old persistence from previous version of Game Foundation
+            //   isn't used, causing Sample to throw at initialization.  This is only needed during
+            //   the 'preview' phase of Game Foundation while the structure of persistent data is
+            //   changing.
             m_DataLayer = new PersistenceDataLayer(
-                new LocalPersistence("DataPersistenceSample", new JsonDataSerializer()));
+                new LocalPersistence("DataPersistenceSampleV2", new JsonDataSerializer()));
 
             GameFoundation.Initialize(m_DataLayer, OnGameFoundationInitialized, Debug.LogError);
         }
@@ -113,7 +117,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// <summary>
         /// This will save game foundation's data as a JSON file on your machine.
         /// This data will persist between play sessions.
-        /// This sample only showcases inventories, but this method saves their items, and stats too. 
+        /// This sample only showcases inventories, but this method saves their items, and properties too. 
         /// </summary>
         public void Save()
         {
@@ -133,7 +137,7 @@ namespace UnityEngine.GameFoundation.Sample
 
         /// <summary>
         /// This will un-initialize game foundation and re-initialize it with data from the save file.
-        /// This will set the current state of inventories and stats to be what's within the save file.
+        /// This will set the current state of inventories and properties to be what's within the save file.
         /// </summary>
         public void Load()
         {
@@ -153,7 +157,7 @@ namespace UnityEngine.GameFoundation.Sample
         {
             m_DisplayText.Clear();
             // Display the main inventory's display name
-            m_DisplayText.Append("Inventory");
+            m_DisplayText.Append("<b><i>Inventory:</i></b>");
             m_DisplayText.AppendLine();
 
             // We'll use the version of GetItems that lets us pass in a collection to be filled to reduce allocations
@@ -163,7 +167,7 @@ namespace UnityEngine.GameFoundation.Sample
             foreach (InventoryItem inventoryItem in m_InventoryItems)
             {
                 // All InventoryItems have an associated InventoryItemDefinition which contains a display name.
-                string itemName = inventoryItem.definition.id;
+                string itemName = inventoryItem.definition.key;
 
                 m_DisplayText.Append(itemName);
                 m_DisplayText.AppendLine();
@@ -211,7 +215,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// need to be made.
         /// </summary>
         /// <param name="itemChanged">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void OnInventoryItemChanged(GameItem itemChanged)
+        private void OnInventoryItemChanged(InventoryItem itemChanged)
         {
             m_InventoryChanged = true;
         }

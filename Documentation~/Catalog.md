@@ -9,18 +9,48 @@ A default database is created automatically when you open one of the Game Founda
 
 ## Catalog Items
 
-__Catalog Items__ are where data about the items are defined.
+__[Catalog Items]__ are where data about the items are defined.
 They are stored in their respective Game Foundation catalogs.
 
-The current version of Game Foundation provides the following items:
+The current version of Game Foundation provides the following catalog item types:
 
 - [Inventory Item Definition]
 - [Currency]
 - [Virtual Transaction]
 - [IAP Transaction]
 - [Store]
+- [Tags]
+- [Game Parameters]
 
-__Catalog Items__ can be assigned [categories] and [details].
+__Catalog Items__ can be assigned [tags], properties and details.
+
+## Editor Overview
+
+Each catalog share the same editor layout.
+
+![Catalog item generic editor](images/catalog-item-generic-editor.png)
+
+(1) All catalog's items are listed on the left.
+  Use the `+` button at the bottom to create a new one.
+
+(2) The General section allows you to edit the Display Name of the item definition.
+  The key is read-only. It can be set only at creation time.
+
+(3) The [Tags] section is a widget which provides an intuitive way to assign [tags] to the edited item.  
+  Start typing your tag, then select the proper one in the dynamically created list, or create a new one.
+
+(4) Here are the sections specific to the type of edited catalog item. 
+
+(5) In the **Static Properties** section you can define a list of fields for the catalog item to read at runtime.\
+  A static property must define:
+  - A value type. The current supported type are `long`, `double`, `bool` and `string`.
+  - A unique key for you to access the property at runtime.
+  - A value.
+
+  Static Properties belong only to the definition they are declared into.
+  This means you can use the same property key in different definitions with a different type if you want to.
+
+(6) The [Details] section allows you to add custom static data to your item definition.
 
 
 
@@ -31,7 +61,8 @@ __Catalog Items__ can be assigned [categories] and [details].
 
 
 
-[catalog item]: #Catalog&#32;Items
+[catalog item]:  #Catalog-Items
+[catalog items]: #Catalog-Items
 
 [inventory item definition]: CatalogItems/InventoryItemDefinition.md
 
@@ -43,6 +74,6 @@ __Catalog Items__ can be assigned [categories] and [details].
 
 [store]: CatalogItems/Store.md
 
-[categories]: Category.md
+[tags]: CatalogItems/Tag.md
 
-[details]: Details.md
+[game parameters]: CatalogItems/GameParameter.md

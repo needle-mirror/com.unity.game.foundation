@@ -17,16 +17,14 @@ The Transaction window will let you configure both [Virtual Transactions] and _
 
 ![The IAP Transaction Editor Window](../images/iaptransaction-editor.png)
 
-The interface is similar to the other [catalog items].
+The interface is similar to the other [catalog items editor].
 
 (1) The Product IDs section allows the content creator to specify which product ids are linked to the transaction being edited.
+  > **Tip:** Make sure to enter a product ID into both Apple and Google fields if you want to build for both platforms.
 
-> **Tip:** Make sure to enter a product ID into both Apple and Google fields if you want to build for both platforms.
-
-(2) The Rewards section shows a list of [currencies] and [item definitions]. Those are the outcome of the transaction.
-The amounts next to each entry are the number of those items the player will get from the transaction.
-
-
+(2) The Rewards section shows a list of [currencies] and [item definitions].
+  Those are the outcome of the transaction.
+  The amounts next to each entry are the number of those items the player will get from the transaction.
 
 
 
@@ -35,8 +33,12 @@ The amounts next to each entry are the number of those items the player will get
 
 
 
-[catalog item]:  ../Catalog.md#Catalog&#32;Items
-[catalog items]: ../Catalog.md#Catalog&#32;Items
+
+
+[catalog item]:  ../Catalog.md#Catalog-Items
+[catalog items]: ../Catalog.md#Catalog-Items
+
+[catalog items editor]: ../Catalog.md#Editor-Overview
 
 [transactionmanager]: ../GameSystems/TransactionManager.md
 

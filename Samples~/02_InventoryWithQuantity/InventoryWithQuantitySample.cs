@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DefaultLayers;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -66,10 +66,13 @@ namespace UnityEngine.GameFoundation.Sample
 
             // - Initialize must always be called before working with any game foundation code.
             // - GameFoundation requires an IDataAccessLayer object that will provide and persist
-            //   the data required for the various services (Inventory, Stats, ...).
+            //   the data required for the various services (Inventory, Wallet, ...).
             // - For this sample we don't need to persist any data so we use the MemoryDataLayer
             //   that will store GameFoundation's data only for the play session.
             GameFoundation.Initialize(new MemoryDataLayer());
+
+            // For this sample, we're focusing on apples, so let's remove any initial oranges from the Inventory.
+            InventoryManager.RemoveItemsByDefinition("orange");
 
             // Here we bind a listener that will set an inventoryChanged flag to callbacks on the Inventory Manager.
             // These callbacks will automatically be invoked anytime an item is added or removed.
@@ -139,7 +142,7 @@ namespace UnityEngine.GameFoundation.Sample
             // If there are no items with that definition id, the method will take no action and return a count of 0;
             int itemsRemovedCount = InventoryManager.RemoveItemsByDefinition("apple");
             
-            Debug.Log(itemsRemovedCount + " apple items removed from inventory.");
+            Debug.Log(itemsRemovedCount + " apple item(s) removed from inventory.");
         }
         
         /// <summary>
@@ -158,13 +161,13 @@ namespace UnityEngine.GameFoundation.Sample
             // We will loop through the list of all items, adding them to our list of unique items based on the id of their inventoryItemDefinition
             foreach (var item in m_InventoryItems)
             {
-                if (m_UniqueInventoryItems.ContainsKey(item.definition.id))
+                if (m_UniqueInventoryItems.ContainsKey(item.definition.key))
                 {
-                    m_UniqueInventoryItems[item.definition.id].Add(item);
+                    m_UniqueInventoryItems[item.definition.key].Add(item);
                 }
                 else
                 {
-                    m_UniqueInventoryItems.Add(item.definition.id, new List<InventoryItem>{ item });
+                    m_UniqueInventoryItems.Add(item.definition.key, new List<InventoryItem>{ item });
                 }
             }
 
@@ -178,7 +181,7 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI()
         {
             m_DisplayText.Clear();
-            m_DisplayText.Append("Inventory");
+            m_DisplayText.Append("<b><i>Inventory:</i></b>");
             m_DisplayText.AppendLine();
 
             // Loop through every type of item within the inventory and display its name and quantity.
@@ -225,7 +228,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// need to be made.
         /// </summary>
         /// <param name="itemChanged">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void OnInventoryItemChanged(GameItem itemChanged)
+        private void OnInventoryItemChanged(InventoryItem itemChanged)
         {
             m_InventoryChanged = true;
         }

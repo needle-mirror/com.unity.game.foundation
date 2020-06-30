@@ -6,7 +6,7 @@ using System.Text;
 using ChilliConnect;
 using UnityEngine.GameFoundation.ChilliConnect;
 #else
-using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DefaultLayers;
 #endif
 using UnityEngine.Promise;
 using UnityEngine.UI;
@@ -86,48 +86,39 @@ namespace UnityEngine.GameFoundation.Sample
 #if CHILLICONNECT_ENABLED
             var sdk = new ChilliConnectSdk(chilliConnectAppToken, false);
 
-            const string KEY_USERID = "chilliconnect.userid";
-            const string KEY_USERSECRET = "chilliconnect.usersecret";
-
             string
-                userId = PlayerPrefs.GetString(KEY_USERID, default),
-                userSecret = PlayerPrefs.GetString(KEY_USERSECRET, default);
+                userId = default,
+                userSecret = default;
 
 
-            // Creating the player if doesn't exist
+            // Creating the player
 
-            if (string.IsNullOrEmpty(userId))
-            {
-                var createPlayerDesc = new CreatePlayerRequestDesc();
+            var createPlayerDesc = new CreatePlayerRequestDesc();
 
-                Debug.Log("Creating a player");
+            Debug.Log("Creating a player");
 
-                sdk.PlayerAccounts.CreatePlayer(
-                    createPlayerDesc,
-                    (request, response) =>
-                    {
-                        userId = response.ChilliConnectId;
-                        userSecret = response.ChilliConnectSecret;
-
-                        PlayerPrefs.SetString(KEY_USERID, userId);
-                        PlayerPrefs.SetString(KEY_USERSECRET, userSecret);
-
-                        Debug.Log($"Player {userId} created");
-                    },
-                    (request, error) =>
-                    {
-                        Debug.LogError($"Unable to create a player: {error.ErrorDescription}");
-                    });
-
-                while (string.IsNullOrEmpty(userId))
+            sdk.PlayerAccounts.CreatePlayer(
+                createPlayerDesc,
+                (request, response) =>
                 {
-                    yield return null;
-                }
+                    userId = response.ChilliConnectId;
+                    userSecret = response.ChilliConnectSecret;
+
+                    Debug.Log($"Player {userId} created (secret: {userSecret})");
+                },
+                (request, error) =>
+                {
+                    Debug.LogError($"Unable to create a player: {error.ErrorDescription}");
+                });
+
+            while (string.IsNullOrEmpty(userId))
+            {
+                yield return null;
             }
 
             // Connecting the player
 
-            Debug.Log($"Connecting the player {userId}");
+            Debug.Log($"Connecting the player {userId} (secret: {userSecret})");
 
             string catalogVersion = default;
 
@@ -138,7 +129,7 @@ namespace UnityEngine.GameFoundation.Sample
                 (request, response) =>
                 {
                     catalogVersion = response.CatalogVersion;
-                    Debug.Log($"Player {userId} connected");
+                    Debug.Log($"Player {userId} connected (secret: {userSecret})");
                 },
                 (request, error) =>
                 {
@@ -319,7 +310,7 @@ namespace UnityEngine.GameFoundation.Sample
             // now that the transaction has been processed, check for an error
             if (!deferred.isFulfilled)
             {
-                Debug.LogError($"Transaction Id:  {transaction.id} - Error Message: {deferred.error}");
+                Debug.LogError($"Transaction Id:  {transaction.key} - Error Message: {deferred.error}");
 
                 deferred.Release();
                 yield break;
@@ -343,12 +334,12 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI()
         {
             m_DisplayText.Clear();
-            m_DisplayText.Append("Wallet");
+            m_DisplayText.Append("<b><i>Wallet:</i></b>");
             m_DisplayText.AppendLine();
             m_DisplayText.Append("Coins: " + WalletManager.GetBalance("coin"));
             m_DisplayText.AppendLine();
             m_DisplayText.AppendLine();
-            m_DisplayText.Append("Inventory");
+            m_DisplayText.Append("<b><i>Inventory:</i></b>");
             m_DisplayText.AppendLine();
 
             InventoryManager.GetItems(m_InventoryItems);
@@ -357,11 +348,19 @@ namespace UnityEngine.GameFoundation.Sample
             foreach (InventoryItem inventoryItem in m_InventoryItems)
             {
                 // All game items have an associated display name, this includes game items.
-                string itemName = inventoryItem.definition.id;
+                string itemName = inventoryItem.definition.key;
 
                 m_DisplayText.Append(itemName);
                 m_DisplayText.AppendLine();
             }
+
+#if CHILLICONNECT_ENABLED
+            m_DisplayText.AppendLine();
+            m_DisplayText.Append("<i>(using ChilliConnect cloud sync successfully)</i>");
+#else
+            m_DisplayText.AppendLine();
+            m_DisplayText.Append("<b><i>*** Important: Using memory data layer, not ChilliConnect! ***</i></b>");
+#endif
 
             mainText.text = m_DisplayText.ToString();
 
@@ -406,7 +405,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// need to be made.
         /// </summary>
         /// <param name="itemChanged">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void OnInventoryItemChanged(GameItem itemChanged)
+        private void OnInventoryItemChanged(InventoryItem itemChanged)
         {
             m_InventoryChanged = true;
         }

@@ -27,12 +27,10 @@ public class GFInit : MonoBehaviour
         var dataLayer = new MemoryDataLayer();
 
         // Initializes Game Foundation with the data layer.
-        GameFoundation.Initialize
-            (dataLayer, OnInitSucceeded, OnInitFailed);
+        GameFoundation.Initialize(dataLayer, OnInitSucceeded, OnInitFailed);
     }
 
-    // Called when Game Foundation is successfully
-    // initialized.
+    // Called when Game Foundation is successfully initialized.
     void OnInitSucceeded()
     {
         Debug.Log("Game Foundation is successfully initialized");
@@ -58,7 +56,9 @@ The second is the one you've written, while the first is logged by Game Foundati
 
 ### The Data Layer
 
-Game Foundation is the general API to manipulate your items, but it needs a source to load the data, and a destination to push the states of its items.
+While Game Foundation provides general APIs to manipulate your items, it needs a source to load the data, and a destination to push the states of its items. 
+
+Given the different needs in game development in terms of loading / saving data, for example storing it locally on the device vs. remotely on a cloud storage, we want to provide a good abstraction so that our implementation can be built without too much assumptions on the underlying data storage and protocal. 
 
 The [data layer] fulfills this role.
 It gives Game Foundation a [catalog] of the static data, and Game Foundation notifies it of all the instance data it creates, modifies, or destroys.
@@ -75,8 +75,8 @@ void OnInitSucceeded()
 {
     Debug.Log("Game Foundation is successfully initialized");
 
-    // Use the ID you've used in the previous tutorial.
-    const string definitionId = "myFirstItem";
+    // Use the key you've used in the previous tutorial.
+    const string definitionKey = "myFirstItem";
 
     // The inventory item definitions are available in the
     // inventoryCatalog of the database.
@@ -84,17 +84,16 @@ void OnInitSucceeded()
 
     // Finding a definition takes a non-null string parameter,
     // but it can fail to find the definition.
-    var definition = catalog.FindItem(definitionId);
+    var definition = catalog.FindItem(definitionKey);
 
     if (definition is null)
     {
-        Debug.Log($"Definition {definitionId} not found");
+        Debug.Log($"Definition {definitionKey} not found");
         return;
     }
 
-    // You should be able to get information from your
-    // definition now.
-    Debug.Log($"Definition {definition.id} '{definition.displayName}' found.");
+    // You should be able to get information from your definition now.
+    Debug.Log($"Definition {definition.key} '{definition.displayName}' found.");
 }
 ```
 
@@ -112,9 +111,10 @@ The data is organized among different catalogs:
 
 - `inventoryCatalog` for the [inventory item definition]
 - `currencyCatalog` for the [currencies]
-- `statCatalog` for the [stat definitions]
 - `storeCatalog` for the [stores]
 - `transactionCatalog` for the [transactions]
+- `gameParameterCatalog` for the [game parameters]
+- `tagCatalog` for the [tags]
 
 ### Creating an item instance
 
@@ -124,7 +124,7 @@ Go back to your `OnInitSucceeded` method, then append the following lines:
 ```cs
 var item = InventoryManager.CreateItem(definition);
 
-Debug.Log($"Item {item.id} of definition '{item.definition.id}' created");
+Debug.Log($"Item {item.id} of definition '{item.definition.key}' created");
 ```
 
 Compile and start your scene.
@@ -179,7 +179,7 @@ The way you'll use [Inventory Item Definition] and their instance is up to you.
 But what if what you want now, is to play with [currencies]?
 Let's switch to the [next tutorial] then.
 
-### Final code source of this tutorial
+### Final source code of this tutorial
 
 ```cs
 using System;
@@ -196,18 +196,16 @@ public class GFInit : MonoBehaviour
         var dataLayer = new MemoryDataLayer();
 
         // Initializes Game Foundation with the data layer.
-        GameFoundation.Initialize
-            (dataLayer, OnInitSucceeded, OnInitFailed);
+        GameFoundation.Initialize(dataLayer, OnInitSucceeded, OnInitFailed);
     }
 
-    // Called when Game Foundation is successfully
-    // initialized.
+    // Called when Game Foundation is successfully initialized.
     void OnInitSucceeded()
     {
         Debug.Log("Game Foundation is successfully initialized");
 
-        // Use the ID you've used in the previous tutorial.
-        const string definitionId = "myFirstItem";
+        // Use the key you've used in the previous tutorial.
+        const string definitionKey = "myFirstItem";
 
         // The inventory item definitions are available in the
         // inventoryCatalog of the database.
@@ -215,21 +213,20 @@ public class GFInit : MonoBehaviour
 
         // Finding a definition takes a non-null string parameter,
         // but it can fail to find the definition.
-        var definition = catalog.FindItem(definitionId);
+        var definition = catalog.FindItem(definitionKey);
 
         if (definition is null)
         {
-            Debug.Log($"Definition {definitionId} not found");
+            Debug.Log($"Definition {definitionKey} not found");
             return;
         }
 
-        // You should be able to get information from your
-        // definition now.
-        Debug.Log($"Definition {definition.id} '{definition.displayName}' found.");
+        // You should be able to get information from your definition now.
+        Debug.Log($"Definition {definition.key} '{definition.displayName}' found.");
 
         var item = InventoryManager.CreateItem(definition);
 
-        Debug.Log($"Item {item.id} of definition '{item.definition.id}' created");
+        Debug.Log($"Item {item.id} of definition '{item.definition.key}' created");
 
         var removed = InventoryManager.RemoveItem(item);
 
@@ -264,16 +261,8 @@ public class GFInit : MonoBehaviour
 [item definition]:           ../CatalogItems/InventoryItemDefinition.md "Go to Inventory Item Definition"
 [item definitions]:          ../CatalogItems/InventoryItemDefinition.md "Go to Inventory Item Definition"
 
-[category]:   ../Category.md "Go to Category"
-[categories]: ../Category.md "Go to Category"
-
-[detail]:  ../Details.md "Go to Category"
-[details]: ../Details.md "Go to Category"
-
-[stat detail]: ../Details/StatDetail.md "Go to Stat Detail"
-
-[stat definition]:  ../StatDefinition.md "Go to Stat Definition"
-[stat definitions]: ../StatDefinition.md "Go to Stat Definition"
+[tag]:   ../CatalogItems/Tag.md "Go to Tag"
+[tags]:  ../CatalogItems/Tag.md "Go to Tag"
 
 [previous tutorial]: 01-CreatingAnItemDefinition.md "Creating an Inventory Item Definition"
 
@@ -288,5 +277,7 @@ public class GFInit : MonoBehaviour
 [stores]: ../CatalogItems/Store.md "Go to Store"
 
 [transactions]: ../CatalogItems/VirtualTransaction.md "Go to Virtual Transaction"
+
+[game parameters]: ../CatalogItems/GameParameters.md "Go to Game Parameters"
 
 [next tutorial]: 03-CreatingCurrency.md

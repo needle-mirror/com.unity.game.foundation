@@ -2,11 +2,13 @@
 
 ## Creating a Currency
 
-You may want to deal with a collectable resource, but don't need to identify each instance of the resource.
-The most obvious example of this kind of resource is money.
+You may want to deal with a collectible resource, but don't need to identify each instance of the resource.
+The most obvious example of this kind of resource is in-game virtual currency.
 You don't need to give an identity to each coin in your wallet, and you'd need to collect thousands, millions of them.
 
-A [Currency] is the type of [catalog item] you need.
+A [Currency] is the type of [catalog item] you need. It can help track the quantity of such virtual resources without the additional overhead of item instances, unlike [inventory]. 
+
+Now let's look at how we can create such a concept very easily using Game Foundation. 
 
 ### Open the Currency Window
 
@@ -16,7 +18,7 @@ You will see the following window.
 
 ![Access the Currency Window](../images/tutorial-currency-window.png)
 
-As you can you can see, the layout is similar to the Inventory window, with the _Currency_ tab, and a _Categories_ tab.
+As you can see, the layout is similar to the Inventory window.
 
 ### Create a new currency
 
@@ -47,10 +49,12 @@ With this [currency] created, we now can switch back to the code with the [next 
 
 [currency]: ../CatalogItems/Currency.md
 
-[catalog item]: ../Catalog.md#Catalog&#32;Item
+[catalog item]: ../Catalog.md#Catalog-Items
 
 [Item Definition tutorial]: 01-CreatingAnItemDefinition.md
 
 [inventory item definition]: ../CatalogItems/InventoryItemDefinition.md
+
+[inventory]: ../GameSystems/InventoryManager.md
 
 [next tutorial]: 04-PlayingWithRuntimeCurrency.md

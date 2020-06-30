@@ -1,0 +1,5 @@
+{
+	"displayName":"11 Promotion Popup",
+	"description": "This sample contains the prefab that can be used to create a Promotion Popup which uses the Transaction System to make purchases.",
+	"createSeparatePackage": false
+}

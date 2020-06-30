@@ -18,25 +18,30 @@ The Transaction window will let you configure both __Virtual Transactions__ and
 
 ![The Virtual Transaction Editor Window](../images/virtualtransaction-editor.png)
 
-The interface is similar to the other [catalog items].
+The interface is similar to the other [catalog items editor].
 
-(1) The Costs section show a list of [currencies] and [item definitions]. Those are the input of the transaction.
-The amounts next to each entry are the number of those items the transaction will consume in order to produce the rewards.
+(1) The Costs section show a list of [currencies] and [item definitions].
+  Those are the input of the transaction.
+  The amounts next to each entry are the number of those items the transaction will consume in order to produce the rewards.
 
-(2) The Rewards section show a list of [currencies] and [item definitions]. Those are the output of the transaction.
-The amounts next to each entry are the number of those items the player will get from the transaction.
-
-
-
-
+(2) The Rewards section show a list of [currencies] and [item definitions].
+  Those are the output of the transaction.
+  The amounts next to each entry are the number of those items the player will get from the transaction.
 
 
 
 
 
 
-[catalog item]:  ../Catalog.md#Catalog&#32;Items
-[catalog items]: ../Catalog.md#Catalog&#32;Items
+
+
+
+
+
+[catalog item]:  ../Catalog.md#Catalog-Items
+[catalog items]: ../Catalog.md#Catalog-Items
+
+[catalog items editor]: ../Catalog.md#Editor-Overview
 
 [transaction manager]: ../GameSystems/TransactionManager.md
 

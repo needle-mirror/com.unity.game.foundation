@@ -66,4 +66,4 @@ For each of those, you have a `Delete` button which you can click on to remove i
 [inventory]:         ../GameSystems/InventoryManager.md
 [Inventory Manager]: ../GameSystems/InventoryManager.md
 
-[item creation steps found in the inventory tutorial]: 02-PlayingWithRuntimeItem.md#Creating&#32;an&#32;item&#32;instance
+[item creation steps found in the inventory tutorial]: 02-PlayingWithRuntimeItem.md#creating-an-item-instance

@@ -11,13 +11,13 @@ It creates and destroys item instances.
 ## Creating/Removing items
 
 In order to create an item, the __Inventory Manager__ requires an [Inventory Item Definition].
-This [definition] can be found in the [Catalog] and passed to the `CreateItem()` method, or specified with its `ID`.
+This [definition] can be found in the [Catalog] and passed to the `CreateItem()` method, or specified with its `Key`.
 
-When created, an item is assigned a unique identifier (`id`), and it is initialized with the default values of its [StatDetail].
+When created, an item is assigned a unique identifier (`ID`), and its properties are initialized with their default values.
 
 ## Getting items
 
-The __Inventory Manager__ provides some methods to retrieve items, or find specific items by their `ID`, their [definition] or their [categories]
+The __Inventory Manager__ provides some methods to retrieve items, or find specific items by their `ID`, their [definition] or their [tags]
 
 > Some of the methods allocate an array to return the collection of items found.
 > You'll also find a non-allocating version of those methods, accepting a target collection.
@@ -49,8 +49,6 @@ Instead, the items are _discarded_: they are removed from the [data layer] and t
 
 [catalog]: ../Catalog.md
 
-[statdetail]: ../Details/StatDetail.md
-
-[categories]: ../Category.md
+[tags]: ../CatalogItems/Tag.md
 
 [data layer]: ../DataLayers.md

@@ -1,5 +1,7 @@
 # Json Detail
 
+This detail is `Obsolete`. We recommend using [Static Properties] when possible.
+
 The `JsonDetail` is made to store static data.
 All data stored in this detail are immutable, meaning that you can only read them at runtime.
 
@@ -15,7 +17,7 @@ Note: This interface is a contract to serialize/deserialize an object into/from 
 
 ## Example
 
-We have a "Full Body Armor" in our inventory that already has some variable stats but we want to add static data to it.
+We have a "Full Body Armor" in our inventory that already has some variable properties but we want to add static data to it.
 Let's use a `JsonDetail`.
 
 ![Detail creation](../images/JsonDetail.gif)
@@ -144,3 +146,4 @@ public class ArmorBehaviour : MonoBehaviour
 
 
 [c# built-in types]: https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types
+[Static Properties]: ../Tutorials/06-StaticProperties.md

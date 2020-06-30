@@ -26,10 +26,6 @@ See the [Wallet Manager] page.
 
 See the [Transaction Manager] page.
 
-## Stats
-
-See the [Stat Manager] page.
-
 ## Analytics
 
 > This part is obsolete and will be heavily revamped in Game Foundation 0.5
@@ -50,8 +46,6 @@ This system lets you record game analytics without having to write code for data
 [wallet manager]: GameSystems/WalletManager.md
 
 [transaction manager]: GameSystems/TransactionManager.md
-
-[stat manager]: GameSystems/StatManager.md
 
 [memorydatalayer]: DataLayers.md#memory-data-layer
 

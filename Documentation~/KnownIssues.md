@@ -1,5 +1,19 @@
 # Game Foundation: Known issues/limitations
 
+## 0.6.0 - (2020-06-30)
+
+* The editor window can get really slow when a catalog item has a `JsonDetail` containing a lot of data.
+  This won't be fixed since this detail is `Obsolete` and will be replaced by Static Properties in the future.
+* In some cases, some fields on the Store prefabs will only mark the scene as dirty the first time they are changed and saved; subsequent changes will not get marked as dirty and therefore won't be saved on their own.
+  Workaround: changing something else in the scene will mark the scene as dirty, and then the editor will allow saving of the scene, including the field with the bug.
+* When playing a scene that has a store prefab with IAP transactions in the scene, the editor may log a "GameFoundation.Initialize() must be called before the TransactionManager is used" error, and the store will not be displayed in the scene.
+  Workaround: This error only occurs when playing that scene directly, if a previous scene is played, and then navigated to the scene with the store prefab, the error will not appear and the store will display properly.
+  Alternatively, while in the editor, changing something about the store prefab will trigger a redraw and will display the store properly.
+
+## 0.5.0-preview.1 (2020-06-04)
+
+* When changing tag on Store prefabs, if the selected tag doesn't have any transaction items associated with it, it will not change the items displayed, and will continue to display whatever items were associated with the previously selected tag.
+
 ## 0.4.0-preview.4 (2020-04-24)
 
 * Old catalogs must be deleted and recreated due to new Store System and the removal of hashes.
@@ -12,8 +26,6 @@ Simply delete your Assets/GameFoundation folder from Project window and reopen W
 * Mixing prefabs and components from Codeless IAP with Game Foundation is untested and not recommended at this time.
 * When running in the editor, all IAP transactions are sent to the data layer as iOS because there is not yet a platform-independent test store in the data layers.
 * The Game Foundation editor window UI is not yet updated to look better in Unity 2019.3.x.
-* Creating a new category in the inventory window may not save the category properly when closing and reopening the Unity project.
-Making other changes to the catalog after creating a new category is one way to work around this issue.
 * After entering play mode and creating persistent data files, any new default inventories and default inventory items will no longer be automatically created at runtime.
 To work around this, you can delete your local persistent runtime data.
 * Debug Window: Removing an inventory in the middle of the inventories list causes new inventories to add themselves in the middle.

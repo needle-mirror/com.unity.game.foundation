@@ -1,6 +1,50 @@
 # Changelog
 
-## [0.4.0-preview.4] - 2020-04-24
+## [0.6.0] - 2020-06-30
+
+### Added
+* New prefab and component created for creating popups advertising a special promotion.
+* Static Properties have been added to all catalog items.\
+  Use them to define fixed data that won't change at runtime.
+* The new Game Parameters feature provide a solution to store your game configuration.
+  Editor can be found at: __Unity→Window→Game Foundation→Game Parameters__.
+* You now can define an initial allocation for any inventory item.
+  Those items are instantiated when the player profile is created.
+* Support for non-consumable IAP.
+* Tools to let the dev process the "background" IAP queue (restoring purchases, delayed purchase successes, etc) on their own, instead of letting Game Foundation do it for them automatically.
+
+### Changed
+
+* `JsonDetail` has been flagged `Obsolete` and will be replaced by Static Properties as soon as they handle lists and dictionaries.
+* Simplified initialization of TransactionManager (UnityPurchasingAdapter is now internal and no longer decoupled).
+
+## [0.5.0] - 2020-06-03
+
+### Added
+
+* Properties can now store `long` and `double` values.
+  Since `int` and `float` are covered by these types, they have been removed from the editor type dropdown but are still handled.
+* Properties can now store `bool` and `string` values.
+* Add a public API to manipulate the Default Catalog.
+
+### Changed
+
+* The code is now split into different assemblies.\
+  The local `Catalog`, formerly in the `CatalogManager` namespace is now in the `DefaultCatalog` assembly and `DefaultCatalog` namespace.\
+  The scripts of sample Prefabs also have their own assembly.
+* `Category` has been renamed `Tag` and now exists in a separate `TagCatalog`.\
+  All old `FindItemsByCategory` methods have been reimplemented as FindItemsByTag and behave as before.\
+  Tags can be added or removed to/from all of GameFoundation in `Window\Game Foundation\Tag` window.\
+  When tags are removed from Tag Catalog, they will be removed from all items throughout Game Foundation.
+* Stats have been renamed to Properties.
+* Properties have been directly integrated inside Inventory Items.\
+  This means that `StatCatalog`, `StatDefinition`, `StatDetail`, `StatManager` and the Stat editor window no longer exist.\
+  Properties are accessible directly through the items and definitions they are defined for.
+  The `IStatDataLayer` has been merged into `IInventoryDataLayer` to match this change.
+* `GameItem` has been merged into `InventoryItem` since they are the only instantiable objects in Game Foundation systems at the moment.
+* We've removed IPurchasingAdapter, and UnityPurchasingAdapter is now internal. Use the TransactionManager class for anything related to IAP in Game Foundation.
+
+## [0.4.0] - 2020-04-24
 
 ### Added
 
@@ -13,7 +57,7 @@
   Provides the ability to add arbitrary typed fields to your item definition
 * IAP Transaction with IAP SDK
 * Item instances.
-  Items are no longer quantities in inventories, but identifiable item instances with custon stat per item.
+  Items are no longer quantities in inventories, but identifiable item instances with custom stat per item.
   Quantities, if needed, can be achieved using stats.
 
 ### Changed
@@ -23,7 +67,7 @@
   Item collections (list, map) will be introduced next release.
 * Virtual Transactions is now a item.
 
-## [0.3.0-preview.5] - 2020-02-19
+## [0.3.0] - 2020-02-19
 
 ### Added
 
@@ -39,7 +83,7 @@
 * CatalogManager now holds the reference to the catalogs at Runtime. Any runtime code that was previously written as GameFoundationSettings.database.xCatalog should now be written as CatalogManager.xCatalog.
 * Persistence and Serializer interfaces changed to handle only GameFoundation's data.
 
-## [0.2.0-preview.3] - 2019-12-11
+## [0.2.0] - 2019-12-11
 
 ### Added
 

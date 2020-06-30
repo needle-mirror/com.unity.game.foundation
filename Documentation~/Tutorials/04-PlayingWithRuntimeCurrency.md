@@ -16,24 +16,23 @@ void OnInitSucceeded()
 {
     Debug.Log("Game Foundation is successfully initialized");
 
-    // Use the ID you've used in the previous tutorial.
-    const string definitionId = "myFirstCurrency";
+    // Use the key you've used in the previous tutorial.
+    const string definitionKey = "myFirstCurrency";
 
-    // The currencies are available in the
-    // currencyCatalog of the database.
+    // The currencies are available in the currencyCatalog of the database.
     var catalog = GameFoundation.catalogs.currencyCatalog;
 
     // Finding a currency takes a non-null string parameter,
     // but it can fail to find the definition.
-    var definition = catalog.FindItem(definitionId);
+    var definition = catalog.FindItem(definitionKey);
 
     if (definition is null)
     {
-        Debug.Log($"Definition {definitionId} not found");
+        Debug.Log($"Definition {definitionKey} not found");
         return;
     }
 
-    Debug.Log($"Definition {definition.id} ({definition.type}) '{definition.displayName}' found.");
+    Debug.Log($"Definition {definition.key} ({definition.type}) '{definition.displayName}' found.");
 }
 ```
 
@@ -71,10 +70,10 @@ You should see the following log entry in your console:
 
 ### Changing the balance
 
-Getting the balance is fine, but now I want to play with it.
+We just learned how to get the balance amount, now let's see how we can make changes to it as well. 
 
 The [WalletManager] exposes a simple API to change the balance of a currency.
-We'll see here the most straighforward method of its API.  
+We'll see here the most straightforward method of its API.  
 Go back to your `OnInitSucceeded` method and append the following lines:
 
 ```cs
@@ -103,7 +102,7 @@ The [WalletManager] also exposes methods to add and subtract an amount from the 
 
 ### Conclusion
 
-The [WalletManager] is a very simple API, but a lot of games, especially on mobile, can limit their usage to this one.
+The [WalletManager] is a very simple API, but a lot of games, especially on mobile, can find usage in this one.
 
 ### Going forward
 
@@ -123,10 +122,10 @@ You may need a better way to monitor the player profile, and that's what we'll s
 
 [previous tutorial]: 03-CreatingCurrency.md
 
-[initialization steps you can find in the inventory tutorial]: 02-PlayingWithRuntimeItem.md#Initialization&#32;of&#32;Game&#32;Foundation&#32;at&#32;runtime
+[initialization steps you can find in the inventory tutorial]: 02-PlayingWithRuntimeItem.md#initialization-of-game-foundation-at-runtime
 
-[inventory item tutorial]: 02-PlayingWithRuntimeItem.md#Getting&#32;the&#32;inventory&#32;item&#32;definition&#32;at&#32;runtime
+[inventory item tutorial]: 02-PlayingWithRuntimeItem.md#getting-the-inventory-item-definition-at-runtime
 
 [WalletManager]: ../GameSystems/WalletManager.md
 
-[next tutorial]: ../05-Debugger.md
+[next tutorial]: 05-Debugger.md

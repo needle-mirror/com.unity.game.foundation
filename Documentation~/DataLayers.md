@@ -1,16 +1,17 @@
 # Data Layers
 
-The Data Layer is a component which lets the develop should where to save, load, synchronize, but also control the states of all the objects of Game Foundation (see the [architecture] page for more context).
+The Data Layer provides an abstraction to the data operations in Game Foundation, providing developers more flexibilities to decide where to save, load, synchronize, but also more control around the states of all the objects of Game Foundation (see the [architecture] page for more context).
 
-In this current version, only transaction are data-layer-authoritative, the API only notifies the data layer of the changes operated inside Game Foundation so it can save those changes on files locally, or synchronize them in the Cloud.
+The API notifies the data layer of the changes operated inside Game Foundation so it can save those changes on files locally, or synchronize them in the Cloud.
 
 By default, two types of Data Layer are provided by Game Foundation:
 
 - [Persistence Data Layer]
 - [Memory Data Layer]
 
-There is a third one, provided as a sample project, connecting Game Foundation to [ChilliConnect].
-Please check the samples provided with this package.
+There is an additional adapter for backend support, provided as a sample project, connecting Game Foundation to [ChilliConnect].
+
+Below are more detailed explanation on each type of the adapter we provide: 
 
 ## Memory Data Layer
 
@@ -50,15 +51,9 @@ You can implement your own persistence and serializer to fit with your architect
 
 ## ChilliConnect
 
-ChilliConnect is the default backend solution of Unity.
-It provides static data definition, A/B testing, segmentation, as a service.
-
-You've built a data layer to adapt Game Foundation to ChilliConnect so you can benefit from a strong Cloud mechanism feature along with intuitive liveOps features.
+ChilliConnect is a reference backend solution that Game Foundation provides. We've built a data layer to adapt Game Foundation to ChilliConnect cloud service to provide out-of-box cloud save and liveOps features.
 
 You can find the implementation of ChilliConnect Adapters for Game Foundation in the sample files attached to this package.
-
-
-
 
 
 

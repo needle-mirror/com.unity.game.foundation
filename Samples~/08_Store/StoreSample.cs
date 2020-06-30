@@ -1,5 +1,5 @@
 ﻿using System;
-using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DefaultLayers;
 
 namespace UnityEngine.GameFoundation.Sample
 {
@@ -33,16 +33,10 @@ namespace UnityEngine.GameFoundation.Sample
 
             // - Initialize must always be called before working with any game foundation code.
             // - GameFoundation requires an IDataAccessLayer object that will provide and persist
-            //   the data required for the various services (Inventory, Stats, ...).
+            //   the data required for the various services (Inventory, Wallet, ...).
             // - For this sample we don't need to persist any data so we use the MemoryDataLayer
             //   that will store GameFoundation's data only for the play session.
-            GameFoundation.Initialize(new MemoryDataLayer(), () =>
-            {
-                // After GameFoundation's Initializing completed,
-                // sets coins and gems to make sure that there is enough currency for this sample.
-                WalletManager.SetBalance("coin", 500);
-                WalletManager.SetBalance("gem", 50);
-            });
+            GameFoundation.Initialize(new MemoryDataLayer());
         }
         
         private void OnEnable()

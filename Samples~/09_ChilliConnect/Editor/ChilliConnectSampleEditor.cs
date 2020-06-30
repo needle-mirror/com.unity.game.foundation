@@ -8,6 +8,7 @@ namespace UnityEditor.GameFoundation.Sample
     [CustomEditor(typeof(ChilliConnectSample))]
     public class ChilliConnectSampleEditor : Editor
     {
+        const string k_ChilliConnectPackageGuid = "33ef068b0c8cbc440bf98e7ec1737ef0";
         const string k_ChilliConnectDefine = "CHILLICONNECT_ENABLED";
 
         Action m_Action;
@@ -18,34 +19,47 @@ namespace UnityEditor.GameFoundation.Sample
 
         void OnEnable()
         {
-            m_AreChilliConnectPackagesImported = AreChilliConnectPackagesImported();
+            m_AreChilliConnectPackagesImported = IsChilliConnectSDKImported && IsChilliConnectAdaptersImported;
             m_IsSymbolDefined = IsSymbolDefinedFor(k_ChilliConnectDefine, EditorUserBuildSettings.selectedBuildTargetGroup);
         }
 
         public override void OnInspectorGUI()
         {
-            var clicked = GUILayout.Button("Get the ChilliConnect SDK Package");
-            if (clicked)
+            if (!IsChilliConnectSDKImported)
             {
-                m_Action = () => Application.OpenURL("https://docs.chilliconnect.com/guide/sdks/#unity");
-            }
-
-            if (m_AreChilliConnectPackagesImported)
-            {
-                if (m_IsSymbolDefined)
+                var clicked = GUILayout.Button("Get the ChilliConnect SDK Package");
+                if (clicked)
                 {
-                    clicked = GUILayout.Button("Use default data access layer");
-                    if (clicked)
+                    m_Action = () => Application.OpenURL("https://docs.chilliconnect.com/guide/sdks/#unity");
+                }
+            }
+            else
+            {
+                if (IsChilliConnectAdaptersImported)
+                {
+                    if (m_IsSymbolDefined)
                     {
-                        m_Action = () => UndefineSymbolFor(k_ChilliConnectDefine, EditorUserBuildSettings.selectedBuildTargetGroup);
+                        var clicked = GUILayout.Button("Use default data access layer");
+                        if (clicked)
+                        {
+                            m_Action = () => UndefineSymbolFor(k_ChilliConnectDefine, EditorUserBuildSettings.selectedBuildTargetGroup);
+                        }
+                    }
+                    else
+                    {
+                        var clicked = GUILayout.Button("Use ChilliConnect data access layer");
+                        if (clicked)
+                        {
+                            m_Action = () => DefineSymbolFor(k_ChilliConnectDefine, EditorUserBuildSettings.selectedBuildTargetGroup);
+                        }
                     }
                 }
                 else
                 {
-                    clicked = GUILayout.Button("Use ChilliConnect data access layer");
+                    var clicked = GUILayout.Button("Install ChilliConnect Adapters Package");
                     if (clicked)
                     {
-                        m_Action = () => DefineSymbolFor(k_ChilliConnectDefine, EditorUserBuildSettings.selectedBuildTargetGroup);
+                        m_Action = () => InstallAdaptersPackage(); 
                     }
                 }
             }
@@ -76,17 +90,9 @@ namespace UnityEditor.GameFoundation.Sample
             return defines.Contains(symbol);
         }
 
-        static bool AreChilliConnectPackagesImported()
-        {
-            var chilliConnectSdkGuids = AssetDatabase.FindAssets("ChilliConnectSdk t:Script");
-            if (chilliConnectSdkGuids.Length > 0)
-            {
-                var chilliConnectAdapterGuids = AssetDatabase.FindAssets("ChilliConnectCloudSync t:Script");
-                return chilliConnectAdapterGuids.Length > 0;
-            }
+        static bool IsChilliConnectSDKImported => AssetDatabase.FindAssets("ChilliConnectSdk t:Script").Length > 0;
 
-            return false;
-        }
+        static bool IsChilliConnectAdaptersImported => AssetDatabase.FindAssets("ChilliConnectCloudSync t:Script").Length > 0;
 
         static void DefineSymbolFor(string symbol, BuildTargetGroup targetGroup)
         {
@@ -116,6 +122,12 @@ namespace UnityEditor.GameFoundation.Sample
             defines = string.Join(";", newDefinedSymbols.ToArray());
 
             PlayerSettings.SetScriptingDefineSymbolsForGroup(targetGroup, defines);
+        }
+
+        static void InstallAdaptersPackage()
+        {
+            var packageFullPath = AssetDatabase.GUIDToAssetPath(k_ChilliConnectPackageGuid);
+            AssetDatabase.ImportPackage(packageFullPath, true);
         }
     }
 }

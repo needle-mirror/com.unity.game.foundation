@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DefaultLayers;
 using UnityEngine.Promise;
 using UnityEngine.UI;
 
@@ -233,7 +233,7 @@ namespace UnityEngine.GameFoundation.Sample
             // now that the transaction has been processed, check for an error
             if (!deferred.isFulfilled)
             {
-                Debug.LogError($"Transaction Id:  {transaction.id} - Error Message: {deferred.error}");
+                Debug.LogError($"Transaction Id:  {transaction.key} - Error Message: {deferred.error}");
 
                 deferred.Release();
                 yield break;
@@ -257,12 +257,12 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI()
         {
             m_DisplayText.Clear();
-            m_DisplayText.Append("Wallet");
+            m_DisplayText.Append("<b><i>Wallet:</i></b>");
             m_DisplayText.AppendLine();
             m_DisplayText.Append("Coins: " + WalletManager.GetBalance("coin"));
             m_DisplayText.AppendLine();
             m_DisplayText.AppendLine();
-            m_DisplayText.Append("Inventory");
+            m_DisplayText.Append("<b><i>Inventory:</i></b>");
             m_DisplayText.AppendLine();
 
             InventoryManager.GetItems(m_InventoryItems);
@@ -271,7 +271,7 @@ namespace UnityEngine.GameFoundation.Sample
             foreach (InventoryItem inventoryItem in m_InventoryItems)
             {
                 // All game items have an associated display name, this includes game items.
-                string itemName = inventoryItem.definition.id;
+                string itemName = inventoryItem.definition.key;
 
                 m_DisplayText.Append(itemName);
                 m_DisplayText.AppendLine();
@@ -320,7 +320,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// need to be made.
         /// </summary>
         /// <param name="itemChanged">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void OnInventoryItemChanged(GameItem itemChanged)
+        private void OnInventoryItemChanged(InventoryItem itemChanged)
         {
             m_InventoryChanged = true;
         }

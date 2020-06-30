@@ -13,20 +13,16 @@ The Inventory window will let you configure inventory item definitions.
 
 ![An overview of the Inventory Window](../images/inventory-item-definition-editor.png)
 
-The window contains two tabs: Inventory tab and [Categories] tab.
-To have more information about the [Categories] tab, please refer to [the dedicated page] of this documentation.
+The interface is similar to the other [catalog items editor].
 
-(1) On the left of the tab are listed the inventory item definitions.
-Use the `+` button at the bottom to create a new one.
+(1) In the **Mutable Properties** section you can define a list of fields for the item instances to read and write at runtime.\
+  A mutable property must define:
+  - A value type. The current supported type are `long`, `double`, `bool` and `string`.
+  - A unique key for you to access the property at runtime.
+  - A default value.
 
-(2) The General section allows you to edit the Display Name of the item definition.
-The ID is read-only. It can be set only at creation time.
-
-(3) The [Categories] section is a widget which provides an intuitive way to assign [categories] to the edited item.  
-Start typing your category, then select the proper one in the dynamically created list, or create a new one.
-
-(4) The [details] section allows you to add custom static data to your item definition.
-Refer to [this page of the documentation dedicated to details] for further information.
+  Mutable Properties belong only to the definition they are declared into.
+  This means you can use the same property key in different definitions with a different type if you want to.
 
 
 
@@ -37,10 +33,8 @@ Refer to [this page of the documentation dedicated to details] for further infor
 
 
 
-[catalog item]: ../Catalog.md#Catalog&#32;Items
+[catalog item]: ../Catalog.md#Catalog-Items
 
-[categories]:         ../Category.md
-[the dedicated page]: ../Category.md
+[catalog items editor]: ../Catalog.md#Editor-Overview
 
-[details]:                                             ../Details.md
-[this page of the documentation dedicated to details]: ../Details.md
+[tags]: Tag.md

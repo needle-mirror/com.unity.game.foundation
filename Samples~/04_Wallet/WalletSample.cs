@@ -1,5 +1,5 @@
 ﻿using System.Text;
-using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DefaultLayers;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -56,7 +56,7 @@ namespace UnityEngine.GameFoundation.Sample
 
             // - Initialize must always be called before working with any game foundation code.
             // - GameFoundation requires an IDataAccessLayer object that will provide and persist
-            //   the data required for the various services (Inventory, Stats, ...).
+            //   the data required for the various services (Inventory, Wallet, ...).
             // - For this sample we don't need to persist any data so we use the MemoryDataLayer
             //   that will store GameFoundation's data only for the play session.
             GameFoundation.Initialize(new MemoryDataLayer());
@@ -119,7 +119,7 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI()
         {
             m_DisplayText.Clear();
-            m_DisplayText.Append("Wallet:");
+            m_DisplayText.Append("<b><i>Wallet:</i></b>");
             m_DisplayText.AppendLine();
             
             var coinBalance = WalletManager.GetBalance(m_CoinDefinition);
@@ -144,12 +144,12 @@ namespace UnityEngine.GameFoundation.Sample
         /// <summary>
         /// This will be called every time a currency balance is changed.
         /// </summary>
-        /// <param name="currency">The currency that was changed.</param>
-        /// <param name="balance">The previous balance of that currency.</param>
-        /// <param name="newBalance">The new balance of that currency.</param>
-        private void OnCoinBalanceChanged(Currency currency, long balance, long newBalance)
+        /// <param name="args">
+        /// Data related to the <see cref="WalletManager.balanceChanged"/> event.
+        /// </param>
+        private void OnCoinBalanceChanged(BalanceChangedEventArgs args)
         {
-            if (currency.id != m_CoinDefinition.id)
+            if (args.currency.key != m_CoinDefinition.key)
                 return;
 
             m_WalletChanged = true;

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 170076734}
-  m_IndirectSpecularColor: {r: 0.44657874, g: 0.49641275, b: 0.5748172, a: 1}
+  m_IndirectSpecularColor: {r: 0.4465782, g: 0.49641252, b: 0.5748167, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -695,7 +695,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   wrongDatabasePanel: {fileID: 1401738635}
   mainText: {fileID: 662293567}
-  chilliConnectAppToken: RcpSGnOWEjFIb1VnjvfgBK5NNL1G6R2p
+  chilliConnectAppToken: 
   appleIngredientButton: {fileID: 1780160559}
   orangeIngredientButton: {fileID: 1126358127}
   bananaIngredientButton: {fileID: 1285657603}
@@ -995,8 +995,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 500}
-  m_SizeDelta: {x: -300, y: -1000}
+  m_AnchoredPosition: {x: 0, y: 467.5}
+  m_SizeDelta: {x: -300, y: -935}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &662293567
 MonoBehaviour:

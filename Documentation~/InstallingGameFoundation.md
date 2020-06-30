@@ -43,7 +43,7 @@ public class MyGameManager : MonoBehaviour
 }
 ```
 
-When you initialize Game Foundation, all managers, including InventoryManager, WalletManager, StatManager and TransactionManager will be initialized and ready to use.
+When you initialize Game Foundation, all managers, including InventoryManager, WalletManager and TransactionManager will be initialized and ready to use.
 
 * **Tip:** To verify that Game Foundation is working and installed correctly, please check the IsInitialized property on any Game Foundation manager.
 
@@ -80,17 +80,20 @@ After implementing the above code, when you press Play you will see that Game Fo
 
 Now you can head over to one of our Tutorials for more information:
 
-01. [Creating an Inventory Item Definition](Tutorials/01-CreatingAnItemDefinition.md)
-02. [Playing with items at runtime](Tutorials/02-PlayingWithRuntimeItem.md)
-03. [Creating a Currency](Tutorials/03-CreatingCurrency.md)
-04. [Playing with currencies at runtime](Tutorials/04-PlayingWithRuntimeCurrency.md)
-05. [The Debugger window](Tutorials/05-Debugger.md)
-06. [Adding static properties with details](Tutorials/06-AddStaticPropertiesWithDetails.md)
-07. [Adding mutable properties with Stats](Tutorials/07-AddMutablePropertiesWithStats.md)
-08. [Playing with stats at runtime](Tutorials/08-PlayingWithStats.md)
-09. [Creating a Virtual Transaction](Tutorials/09-CreatingAVirtualTransaction.md)
-10. [Playing with virtual transaction at runtime](Tutorials/10-PlayingWithRuntimeVirtualTransaction.md)
-11. [Using IAP Transactions](Tutorials/11-PlayingWithIAPTransaction.md)
-12. [Filtering transactions with Stores](Tutorials/12-FilterTransactionWithStore.md)
+1. [Creating an Inventory Item Definition](Tutorials/01-CreatingAnItemDefinition.md)
+1. [Playing with items at runtime](Tutorials/02-PlayingWithRuntimeItem.md)
+1. [Creating a Currency](Tutorials/03-CreatingCurrency.md)
+1. [Playing with currencies at runtime](Tutorials/04-PlayingWithRuntimeCurrency.md)
+1. [The Debugger window](Tutorials/05-Debugger.md)
+1. [Static Properties](Tutorials/06-StaticProperties.md)
+1. [Adding more static data with details](Tutorials/07-AddStaticDataWithDetails.md)
+1. [Mutable Properties Editor](Tutorials/08-MutablePropertiesEditor.md)
+1. [Playing with mutable properties at runtime](Tutorials/09-MutablePropertiesRuntime.md)
+1. [Creating a Virtual Transaction](Tutorials/10-CreatingAVirtualTransaction.md)
+1. [Playing with virtual transaction at runtime](Tutorials/11-PlayingWithRuntimeVirtualTransaction.md)
+1. [Using IAP Transactions](Tutorials/12-PlayingWithIAPTransaction.md)
+1. [Filtering transactions with Stores](Tutorials/13-FilterTransactionWithStore.md)
+1. [Working with Store Prefabs](Tutorials/14-WorkingWithStorePrefabs.md)
+1. [Configure your game with parameters](Tutorials/15-ConfigureYourGameWithParameters.md)
 
 Also, please visit [Known Issues](KnownIssues.md) if you need further assistance.

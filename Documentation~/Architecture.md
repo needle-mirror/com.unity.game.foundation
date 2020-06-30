@@ -3,13 +3,11 @@
 ## General purpose
 
 - The [Inventory Manager] helps you create new objects and get access to their static data (basically the configuration of your game).
-- The [Stat Manager] gives you an easy way to manipulate the mutable data of those objects.
 - The [Wallet Manager] simplifies the management of your currencies
 - The [Transaction Manager] is a turn-key solution for both virtual and real money purchases, being a simple interface for a critical process for your game to be successful.
 
 Those systems talk to each other:
 
-- When the [Inventory Manager]creates an item instance, it asks the [Stat Manager] to initialize and maintain its mutable fields.
 - When the [Transaction Manager] processes a transaction ([Virtual] or [IAP]) it requires the [Inventory Manager] and the [Wallet Manager] to consume the costs and to generate the rewards.
 
 ![High Level Architecture](images/high-level-architecture.png)
@@ -37,8 +35,6 @@ Cloud save, but also server authoritative transactions, A/B Testing and segment
 
 
 [inventory manager]: GameSystems/InventoryManager.md
-
-[stat manager]: GameSystems/StatManager.md
 
 [wallet manager]: GameSystems/WalletManager.md
 

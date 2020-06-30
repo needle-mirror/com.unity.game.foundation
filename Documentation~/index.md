@@ -5,14 +5,14 @@ We aim to make these systems flexible and extensible.
 
 Currently Game Foundation includes these game systems:
 
-* An inventory system for defining and managing game resources that are invetoriable 
-* A stats system for defining and managing mutable fields that are commonly used in gameplay
-* A wallet system for defining and managing virtual currencies 
-* A transaction system for handling virtual purchases / crafting mechanics and IAP purchases
-* A storefront system (with pre-made prefab UIs) for implementing a common in-game store 
-* A data layer that helps with data persistence locally and remotely (coming soon)
+* An inventory system for defining and managing game resources that are inventoriable.
+* A property system for defining and managing mutable fields that are commonly used in gameplay.
+* A wallet system for defining and managing virtual currencies.
+* A transaction system for handling virtual purchases / crafting mechanics and IAP purchases.
+* A storefront system (with pre-made prefab UIs) for implementing a common in-game store.
+* A data layer that helps with data persistence locally and remotely (coming soon).
 
-We're working on adding more such pre-built common game systems over time to help developers spend less time on building these basic system.
+We're working on adding more such pre-built common game systems over time to help developers spend less time on building these basic systems.
 
 ## [Installing the Game Foundation Package]
 
@@ -24,18 +24,22 @@ We're working on adding more such pre-built common game systems over time to hel
 
 ## Tutorials
 
-01. [Creating an Inventory Item Definition]
-02. [Playing with items at runtime]
-03. [Creating a Currency]
-04. [Playing with currencies at runtime]
-05. [The Debugger window]
-06. [Adding static properties with details]
-07. [Adding mutable properties with Stats]
-08. [Playing with stats at runtime]
-09. [Creating a Virtual Transaction]
-10. [Playing with virtual transaction at runtime]
-11. [Using IAP Transactions]
-12. [Filtering transactions with Stores]
+1. [Creating an Inventory Item Definition]
+1. [Playing with items at runtime]
+1. [Creating a Currency]
+1. [Playing with currencies at runtime]
+1. [The Debugger window]
+1. [Adding static data with Static Properties]
+1. [Adding more static data with details]
+1. [Adding mutable data with Properties]
+1. [Playing with properties at runtime]
+1. [Creating a Virtual Transaction]
+1. [Playing with virtual transaction at runtime]
+1. [Using IAP Transactions]
+1. [Filtering transactions with Stores]
+1. [Working with Store prefabs]
+1. [Working with Promotion Popup prefab]
+1. [Configure your game with parameters]
 
 ## [Known Issues]
 
@@ -68,16 +72,24 @@ We're working on adding more such pre-built common game systems over time to hel
 
 [The Debugger window]: Tutorials/05-Debugger.md
 
-[Adding static properties with details]: Tutorials/06-AddStaticPropertiesWithDetails.md
+[Adding static data with Static Properties]: Tutorials/06-StaticProperties.md
 
-[Adding mutable properties with Stats]: Tutorials/07-AddMutablePropertiesWithStats.md
+[Adding more static data with details]: Tutorials/07-AddStaticDataWithDetails.md
 
-[Playing with stats at runtime]: Tutorials/08-PlayingWithStats.md
+[Adding mutable data with Properties]: Tutorials/08-MutablePropertiesEditor.md
 
-[Creating a Virtual Transaction]: Tutorials/09-CreatingAVirtualTransaction.md
+[Playing with properties at runtime]: Tutorials/09-MutablePropertiesRuntime.md
 
-[Playing with virtual transaction at runtime]: Tutorials/10-PlayingWithRuntimeVirtualTransaction.md
+[Creating a Virtual Transaction]: Tutorials/10-CreatingAVirtualTransaction.md
 
-[Using IAP Transactions]: Tutorials/11-PlayingWithIAPTransaction.md
+[Playing with virtual transaction at runtime]: Tutorials/11-PlayingWithRuntimeVirtualTransaction.md
 
-[Filtering transactions with Stores]: Tutorials/12-FilterTransactionWithStore.md
+[Using IAP Transactions]: Tutorials/12-PlayingWithIAPTransaction.md
+
+[Filtering transactions with Stores]: Tutorials/13-FilterTransactionWithStore.md
+
+[Working with Store prefabs]: Tutorials/14-WorkingWithStorePrefabs.md
+
+[Configure your game with parameters]: Tutorials/15-ConfigureYourGameWithParameters.md
+
+[Working with Promotion Popup prefab]: Tutorials/16-WorkingWithPromotionPopupPrefab.md

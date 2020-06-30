@@ -6,9 +6,11 @@ The __Wallet Manager__ is dedicated to the management of the [currencies] and t
 Contrary to the [Inventory Manager], which manages item instances, the __Wallet Manager__ doesn't create or destroy any object when adding or removing amounts.
 It just changes the balance of the related [currency].
 
-## Currency vs item instance
+## Wallet System vs Inventory System
 
-The __Wallet Manager__ is designed for items that the player can collect plenty of, but don't need individual [stats].
+### What's the differnce 
+
+The __Wallet Manager__ is designed for items that the player can collect plenty of.
 
 > You have two swords in your inventory, each having a different `damage` property value.
 
@@ -17,6 +19,14 @@ Swords are item instances in the __Inventory Manager__.
 > I have `1500` gold coins, and each coin doesn't have any individual property.
 
 Gold coin is a [currency] of the __Wallet Manager__, with a balance of `1500`.
+
+### Which one to choose? 
+
+While both the Wallet system and [inventory manager] can help you manage concepts of in-game resources and track the quantities for them, if you want to be able to track each instance of a given item at runtime (for example if all instances of an item can be re-arranged in the player bag), then define it as an [inventory item] so you can track the attributes of each instance separately at runtime.
+
+On the other hand, if you only need to track the aggregated amount of a given resource, then defining them as [currency] will allow Game Foundation to handle these with more performance efficiency. 
+
+We will revise the user-facing name of these two systems in the near future to better distinguish the runtime behavior difference while removing the opinionate-ness of the use case of certain in-game resources (as money vs. generic items). In the meanwhile, use this to guide your implementatino decisions on which one to choose. 
 
 ## Initialization
 
@@ -42,11 +52,13 @@ The __Wallet Manager__ comes with a basic set of expected methods to:
 
 
 
+
+
+
+
+
 [currencies]: ../CatalogItems/Currency.md
 [currency]:   ../CatalogItems/Currency.md
-
+[inventory item]: ../CatalogItems/InventoryItemDefinition.md  
 [inventory manager]: ../GameSystems/InventoryManager.md
-
-[stats]: ../GameSystems/StatManager.md
-
 [catalog]: ../Catalog.md

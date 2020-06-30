@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using UnityEngine.GameFoundation.DataAccessLayers;
+using UnityEngine.GameFoundation.DefaultLayers;
 using UnityEngine.UI;
 
 namespace UnityEngine.GameFoundation.Sample
@@ -24,9 +24,9 @@ namespace UnityEngine.GameFoundation.Sample
         private readonly List<InventoryItem> m_InventoryItems = new List<InventoryItem>();
 
         /// <summary>
-        /// Reference to a list of InventoryItems of a certain category.
+        /// Reference to a list of InventoryItems of a certain tag.
         /// </summary>
-        private readonly List<InventoryItem> m_ItemsByCategory = new List<InventoryItem>();
+        private readonly List<InventoryItem> m_ItemsByTag = new List<InventoryItem>();
         
         /// <summary>
         /// Used to reduce times mainText.text is accessed.
@@ -66,7 +66,7 @@ namespace UnityEngine.GameFoundation.Sample
 
             // - Initialize must always be called before working with any game foundation code.
             // - GameFoundation requires an IDataAccessLayer object that will provide and persist
-            //   the data required for the various services (Inventory, Stats, ...).
+            //   the data required for the various services (Inventory, Wallet, ...).
             // - For this sample we don't need to persist any data so we use the MemoryDataLayer
             //   that will store GameFoundation's data only for the play session.
             GameFoundation.Initialize(new MemoryDataLayer());
@@ -77,8 +77,8 @@ namespace UnityEngine.GameFoundation.Sample
             InventoryManager.itemAdded += OnInventoryItemChanged;
             InventoryManager.itemRemoved += OnInventoryItemChanged;
 
-            // The Inventory Manager starts empty, so we will create one apple and one orange to get us started.
-            InventoryManager.CreateItem("apple");
+            // The Inventory Manager starts with initial allocation of 2 apples and 1 orange, but we 
+            // can add an additional orange here to get us started.
             InventoryManager.CreateItem("orange");
 
             RefreshUI();
@@ -123,15 +123,15 @@ namespace UnityEngine.GameFoundation.Sample
             // To remove a single item from the InventoryManager, you need a specific instance of that item. Since we only know the 
             // InventoryItemDefinition id of the item we want to remove, we'll first look for all items with that definition.
             // We'll use the version of FindItemsByDefinition that lets us pass in a collection to be filled to reduce allocations.
-            InventoryManager.FindItemsByDefinition(fruitItemDefinitionId, m_ItemsByCategory);
+            InventoryManager.FindItemsByDefinition(fruitItemDefinitionId, m_ItemsByTag);
             
             // Make sure there actually is an item available to return
-            if (m_ItemsByCategory.Count > 0)
+            if (m_ItemsByTag.Count > 0)
             {
                 // We'll remove the first instance in the array of apple items
-                InventoryManager.RemoveItem(m_ItemsByCategory[0]);
+                InventoryManager.RemoveItem(m_ItemsByTag[0]);
                 // Once we remove the item from the InventoryManager, the reference to it will be broken.
-                m_ItemsByCategory[0] = null;
+                m_ItemsByTag[0] = null;
             }
         }
 
@@ -144,7 +144,7 @@ namespace UnityEngine.GameFoundation.Sample
             // If there are no items with that definition id, the method will take no action and return a count of 0;
             int itemsRemovedCount = InventoryManager.RemoveItemsByDefinition(fruitItemDefinitionId);
             
-            Debug.Log(itemsRemovedCount + " apple items removed from inventory.");
+            Debug.Log($"{itemsRemovedCount} {fruitItemDefinitionId} item(s) removed from inventory.");
         }
 
         /// <summary>
@@ -153,7 +153,7 @@ namespace UnityEngine.GameFoundation.Sample
         private void RefreshUI()
         {
             m_DisplayText.Clear();
-            m_DisplayText.Append("Inventory");
+            m_DisplayText.Append("<b><i>Inventory:</i></b>");
             m_DisplayText.AppendLine();
             
             // We'll use the version of GetItems that lets us pass in a collection to be filled to reduce allocations
@@ -197,7 +197,7 @@ namespace UnityEngine.GameFoundation.Sample
         /// need to be made.
         /// </summary>
         /// <param name="itemChanged">This parameter will not be used, but must exist so the signature is compatible with the inventory callbacks so we can bind it.</param>
-        private void OnInventoryItemChanged(GameItem itemChanged)
+        private void OnInventoryItemChanged(InventoryItem itemChanged)
         {
             m_InventoryChanged = true;
         }

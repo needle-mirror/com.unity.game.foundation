@@ -2,14 +2,20 @@
 
 ## Overview
 
-A __Currency__ is a [catalog item] dedicated to the [Wallet Management].
+A __Currency__ is a [catalog item] dedicated to the [Wallet Management], which can help track the quantity of your in-game resources without the additional overhead of item instances, unlike [inventory]. 
+
+You may want to deal with a collectible resource, but don't need to identify each instance of the resource. A [Currency] is the type of [catalog item] you need. 
+
+While in-game money is the most common use case, there're other currency-like resources belonging to a player, such as energy, score, number of lifes / moves,that can also be defined as Currency. 
 
 This type of item has 3 special fields:
 
 - `Initial allocation`: the balance the player has when his/her profile is created.
-- The `maximum` balance a player can have.
+- `Maximum allocation`: The maximum balance a player can have.
   `0` means no limit.
-- The type of the __currency__.
+- `Type`: The type of the __currency__.
+
+While in-game money is the most common use case, there're other currency-like resources belonging to a player, such as energy, score, number of lifes / moves,that can also be defined as Currency. 
 
 ## Currency Type
 
@@ -22,16 +28,14 @@ Also called "premium currency", it is much harder to acquire without making purc
 
 ## Editor Overview
 
-![Currency Editor Overview](../images/game_system-wallet_manager-editor_overview.png)
+Open the __Currency window__ by going to __Window → Game Foundation → Currency__.
+The Currency window will let you configure Currencies.
 
-As usual, you can find:
+![Currency Editor Overview](../images/currency-editor.png)
 
-- (1) the list of objects (here currencies) on the left side.
-- (2) the [category] widget
-- (3) the [details] section
+The interface is similar to the other [catalog items editor].
 
-In addition you'll find the three special fields (`initial allocation`, `maximum allocation,` and `currency type`) visible just below the identifier and display name fields (4).
-
+(1) In addition to the common General section, you'll find the three special fields `Initial allocation`, `Maximum allocation,` and `Type`.
 
 
 
@@ -41,10 +45,9 @@ In addition you'll find the three special fields (`initial allocation`, `maximum
 
 
 
-[catalog item]: ../../Catalog.md#Catalog&#32;Items
+
+[catalog item]: ../Catalog.md#Catalog-Items
+
+[catalog items editor]: ../Catalog.md#Editor-Overview
 
 [wallet management]: ../GameSystems/WalletManager.md
-
-[category]: ../Category.md
-
-[details]: ../Details.md
