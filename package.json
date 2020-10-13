@@ -1,93 +1,21 @@
 {
   "name": "com.unity.game.foundation",
-  "displayName": "Game Foundation",
-  "version": "0.6.0-preview.2",
+  "displayName": "Game Foundation Obsolete",
+  "version": "0.7.0-preview.4",
   "unity": "2018.4",
-  "description": "Game Foundation core package.\n\nThis package contains the following components: \n▪ Inventory System \n▪ Virtual Currency Wallet \n▪ Properties System \n▪ Transaction System  \n▪ Core Systems \n\nNote: CatalogManager now holds the reference to the catalogs at Runtime. Any runtime code that was previously written as \nGameFoundationSettings.database.xCatalog should now be written as CatalogManager.xCatalog. \nGameFoundation's Initialization changed to take an IDataAccessLayer as an argument instead of a persistence object. \n\nNote: Preview release, public API subject to change.",
-  "keywords": [
-    "unity",
-    "Game Foundation",
-    "Inventory",
-    "Wallet",
-    "Virtual Currency",
-    "Virtual Goods",
-    "Item Stats",
-    "Progression"
-  ],
+  "description": "This package is now obsolete.\n\nIt has been replaced by a similar package with a fixed name `com.unity.game-foundation`.\n\nYou can keep this one as it installs of new package as a dependency, but we recommend that you explictely install the new one instead.",
   "dependencies": {
-    "com.unity.analytics": "3.3.2"
+    "com.unity.game-foundation": "0.7.0-preview.4"
   },
-  "samples": [
-    {
-      "displayName": "00 Database And Assets (required for samples)",
-      "description": "This sample contains a database and assets which should be used in all other samples. It also contains a class with helper methods for the samples.",
-      "path": "Samples~/00_DatabaseAndAssets"
-    },
-    {
-      "displayName": "01 Inventory Basics",
-      "description": "This sample showcases the basics of how to work with a single inventory.",
-      "path": "Samples~/01_InventoryBasics"
-    },
-    {
-      "displayName": "02 Inventory With Quantity",
-      "description": "This sample showcases one way to group inventory items to represent quantity concept.",
-      "path": "Samples~/02_InventoryWithQuantity"
-    },
-    {
-      "displayName": "03 Tags",
-      "description": "This sample showcases how to work with tags.",
-      "path": "Samples~/03_Tags"
-    },
-    {
-      "displayName": "04 Wallet",
-      "description": "This sample showcases how to work with the wallet and currencies.",
-      "path": "Samples~/04_Wallet"
-    },
-    {
-      "displayName": "05 Properties",
-      "description": "This sample showcases how to work with the properties system.",
-      "path": "Samples~/05_Properties"
-    },
-    {
-      "displayName": "06 Data Persistence",
-      "description": "This sample showcases how to use data persistence to save and load your data.",
-      "path": "Samples~/06_DataPersistence"
-    },
-    {
-      "displayName": "07 Transactions",
-      "description": "This sample showcases how to use the Transaction System.",
-      "path": "Samples~/07_Transactions"
-    },
-    {
-      "displayName": "08 Store",
-      "description": "This sample showcases how to use the Store System.",
-      "path": "Samples~/08_Store"
-    },
-    {
-      "displayName": "09 ChilliConnect",
-      "description": "This sample showcases how to use the ChilliConnect Adapter for Game Foundation.",
-      "path": "Samples~/09_ChilliConnect"
-    },
-    {
-      "displayName": "10 Inventory Reset and Initial Allocation",
-      "description": "This sample showcases inventory initial allocation and to reinitialize Game Foundation.",
-      "path": "Samples~/10_InventoryResetAndInitialAllocation"
-    },
-    {
-      "displayName": "11 Promotion Popup",
-      "description": "This sample contains the prefab that can be used to create a Promotion Popup which uses the Transaction System to make purchases.",
-      "path": "Samples~/11_PromotionPopup"
-    }
-  ],
   "relatedPackages": {
-    "com.unity.game.foundation.tests": "0.6.0-preview.2"
+    "com.unity.game.foundation.tests": "0.7.0-preview.4"
   },
   "upmCi": {
-    "footprint": "61b1b628ed8eb0fa7687002a33c32575e5dc5cf8"
+    "footprint": "23254c4e747140d4af70d7edbf2e8738587c4091"
   },
   "repository": {
     "url": "https://github.cds.internal.unity3d.com/unity/game-foundation.git",
     "type": "git",
-    "revision": "f09f792e528ceb6880ce3e97a14b4f8065a9324b"
+    "revision": "77bbe9a2373e99647b0c21ec5d34f9e6f117b790"
   }
 }
